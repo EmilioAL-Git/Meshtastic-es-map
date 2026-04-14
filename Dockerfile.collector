@@ -1,0 +1,11 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+COPY collector/collector.py .
+
+RUN useradd -r -s /bin/false appuser && \
+    mkdir -p /data && chown appuser /data
+
+USER appuser
+
+CMD ["python", "collector.py", "--daemon", "--db", "/data/meshtastic-es-map.db"]

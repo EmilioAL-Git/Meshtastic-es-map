@@ -1,0 +1,17 @@
+[Unit]
+Description=Meshtastic-es-map Collector — lee API meshview y guarda en SQLite
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/meshtastic-es-map
+ExecStart=/opt/meshtastic-es-map/venv/bin/python /opt/meshtastic-es-map/collector/collector.py --daemon --interval 5 --db /opt/meshtastic-es-map/data/meshtastic-es-map.db
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

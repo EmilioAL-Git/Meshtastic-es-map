@@ -30,7 +30,7 @@ function onSearchInput() {
     </div>`).join('');
 
   dd.querySelectorAll('.search-result').forEach(el => {
-    el.addEventListener('mousedown', () => { selectNode(el.dataset.id); closeSearch(); });
+    el.addEventListener('mousedown', () => { selectNode(el.dataset.id, true); closeSearch(); });
   });
 
   dd.classList.add('open');
@@ -50,7 +50,7 @@ function onSearchKey(e) {
     searchIndex = Math.max(searchIndex - 1, 0);
   } else if (e.key === 'Enter' && searchIndex >= 0) {
     e.preventDefault();
-    selectNode(items[searchIndex].dataset.id);
+    selectNode(items[searchIndex].dataset.id, true);
     closeSearch();
   } else if (e.key === 'Escape') {
     closeSearch();

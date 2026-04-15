@@ -1,5 +1,5 @@
 // ─── Selección de nodo ────────────────────────────────────────────────────────
-function selectNode(nodeId) {
+function selectNode(nodeId, fly = false) {
   const prevNodeId = selectedNodeId;
   selectedNodeId   = nodeId;
   const node = allNodes.find(n => n.node_id === nodeId);
@@ -26,16 +26,18 @@ function selectNode(nodeId) {
       zIndexOffset: 1000,
     }).addTo(map);
 
-    map.stop();
-    const zoom     = Math.max(map.getZoom(), 16);
-    const isMobile = window.innerWidth <= 768;
-    const offsetPx = isMobile ? Math.round(window.innerHeight * 0.22) : 0;
-    if (offsetPx > 0) {
-      const targetPx  = map.project([node.latitude, node.longitude], zoom);
-      const shiftedPx = targetPx.add([0, offsetPx]);
-      map.flyTo(map.unproject(shiftedPx, zoom), zoom, { animate: true, duration: 0.6 });
-    } else {
-      map.flyTo([node.latitude, node.longitude], zoom, { animate: true, duration: 0.6 });
+    if (fly) {
+      map.stop();
+      const zoom     = Math.max(map.getZoom(), 16);
+      const isMobile = window.innerWidth <= 768;
+      const offsetPx = isMobile ? Math.round(window.innerHeight * 0.22) : 0;
+      if (offsetPx > 0) {
+        const targetPx  = map.project([node.latitude, node.longitude], zoom);
+        const shiftedPx = targetPx.add([0, offsetPx]);
+        map.flyTo(map.unproject(shiftedPx, zoom), zoom, { animate: true, duration: 0.6 });
+      } else {
+        map.flyTo([node.latitude, node.longitude], zoom, { animate: true, duration: 0.6 });
+      }
     }
   }
 

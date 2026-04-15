@@ -25,7 +25,7 @@ import urllib.error
 
 # ─── Configuración ────────────────────────────────────────────────────────────
 
-MESHVIEW_BASE = "https://meshview.meshtastic.es"
+MESHVIEW_BASE = os.environ.get("MESHVIEW_URL", "https://meshview.meshtastic.es")
 DB_PATH       = Path(os.environ.get("DB_PATH", str(Path(__file__).parent.parent / "data" / "meshtastic-es-map.db")))
 JSON_OUT      = Path(os.environ.get("JSON_OUT", str(Path(__file__).parent.parent / "web" / "data")))
 INTERVAL_MIN  = int(os.environ.get("COLLECTOR_INTERVAL", 5))

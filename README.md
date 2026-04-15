@@ -125,6 +125,7 @@ El mapa queda disponible en `http://localhost:8095`.
 
 | Variable | Default | Descripción |
 |---|---|---|
+| `MESHVIEW_URL` | `https://meshview.meshtastic.es` | URL de la instancia de meshview |
 | `WEB_PORT` | `8095` | Puerto del servidor web |
 | `COLLECTOR_INTERVAL` | `5` | Minutos entre colecciones |
 | `DB_PATH` | `/data/meshtastic-es-map.db` | Ruta de la base de datos |

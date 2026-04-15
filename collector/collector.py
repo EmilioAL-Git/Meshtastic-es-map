@@ -429,7 +429,7 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
     """Genera nodes.json, edges.json y stats.json para el frontend estático."""
     out_dir.mkdir(parents=True, exist_ok=True)
     now    = int(time.time())
-    cutoff = now - 24 * 3600
+    cutoff = now - 7 * 24 * 3600
 
     # ── nodes.json ──
     cur = conn.execute("""
@@ -516,6 +516,12 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
         }, f)
 
     log.info(f"JSON exportado → {out_dir}  ({len(nodes)} nodos, {len(edges)} edges)")
+
+    # ── Purge de datos antiguos (>7 días) ──
+    deleted_nodes = conn.execute("DELETE FROM nodes WHERE last_seen < ?", (cutoff,)).rowcount
+    deleted_edges = conn.execute("DELETE FROM edges WHERE last_seen < ?", (cutoff,)).rowcount
+    if deleted_nodes or deleted_edges:
+        log.info(f"Purge: {deleted_nodes} nodos y {deleted_edges} edges eliminados (>7 días)")
 
 
 # ─── Colección principal ───────────────────────────────────────────────────────

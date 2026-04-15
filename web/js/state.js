@@ -28,12 +28,12 @@ const C_OLD     = '#64748b';
 
 // ─── Estilos de edge ─────────────────────────────────────────────────────────
 const EDGE_STYLE = {
-  neighbor:   { color: '#5eead4', weight: 2,   opacity: 0,    dashArray: null  },
-  traceroute: { color: '#7dd3fc', weight: 1.5, opacity: 0,    dashArray: '6 5' },
+  neighbor:   { color: '#1d4ed8', weight: 2,   opacity: 0,    dashArray: null  },
+  traceroute: { color: '#dc2626', weight: 1.5, opacity: 0,    dashArray: '6 5' },
 };
 const EDGE_STYLE_HI = {
-  neighbor:   { color: '#5eead4', weight: 2,   opacity: 0.90, dashArray: null  },
-  traceroute: { color: '#7dd3fc', weight: 1.5, opacity: 0.75, dashArray: '6 5' },
+  neighbor:   { color: '#1d4ed8', weight: 2,   opacity: 0.85, dashArray: null  },
+  traceroute: { color: '#dc2626', weight: 1.5, opacity: 0.75, dashArray: '6 5' },
 };
 
 // ─── Renderer SVG compartido ──────────────────────────────────────────────────

@@ -593,6 +593,12 @@ body.embed-mode .search-input {
 }
 
 @media (max-width: 768px) {
+  body.embed-mode .filter-toggle-btn {
+    top: 58px; /* debajo del buscador flotante */
+  }
+}
+
+@media (max-width: 768px) {
   /* ── Header compacto ── */
   header {
     padding: 8px 12px;

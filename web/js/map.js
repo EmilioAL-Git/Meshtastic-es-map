@@ -51,13 +51,14 @@ function nodeColor(node) {
 }
 
 function circleMarkerOptions(color, size = 9) {
+  const isOld = color === C_OLD;
   return {
-    radius: size,
+    radius: isOld ? Math.max(size - 1, 2) : size,
     fillColor: color,
     color: '#1e293b',
-    weight: 1,
-    opacity: 1,
-    fillOpacity: (color === C_RECENT || color === C_GATEWAY) ? 1 : 0.85,
+    weight: isOld ? 0.5 : 1,
+    opacity: isOld ? 0.4 : 1,
+    fillOpacity: (color === C_RECENT || color === C_GATEWAY) ? 1 : isOld ? 0.3 : 0.85,
     renderer: canvasRenderer,
   };
 }

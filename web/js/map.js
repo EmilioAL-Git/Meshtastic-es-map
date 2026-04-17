@@ -33,6 +33,11 @@ function initMap() {
 
   edgeGroup = L.layerGroup().addTo(map);
   map.on('zoomend', updateMarkerSizes);
+
+  // Cerrar panel al tap en el fondo del mapa (móvil)
+  map.on('click', () => {
+    if (window.innerWidth <= 768 && selectedNodeId) closeDetail();
+  });
 }
 
 // ─── Helpers de color/icono ───────────────────────────────────────────────────

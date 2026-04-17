@@ -36,6 +36,7 @@ function initMap() {
 
   // Cerrar panel al tap en el fondo del mapa (móvil)
   map.on('click', () => {
+    if (markerClicked) { markerClicked = false; return; }
     if (window.innerWidth <= 768 && selectedNodeId) closeDetail();
   });
 }
@@ -130,7 +131,7 @@ function renderNodes(nodes) {
       `);
     }
 
-    marker.on('click', () => selectNode(node.node_id));
+    marker.on('click', () => { markerClicked = true; selectNode(node.node_id); });
     marker.addTo(map);
     markers[node.node_id] = marker;
   });

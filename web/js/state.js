@@ -16,6 +16,7 @@ let selOverlay     = null;   // L.marker con animación de pulso
 let map;
 let edgeGroup;
 let searchIndex    = -1;
+let markerClicked  = false;  // evita que map.click cierre el panel tras seleccionar un nodo
 
 const activeFilters = new Set(['gateway', 'recent', 'active', 'old']);
 const ALL_CATS      = ['gateway', 'recent', 'active', 'old'];

@@ -18,10 +18,14 @@ function initMap() {
       const c = L.DomUtil.create('div', 'map-zoom-ctrl');
       c.innerHTML = `
         <button class="map-zoom-btn" id="zoom-in"  title="Acercar">+</button>
-        <button class="map-zoom-btn" id="zoom-out" title="Alejar">−</button>`;
+        <button class="map-zoom-btn" id="zoom-out" title="Alejar">−</button>
+        <button class="map-zoom-btn" id="zoom-locate" title="Mi ubicación">◎</button>`;
       L.DomEvent.disableClickPropagation(c);
-      c.querySelector('#zoom-in' ).addEventListener('click', () => map.zoomIn());
+      c.querySelector('#zoom-in').addEventListener('click', () => map.zoomIn());
       c.querySelector('#zoom-out').addEventListener('click', () => map.zoomOut());
+      c.querySelector('#zoom-locate').addEventListener('click', () => {
+        map.locate({ setView: true, maxZoom: 14 });
+      });
       return c;
     }
   });

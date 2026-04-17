@@ -128,6 +128,7 @@ El mapa queda disponible en `http://localhost:8095`.
 | `MESHVIEW_URL` | `https://meshview.meshtastic.es` | URL de la instancia de meshview |
 | `WEB_PORT` | `8095` | Puerto del servidor web |
 | `COLLECTOR_INTERVAL` | `5` | Minutos entre colecciones |
+| `NODE_RETENTION_DAYS` | `7` | Días que se conservan nodos/edges en la BD |
 | `DB_PATH` | `/data/meshtastic-es-map.db` | Ruta de la base de datos |
 | `JSON_OUT` | `/data/json` | Directorio de salida de los JSON |
 | `MAP_AUTO_FIT` | `true` | Ajusta el mapa automáticamente a los nodos al cargar |

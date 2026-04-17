@@ -49,6 +49,12 @@ async function loadAll() {
         if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
       }
     }
+
+    // Enlace directo a un nodo: ?node=!abcd1234
+    if (firstLoad) {
+      const nodeParam = new URLSearchParams(location.search).get('node');
+      if (nodeParam) selectNode(nodeParam, true);
+    }
     firstLoad = false;
 
   } catch (e) {
@@ -81,6 +87,12 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#filter-panel') && !e.target.closest('#filter-toggle-btn')) {
     document.getElementById('filter-panel').classList.remove('open');
     document.getElementById('filter-toggle-btn').classList.remove('active');
+  }
+  // Cerrar panel de detalle al hacer click fuera (solo móvil)
+  if (window.innerWidth <= 768 && selectedNodeId) {
+    if (!e.target.closest('#detail-panel') && !e.target.closest('#map')) {
+      closeDetail();
+    }
   }
 });
 

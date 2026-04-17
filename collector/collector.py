@@ -25,14 +25,15 @@ import urllib.error
 
 # ─── Configuración ────────────────────────────────────────────────────────────
 
-MESHVIEW_BASE = os.environ.get("MESHVIEW_URL", "https://meshview.meshtastic.es")
-DB_PATH       = Path(os.environ.get("DB_PATH", str(Path(__file__).parent.parent / "data" / "meshtastic-es-map.db")))
-JSON_OUT      = Path(os.environ.get("JSON_OUT", str(Path(__file__).parent.parent / "web" / "data")))
-INTERVAL_MIN  = int(os.environ.get("COLLECTOR_INTERVAL", 5))
-MAP_AUTO_FIT  = os.environ.get("MAP_AUTO_FIT", "true").lower() == "true"
-MAP_LAT       = float(os.environ.get("MAP_LAT", 40.2))
-MAP_LNG       = float(os.environ.get("MAP_LNG", -3.7))
-MAP_ZOOM      = int(os.environ.get("MAP_ZOOM", 8))
+MESHVIEW_BASE   = os.environ.get("MESHVIEW_URL", "https://meshview.meshtastic.es")
+DB_PATH         = Path(os.environ.get("DB_PATH", str(Path(__file__).parent.parent / "data" / "meshtastic-es-map.db")))
+JSON_OUT        = Path(os.environ.get("JSON_OUT", str(Path(__file__).parent.parent / "web" / "data")))
+INTERVAL_MIN    = int(os.environ.get("COLLECTOR_INTERVAL", 5))
+RETENTION_DAYS  = int(os.environ.get("NODE_RETENTION_DAYS", 7))
+MAP_AUTO_FIT    = os.environ.get("MAP_AUTO_FIT", "true").lower() == "true"
+MAP_LAT         = float(os.environ.get("MAP_LAT", 40.2))
+MAP_LNG         = float(os.environ.get("MAP_LNG", -3.7))
+MAP_ZOOM        = int(os.environ.get("MAP_ZOOM", 8))
 REQUEST_TIMEOUT = 20       # segundos
 
 logging.basicConfig(
@@ -85,12 +86,24 @@ CREATE TABLE IF NOT EXISTS snapshots (
     collected_at    INTEGER NOT NULL,
     nodes_count     INTEGER,
     edges_count     INTEGER,
+    active_nodes    INTEGER,
     source_url      TEXT
+);
+
+CREATE TABLE IF NOT EXISTS node_telemetry (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    node_id       TEXT NOT NULL,
+    collected_at  INTEGER NOT NULL,
+    snr           REAL,
+    rssi          INTEGER,
+    battery_level INTEGER,
+    voltage       REAL
 );
 
 CREATE INDEX IF NOT EXISTS idx_nodes_last_seen  ON nodes(last_seen);
 CREATE INDEX IF NOT EXISTS idx_edges_from       ON edges(from_node);
 CREATE INDEX IF NOT EXISTS idx_edges_to         ON edges(to_node);
+CREATE INDEX IF NOT EXISTS idx_telemetry_node   ON node_telemetry(node_id, collected_at DESC);
 """
 
 
@@ -104,6 +117,7 @@ def get_db(db_path: Path) -> sqlite3.Connection:
     # Migraciones para columnas añadidas después de la creación inicial
     for migration in [
         "ALTER TABLE nodes ADD COLUMN channel TEXT",
+        "ALTER TABLE snapshots ADD COLUMN active_nodes INTEGER",
     ]:
         try:
             conn.execute(migration)
@@ -111,6 +125,33 @@ def get_db(db_path: Path) -> sqlite3.Connection:
             pass  # La columna ya existe
     conn.commit()
     return conn
+
+
+# ─── Caché de respuestas meshview ─────────────────────────────────────────────
+
+def _cache_path(url: str) -> Path:
+    """Devuelve la ruta del fichero de caché para una URL."""
+    safe = url.replace("://", "_").replace("/", "_").replace(".", "_")
+    return DB_PATH.parent / f"cache_{safe}.json"
+
+def save_cache(url: str, data) -> None:
+    try:
+        with open(_cache_path(url), "w", encoding="utf-8") as f:
+            json.dump(data, f)
+    except Exception as e:
+        log.warning(f"No se pudo guardar caché de {url}: {e}")
+
+def load_cache(url: str):
+    path = _cache_path(url)
+    if not path.exists():
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        log.info(f"  → Usando caché guardada para {url}")
+        return data
+    except Exception:
+        return None
 
 
 # ─── Fetch helpers ─────────────────────────────────────────────────────────────
@@ -138,7 +179,8 @@ def fetch_json(url: str, retries: int = 3, backoff: float = 5.0) -> dict | list 
             log.warning(f"Error inesperado en {url} (intento {attempt}/{retries}): {e}")
         if attempt < retries:
             time.sleep(backoff * attempt)
-    return None
+    log.warning(f"Todos los intentos fallaron para {url} — usando caché si existe")
+    return load_cache(url)
 
 
 # ─── Normalización de datos ────────────────────────────────────────────────────
@@ -415,21 +457,61 @@ def _migrate_edge_ids(conn: sqlite3.Connection, now: int):
         log.info(f"  → Migrados {len(old_edges)} edges de formato entero a !hexvalue")
 
 
-def record_snapshot(conn, collected_at, nodes_count, edges_count, source_url):
+def record_snapshot(conn, collected_at, nodes_count, edges_count, active_nodes, source_url):
     conn.execute("""
-        INSERT INTO snapshots (collected_at, nodes_count, edges_count, source_url)
-        VALUES (?, ?, ?, ?)
-    """, (collected_at, nodes_count, edges_count, source_url))
+        INSERT INTO snapshots (collected_at, nodes_count, edges_count, active_nodes, source_url)
+        VALUES (?, ?, ?, ?, ?)
+    """, (collected_at, nodes_count, edges_count, active_nodes, source_url))
     conn.commit()
+
+
+def record_telemetry(conn: sqlite3.Connection, nodes: list[dict], collected_at: int):
+    """Guarda una lectura de telemetría por nodo (SNR, RSSI, batería, voltaje)."""
+    rows = [
+        (n["node_id"], collected_at, n.get("snr"), n.get("rssi"),
+         n.get("battery_level"), n.get("voltage"))
+        for n in nodes
+        if any(n.get(k) is not None for k in ("snr", "rssi", "battery_level", "voltage"))
+    ]
+    if rows:
+        conn.executemany("""
+            INSERT INTO node_telemetry (node_id, collected_at, snr, rssi, battery_level, voltage)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, rows)
+        conn.commit()
 
 
 # ─── Exportación JSON estática ────────────────────────────────────────────────
 
 def export_json(conn: sqlite3.Connection, out_dir: Path):
-    """Genera nodes.json, edges.json y stats.json para el frontend estático."""
+    """Genera nodes.json, edges.json, stats.json, history.json para el frontend estático."""
     out_dir.mkdir(parents=True, exist_ok=True)
     now    = int(time.time())
-    cutoff = now - 7 * 24 * 3600
+    cutoff = now - RETENTION_DAYS * 24 * 3600
+
+    # ── Historial de telemetría por nodo (últimas 24h, agrupado por hora) ──
+    telem_cutoff = now - 24 * 3600
+    telem_rows = conn.execute("""
+        SELECT node_id,
+               (collected_at / 3600) * 3600 AS hour,
+               ROUND(AVG(snr), 1)           AS snr,
+               ROUND(AVG(rssi))             AS rssi,
+               ROUND(AVG(battery_level))    AS battery_level,
+               ROUND(AVG(voltage), 2)       AS voltage
+        FROM node_telemetry
+        WHERE collected_at >= ?
+        GROUP BY node_id, hour
+        ORDER BY node_id, hour ASC
+    """, (telem_cutoff,)).fetchall()
+
+    telemetry_by_node: dict[str, list] = {}
+    for row in telem_rows:
+        nid = row[0]
+        telemetry_by_node.setdefault(nid, []).append({
+            "t":   row[1],
+            "snr": row[2],
+            "bat": row[4],
+        })
 
     # ── nodes.json ──
     cur = conn.execute("""
@@ -449,6 +531,7 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
         ls = n.get("last_seen")
         n["last_seen_ago_min"] = round((now - ls) / 60) if ls else None
         n["is_recent"]         = bool(ls and (now - ls) < 3600)
+        n["history"]           = telemetry_by_node.get(n["node_id"], [])
 
     with open(out_dir / "nodes.json", "w", encoding="utf-8") as f:
         json.dump({"nodes": nodes, "count": len(nodes), "generated_at": now}, f)
@@ -483,6 +566,21 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
     with open(out_dir / "edges.json", "w", encoding="utf-8") as f:
         json.dump({"edges": edges, "count": len(edges)}, f)
 
+    # ── history.json (actividad de la red últimas 24h por hora) ──
+    hist_rows = conn.execute("""
+        SELECT (collected_at / 3600) * 3600 AS hour,
+               ROUND(AVG(active_nodes))     AS active_nodes
+        FROM snapshots
+        WHERE collected_at >= ?
+          AND active_nodes IS NOT NULL
+        GROUP BY hour
+        ORDER BY hour ASC
+    """, (telem_cutoff,)).fetchall()
+
+    history = [{"t": r[0], "active": int(r[1])} for r in hist_rows]
+    with open(out_dir / "history.json", "w", encoding="utf-8") as f:
+        json.dump({"history": history, "generated_at": now}, f)
+
     # ── stats.json ──
     total_nodes   = conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
     with_pos      = conn.execute("SELECT COUNT(*) FROM nodes WHERE latitude IS NOT NULL").fetchone()[0]
@@ -491,6 +589,10 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
     gateways      = conn.execute("SELECT COUNT(*) FROM nodes WHERE is_mqtt_gateway = 1").fetchone()[0]
     active_edges  = conn.execute("SELECT COUNT(*) FROM edges WHERE last_seen >= ?", (cutoff,)).fetchone()[0]
     last_snapshot = conn.execute("SELECT MAX(collected_at) FROM snapshots").fetchone()[0]
+    total_snaps   = conn.execute("SELECT COUNT(*) FROM snapshots").fetchone()[0]
+    failed_snaps  = conn.execute(
+        "SELECT COUNT(*) FROM snapshots WHERE nodes_count = 0"
+    ).fetchone()[0]
 
     with open(out_dir / "stats.json", "w", encoding="utf-8") as f:
         json.dump({
@@ -501,8 +603,17 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
                 "active_1h":     active_1h,
                 "mqtt_gateways": gateways,
             },
-            "edges":        {"active_24h": active_edges},
-            "snapshots":    {"last_at": last_snapshot},
+            "edges":    {"active_24h": active_edges},
+            "snapshots": {
+                "last_at":   last_snapshot,
+                "total":     total_snaps,
+                "failed":    failed_snaps,
+            },
+            "collector": {
+                "source":          MESHVIEW_BASE,
+                "retention_days":  RETENTION_DAYS,
+                "interval_min":    INTERVAL_MIN,
+            },
             "generated_at": now,
         }, f)
 
@@ -517,11 +628,15 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
 
     log.info(f"JSON exportado → {out_dir}  ({len(nodes)} nodos, {len(edges)} edges)")
 
-    # ── Purge de datos antiguos (>7 días) ──
+    # ── Purge de datos antiguos (>RETENTION_DAYS) ──
     deleted_nodes = conn.execute("DELETE FROM nodes WHERE last_seen < ?", (cutoff,)).rowcount
     deleted_edges = conn.execute("DELETE FROM edges WHERE last_seen < ?", (cutoff,)).rowcount
-    if deleted_nodes or deleted_edges:
-        log.info(f"Purge: {deleted_nodes} nodos y {deleted_edges} edges eliminados (>7 días)")
+    deleted_telem = conn.execute("DELETE FROM node_telemetry WHERE collected_at < ?", (cutoff,)).rowcount
+    deleted_snaps = conn.execute("DELETE FROM snapshots WHERE collected_at < ?", (cutoff,)).rowcount
+    if deleted_nodes or deleted_edges or deleted_telem:
+        log.info(f"Purge: {deleted_nodes} nodos, {deleted_edges} edges, "
+                 f"{deleted_telem} telemetría, {deleted_snaps} snapshots "
+                 f"eliminados (>{RETENTION_DAYS} días)")
 
 
 # ─── Colección principal ───────────────────────────────────────────────────────
@@ -531,28 +646,39 @@ def collect_once(conn: sqlite3.Connection):
     nodes_saved = 0
     edges_saved = 0
 
+    nodes = []
+
     # 1. Nodos
-    log.info(f"Pidiendo nodos a {MESHVIEW_BASE}/api/nodes …")
-    raw_nodes = fetch_json(f"{MESHVIEW_BASE}/api/nodes")
+    nodes_url = f"{MESHVIEW_BASE}/api/nodes"
+    log.info(f"Pidiendo nodos a {nodes_url} …")
+    raw_nodes = fetch_json(nodes_url)
     if raw_nodes is not None:
+        save_cache(nodes_url, raw_nodes)
         nodes = parse_nodes(raw_nodes)
         nodes_saved = upsert_nodes(conn, nodes)
+        record_telemetry(conn, nodes, collected_at)
         log.info(f"  → {nodes_saved} nodos guardados/actualizados")
     else:
         log.warning("  No se obtuvieron nodos")
 
     # 2. Edges
-    log.info(f"Pidiendo edges a {MESHVIEW_BASE}/api/edges …")
-    raw_edges = fetch_json(f"{MESHVIEW_BASE}/api/edges")
+    edges_url = f"{MESHVIEW_BASE}/api/edges"
+    log.info(f"Pidiendo edges a {edges_url} …")
+    raw_edges = fetch_json(edges_url)
     if raw_edges is not None:
+        save_cache(edges_url, raw_edges)
         edges = parse_edges(raw_edges)
         edges_saved = upsert_edges(conn, edges)
         log.info(f"  → {edges_saved} edges guardados/actualizados")
     else:
         log.warning("  No se obtuvieron edges (el endpoint puede no existir en esta versión)")
 
-    record_snapshot(conn, collected_at, nodes_saved, edges_saved, MESHVIEW_BASE)
-    log.info(f"Snapshot registrado: {nodes_saved} nodos, {edges_saved} edges")
+    active_nodes = conn.execute(
+        "SELECT COUNT(*) FROM nodes WHERE last_seen >= ?", (collected_at - 3600,)
+    ).fetchone()[0]
+
+    record_snapshot(conn, collected_at, nodes_saved, edges_saved, active_nodes, MESHVIEW_BASE)
+    log.info(f"Snapshot registrado: {nodes_saved} nodos, {edges_saved} edges, {active_nodes} activos 1h")
     return nodes_saved, edges_saved
 
 

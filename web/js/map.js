@@ -193,7 +193,7 @@ function showNodeEdges(nodeId) {
 
   allEdges.forEach(e => {
     if (e.from_node !== nodeId && e.to_node !== nodeId) return;
-    if (e.from_lat == null || e.to_lat == null) return;
+    if (e.from_lat == null || e.from_lon == null || e.to_lat == null || e.to_lon == null) return;
 
     const coords = [[e.from_lat, e.from_lon], [e.to_lat, e.to_lon]];
     const type   = e.edge_type === 'neighbor' ? 'neighbor' : 'traceroute';

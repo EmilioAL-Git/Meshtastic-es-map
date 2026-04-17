@@ -96,9 +96,7 @@ function selectNode(nodeId, fly = false) {
       <span class="detail-val ${k === 'ID' ? 'accent' : ''}">${escHtml(String(v))}</span>
     </div>`).join('');
 
-  const sparklineHtml = buildSparklines(node.history || []);
-
-  document.getElementById('detail-body').innerHTML = fieldsHtml + sparklineHtml;
+  document.getElementById('detail-body').innerHTML = fieldsHtml;
 
   document.getElementById('detail-panel').classList.add('visible');
   document.body.classList.add('detail-open');
@@ -127,46 +125,6 @@ function closeDetail() {
   const url = new URL(location.href);
   url.searchParams.delete('node');
   history.replaceState(null, '', url);
-}
-
-// ─── Sparkline de historial ───────────────────────────────────────────────────
-function buildSparklines(history) {
-  if (!history || history.length < 2) return '';
-
-  const hasBat = history.some(h => h.bat != null);
-  const hasSnr = history.some(h => h.snr != null);
-  if (!hasBat && !hasSnr) return '';
-
-  function sparkline(values, color, unit) {
-    const clean = values.filter(v => v != null);
-    if (clean.length < 2) return '';
-    const min = Math.min(...clean);
-    const max = Math.max(...clean);
-    const range = max - min || 1;
-    const W = 200, H = 36, pad = 2;
-    const pts = values.map((v, i) => {
-      const x = pad + (i / (values.length - 1)) * (W - pad * 2);
-      const y = v != null ? H - pad - ((v - min) / range) * (H - pad * 2) : null;
-      return y != null ? `${x.toFixed(1)},${y.toFixed(1)}` : null;
-    }).filter(Boolean).join(' ');
-    const last = clean[clean.length - 1];
-    return `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/>
-      <text x="${W - pad}" y="${H - pad}" text-anchor="end" fill="${color}" font-size="9">${last}${unit}</text>`;
-  }
-
-  let html = '<div class="sparkline-wrap">';
-  if (hasBat) {
-    const vals = history.map(h => h.bat);
-    html += `<div class="sparkline-label">Batería (24h)</div>
-      <svg class="sparkline" viewBox="0 0 200 36">${sparkline(vals, '#5eead4', '%')}</svg>`;
-  }
-  if (hasSnr) {
-    const vals = history.map(h => h.snr);
-    html += `<div class="sparkline-label">SNR (24h)</div>
-      <svg class="sparkline" viewBox="0 0 200 36">${sparkline(vals, '#7dd3fc', 'dB')}</svg>`;
-  }
-  html += '</div>';
-  return html;
 }
 
 // ─── Toast ────────────────────────────────────────────────────────────────────

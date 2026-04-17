@@ -592,28 +592,6 @@ body.embed-mode .search-input {
   border-color: var(--border);
 }
 
-/* ── Sparklines ──────────────────────────────────────────────────────────── */
-.sparkline-wrap {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
-
-.sparkline-label {
-  font-size: 10px;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: .06em;
-  margin-bottom: 4px;
-}
-
-.sparkline {
-  display: block;
-  width: 100%;
-  height: 36px;
-  margin-bottom: 10px;
-}
-
 /* ── Buscador sin resultados ─────────────────────────────────────────────── */
 .search-no-results {
   padding: 10px 14px;

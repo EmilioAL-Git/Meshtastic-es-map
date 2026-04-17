@@ -465,20 +465,25 @@ def record_snapshot(conn, collected_at, nodes_count, edges_count, active_nodes, 
     conn.commit()
 
 
-def record_telemetry(conn: sqlite3.Connection, nodes: list[dict], collected_at: int):
-    """Guarda una lectura de telemetría por nodo (SNR, RSSI, batería, voltaje)."""
-    rows = [
-        (n["node_id"], collected_at, n.get("snr"), n.get("rssi"),
-         n.get("battery_level"), n.get("voltage"))
-        for n in nodes
-        if any(n.get(k) is not None for k in ("snr", "rssi", "battery_level", "voltage"))
-    ]
+def record_telemetry(conn: sqlite3.Connection, node_ids: list[str], collected_at: int):
+    """Guarda telemetría actual leyendo desde la BD (incluye valores COALESCE'd)."""
+    if not node_ids:
+        return
+    placeholders = ','.join('?' * len(node_ids))
+    rows = conn.execute(f"""
+        SELECT node_id, snr, rssi, battery_level, voltage
+        FROM nodes
+        WHERE node_id IN ({placeholders})
+          AND (snr IS NOT NULL OR rssi IS NOT NULL
+               OR battery_level IS NOT NULL OR voltage IS NOT NULL)
+    """, node_ids).fetchall()
     if rows:
         conn.executemany("""
             INSERT INTO node_telemetry (node_id, collected_at, snr, rssi, battery_level, voltage)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, rows)
+        """, [(r[0], collected_at, r[1], r[2], r[3], r[4]) for r in rows])
         conn.commit()
+        log.info(f"  → Telemetría registrada: {len(rows)} nodos")
 
 
 # ─── Exportación JSON estática ────────────────────────────────────────────────
@@ -659,7 +664,7 @@ def collect_once(conn: sqlite3.Connection):
         save_cache(nodes_url, raw_nodes)
         nodes = parse_nodes(raw_nodes)
         nodes_saved = upsert_nodes(conn, nodes)
-        record_telemetry(conn, nodes, collected_at)
+        record_telemetry(conn, [n["node_id"] for n in nodes], collected_at)
         log.info(f"  → {nodes_saved} nodos guardados/actualizados")
     else:
         log.warning("  No se obtuvieron nodos")

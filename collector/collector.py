@@ -523,6 +523,7 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
                last_seen, first_seen, updated_at
         FROM nodes
         WHERE last_seen >= ?
+          AND NOT (ABS(latitude) < 0.5 AND ABS(longitude) < 0.5)
         ORDER BY last_seen DESC
     """, (cutoff,))
     cols  = [d[0] for d in cur.description]
@@ -558,6 +559,8 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
         WHERE e.last_seen >= ?
           AND fn.latitude IS NOT NULL AND fn.longitude IS NOT NULL
           AND tn.latitude IS NOT NULL AND tn.longitude IS NOT NULL
+          AND NOT (ABS(fn.latitude) < 0.5 AND ABS(fn.longitude) < 0.5)
+          AND NOT (ABS(tn.latitude) < 0.5 AND ABS(tn.longitude) < 0.5)
         ORDER BY e.last_seen DESC
     """, (cutoff,))
     cols  = [d[0] for d in cur.description]

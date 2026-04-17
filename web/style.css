@@ -116,6 +116,7 @@ header {
 }
 
 .leaflet-tile-pane { filter: saturate(.85); }
+.leaflet-tile { border: 1px solid transparent; }
 
 /* ── Buscador en header ── */
 .search-wrap {

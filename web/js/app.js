@@ -91,7 +91,8 @@ document.addEventListener('click', e => {
   // Cerrar panel de detalle al hacer click fuera (solo móvil, excluye el mapa)
   if (window.innerWidth <= 768 && selectedNodeId) {
     if (!e.target.closest('#detail-panel') && !e.target.closest('#map') &&
-        !e.target.closest('#filter-panel') && !e.target.closest('.filter-toggle-btn')) {
+        !e.target.closest('#filter-panel') && !e.target.closest('.filter-toggle-btn') &&
+        !e.target.closest('.search-wrap')) {
       closeDetail();
     }
   }

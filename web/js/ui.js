@@ -103,6 +103,11 @@ function selectNode(nodeId, fly = false) {
   document.getElementById('detail-panel').classList.add('visible');
   document.body.classList.add('detail-open');
 
+  // Actualizar URL con el nodo seleccionado (sin recargar la página)
+  const url = new URL(location.href);
+  url.searchParams.set('node', nodeId);
+  history.replaceState(null, '', url);
+
   const listItem = document.querySelector(`.node-item[data-id="${nodeId}"]`);
   if (listItem) listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
@@ -117,6 +122,11 @@ function closeDetail() {
   document.getElementById('detail-panel').classList.remove('visible');
   document.body.classList.remove('detail-open');
   clearNodeEdges();
+
+  // Limpiar ?node= de la URL
+  const url = new URL(location.href);
+  url.searchParams.delete('node');
+  history.replaceState(null, '', url);
 }
 
 // ─── Sparkline de historial ───────────────────────────────────────────────────

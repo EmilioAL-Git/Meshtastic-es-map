@@ -28,7 +28,6 @@ function selectNode(nodeId, fly = false) {
   }
 
   if (fly) {
-    markerClicked = true; // absorb el ghost-click en el mapa que sigue a una búsqueda
     map.stop();
     const zoom     = Math.max(map.getZoom(), 16);
     const isMobile = window.innerWidth <= 768;

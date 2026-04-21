@@ -1,6 +1,7 @@
 // ─── Filtros ──────────────────────────────────────────────────────────────────
 function nodeCategory(n) {
   if (n.is_mqtt_gateway) return 'gateway';
+  if (isRouter(n))       return 'router';
   if (n.is_recent)       return 'recent';
   if (n.last_seen_ago_min != null && n.last_seen_ago_min < 1440) return 'active';
   return 'old';

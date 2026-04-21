@@ -49,6 +49,7 @@ function initMap() {
 // ─── Helpers de color/icono ───────────────────────────────────────────────────
 function nodeColor(node) {
   if (node.is_mqtt_gateway) return C_GATEWAY;
+  if (isRouter(node))       return C_ROUTER;
   if (node.is_recent)       return C_RECENT;
   const ago = node.last_seen_ago_min;
   if (ago !== null && ago < 1440) return C_ACTIVE;
@@ -123,6 +124,7 @@ function renderNodes(nodes) {
           <div style="font-weight:700;font-size:13px;margin-bottom:6px;color:#00e5a0">${escHtml(name)}</div>
           <div style="font-size:11px;color:#64748b;margin-bottom:8px">${escHtml(node.node_id)}</div>
           ${node.is_mqtt_gateway ? '<div style="background:rgba(245,158,11,.15);color:#f59e0b;font-size:11px;padding:2px 6px;border-radius:4px;margin-bottom:6px;display:inline-block">⚡ GATEWAY MQTT</div><br>' : ''}
+          ${isRouter(node) && !node.is_mqtt_gateway ? `<div style="background:rgba(251,146,60,.15);color:#fb923c;font-size:11px;padding:2px 6px;border-radius:4px;margin-bottom:6px;display:inline-block">⇆ ${escHtml(node.role)}</div><br>` : ''}
           <table style="font-size:11px;width:100%;border-collapse:collapse">
             ${node.hardware      ? row('Hardware', node.hardware) : ''}
             ${node.role          ? row('Rol', node.role) : ''}

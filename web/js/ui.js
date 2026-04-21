@@ -51,7 +51,9 @@ function selectNode(nodeId, fly = false) {
   const name = node.long_name || node.short_name || nodeId;
   document.getElementById('detail-title').textContent = name;
   document.getElementById('detail-dot').className = `node-dot dot-${
-    node.is_mqtt_gateway ? 'gateway' : node.is_recent ? 'recent' : 'active'
+    node.is_mqtt_gateway ? 'gateway' :
+    isRouter(node)       ? 'router'  :
+    node.is_recent       ? 'recent'  : 'active'
   }`;
 
   const ago = node.last_seen_ago_min != null

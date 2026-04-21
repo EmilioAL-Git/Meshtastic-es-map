@@ -201,6 +201,7 @@ header {
 .dot-active  { background: var(--accent2); }
 .dot-old     { background: var(--muted); }
 .dot-gateway { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+.dot-router  { background: #fb923c; box-shadow: 0 0 6px #fb923c; }
 
 .result-name {
   font-family: var(--mono);

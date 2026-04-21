@@ -19,14 +19,19 @@ let markerRenderer;
 let searchIndex    = -1;
 let markerClicked  = false;  // evita que map.click cierre el panel tras seleccionar un nodo
 
-const activeFilters = new Set(['gateway', 'recent', 'active', 'old']);
-const ALL_CATS      = ['gateway', 'recent', 'active', 'old'];
+const activeFilters = new Set(['gateway', 'router', 'recent', 'active', 'old']);
+const ALL_CATS      = ['gateway', 'router', 'recent', 'active', 'old'];
 
 // ─── Colores ──────────────────────────────────────────────────────────────────
 const C_RECENT  = '#5eead4';
 const C_ACTIVE  = '#7dd3fc';
 const C_GATEWAY = '#fbbf24';
+const C_ROUTER  = '#fb923c';
 const C_OLD     = '#64748b';
+
+// ─── Roles considerados router ────────────────────────────────────────────────
+const ROUTER_ROLES = new Set(['ROUTER', 'ROUTER_CLIENT', 'REPEATER']);
+function isRouter(n) { return n.role && ROUTER_ROLES.has(n.role.toUpperCase()); }
 
 // ─── Estilos de edge ─────────────────────────────────────────────────────────
 const EDGE_STYLE = {

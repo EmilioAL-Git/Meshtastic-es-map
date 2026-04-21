@@ -201,7 +201,8 @@ function showNodeEdges(nodeId) {
 
   const isMobile  = window.innerWidth <= 768;
   const isEmbed   = document.body.classList.contains('embed-mode');
-  const nodePxR   = isMobile ? 28 : 20; // radio en px — si el click cae aquí, es el nodo
+  const hitWeight = isMobile ? 10 : 6;  // ancho hit line: mínimo viable
+  const nodePxR   = isMobile ? 32 : 24; // radio px para redirigir al nodo
 
   allEdges.forEach(e => {
     if (e.from_node !== nodeId && e.to_node !== nodeId) return;
@@ -222,7 +223,7 @@ function showNodeEdges(nodeId) {
     );
 
     if (!isEmbed) {
-      const hitLine = L.polyline(coords, { opacity: 0, weight: isMobile ? 20 : 14, interactive: true, renderer: edgeHitRenderer, pane: 'edgesHitPane' });
+      const hitLine = L.polyline(coords, { opacity: 0, weight: hitWeight, interactive: true, renderer: edgeHitRenderer, pane: 'edgesHitPane' });
       hitLine.on('click', function(ev) {
         L.DomEvent.stopPropagation(ev);
         // Si el click cae cerca de cualquier nodo, seleccionarlo en lugar de mostrar el popup

@@ -70,13 +70,13 @@ function circleMarkerOptions(color, size = 9) {
 }
 
 function makeRouterIcon(color, radius) {
-  const outer = radius;
-  const inner = Math.max(radius * 0.55, 2);
-  const d     = outer * 2 + 4;
+  const inner = radius;
+  const outer = radius + 4;
+  const d     = outer * 2 + 2;
   const cx    = d / 2;
   return L.divIcon({
     html: `<svg width="${d}" height="${d}" viewBox="0 0 ${d} ${d}" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="${cx}" cy="${cx}" r="${outer}" fill="none" stroke="${color}" stroke-width="1.5" opacity="0.8"/>
+      <circle cx="${cx}" cy="${cx}" r="${outer}" fill="none" stroke="${color}" stroke-width="1.5" opacity="0.7"/>
       <circle cx="${cx}" cy="${cx}" r="${inner}" fill="${color}" stroke="#1e293b" stroke-width="1"/>
     </svg>`,
     iconSize:   [d, d],

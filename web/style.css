@@ -223,7 +223,7 @@ header {
 /* ── Panel de detalle ── */
 .detail-panel {
   position: absolute;
-  bottom: 20px;
+  bottom: calc(28px + 20px);
   left: 20px;
   width: 320px;
   background: var(--panel);
@@ -302,7 +302,7 @@ header {
 /* ── Leyenda ── */
 .legend {
   position: absolute;
-  bottom: 20px;
+  bottom: calc(28px + 20px);
   right: 20px;
   background: var(--panel);
   border: 1px solid var(--border);
@@ -379,6 +379,58 @@ header {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
+/* ── Footer ── */
+.app-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  height: 28px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--mono);
+  z-index: 600;
+}
+
+.app-footer a {
+  color: var(--muted);
+  text-decoration: none;
+  transition: color .15s;
+}
+
+.app-footer a:hover { color: var(--accent); }
+
+.footer-desc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.footer-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+  margin-left: 16px;
+}
+
+.footer-gh {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.footer-gh svg { width: 13px; height: 13px; }
+
+.footer-version {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 10px;
+  color: var(--accent);
+  letter-spacing: .04em;
+}
+
 /* ── Filtros ── */
 .filter-toggle-btn {
   display: none; /* solo visible en móvil, posicionado en el mapa */
@@ -409,7 +461,7 @@ header {
 
 .filter-panel {
   position: absolute;
-  bottom: 20px;
+  bottom: calc(28px + 20px);
   left: 20px;
   z-index: 500;
   display: flex;
@@ -592,6 +644,8 @@ body.embed-mode .search-input {
   border-color: var(--border);
 }
 
+body.embed-mode .app-footer { display: none; }
+
 /* ── Buscador sin resultados ─────────────────────────────────────────────── */
 .search-no-results {
   padding: 10px 14px;
@@ -651,6 +705,7 @@ body.embed-mode .search-input {
     border-radius: 14px 14px 0 0;
     max-height: 55vh;
     overflow-y: auto;
+    z-index: 700;
   }
 
   .detail-panel.visible {

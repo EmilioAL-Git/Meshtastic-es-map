@@ -22,10 +22,17 @@ function toggleFilterPanel() {
 function toggleFilter(cat) {
   if (activeFilters.has(cat)) activeFilters.delete(cat);
   else                        activeFilters.add(cat);
+  try { localStorage.setItem(FILTER_KEY, JSON.stringify([...activeFilters])); } catch {}
   document.querySelectorAll('.fchip').forEach(el =>
     el.classList.toggle('active', activeFilters.has(el.dataset.cat))
   );
   applyFilters();
+}
+
+function syncFilterChips() {
+  document.querySelectorAll('.fchip').forEach(el =>
+    el.classList.toggle('active', activeFilters.has(el.dataset.cat))
+  );
 }
 
 function applyFilters() {

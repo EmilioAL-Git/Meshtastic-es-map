@@ -75,6 +75,7 @@ fetch(API_BASE + '/data/config.json')
     if (cfg.map_lng      != null) MAP_LNG      = cfg.map_lng;
     if (cfg.map_zoom     != null) MAP_ZOOM     = cfg.map_zoom;
     initMap();
+    syncFilterChips();
     loadAll();
   });
 

@@ -19,8 +19,10 @@ let markerRenderer;
 let searchIndex    = -1;
 let markerClicked  = false;  // evita que map.click cierre el panel tras seleccionar un nodo
 
-const activeFilters = new Set(['gateway', 'router', 'recent', 'active', 'old']);
 const ALL_CATS      = ['gateway', 'router', 'recent', 'active', 'old'];
+const FILTER_KEY    = 'mesh_active_filters';
+const _saved        = (() => { try { return JSON.parse(localStorage.getItem(FILTER_KEY)); } catch { return null; } })();
+const activeFilters = new Set(_saved ? _saved.filter(c => ALL_CATS.includes(c)) : ALL_CATS);
 
 // ─── Colores ──────────────────────────────────────────────────────────────────
 const C_RECENT  = '#5eead4';

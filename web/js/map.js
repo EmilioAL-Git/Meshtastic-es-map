@@ -70,21 +70,16 @@ function circleMarkerOptions(color, size = 9) {
 }
 
 function makeRouterIcon(color, radius) {
-  const r  = Math.max(radius, 6);
-  const d  = r * 2 + 2;
-  const cx = d / 2, cy = d / 2;
-  const poleBot = cy + r * 0.28;
-  const poleTop = cy - r * 0.20;
-  const arcY    = cy - r * 0.62;
-  const arcW    = r * 0.52;
+  const d  = radius * 2 + 2;
+  const fs = Math.max(radius - 1, 4);
   return L.divIcon({
     html: `<svg width="${d}" height="${d}" viewBox="0 0 ${d} ${d}" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" stroke="#1e293b" stroke-width="1"/>
-      <line x1="${cx}" y1="${poleBot}" x2="${cx}" y2="${poleTop}" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-      <path d="M${cx - arcW} ${poleTop + r * 0.15} Q${cx} ${arcY} ${cx + arcW} ${poleTop + r * 0.15}" stroke="white" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+      <circle cx="${d/2}" cy="${d/2}" r="${radius}" fill="${color}" stroke="#1e293b" stroke-width="1"/>
+      <text x="${d/2}" y="${d/2}" dominant-baseline="central" text-anchor="middle"
+            font-size="${fs}" font-family="sans-serif" fill="white">⇆</text>
     </svg>`,
     iconSize:   [d, d],
-    iconAnchor: [cx, cy],
+    iconAnchor: [d/2, d/2],
     className:  '',
   });
 }
@@ -135,7 +130,7 @@ function renderNodes(nodes) {
     const color       = nodeColor(node);
     const useIconMarker = isRouter(node) && !node.is_mqtt_gateway;
     const marker = useIconMarker
-      ? L.marker([node.latitude, node.longitude], { icon: makeRouterIcon(color, sz), pane: 'markersPane', zIndexOffset: 20 })
+      ? L.marker([node.latitude, node.longitude], { icon: makeRouterIcon(color, sz), pane: 'markersPane' })
       : L.circleMarker([node.latitude, node.longitude], { ...circleMarkerOptions(color, sz), renderer: markerRenderer });
 
     if (!isMobile && !isEmbed) {

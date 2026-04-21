@@ -26,6 +26,7 @@ body {
   color: var(--text);
   font-family: var(--sans);
   height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -384,8 +385,9 @@ header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
-  height: 32px;
+  padding: 0 max(16px, env(safe-area-inset-left));
+  padding-bottom: env(safe-area-inset-bottom);
+  height: calc(32px + env(safe-area-inset-bottom));
   flex-shrink: 0;
   background: var(--panel);
   border-top: 1px solid var(--border);

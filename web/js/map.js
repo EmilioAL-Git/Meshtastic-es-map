@@ -202,7 +202,7 @@ function showNodeEdges(nodeId) {
   const isMobile  = window.innerWidth <= 768;
   const isEmbed   = document.body.classList.contains('embed-mode');
   const hitWeight = isMobile ? 10 : 6;  // ancho hit line: mínimo viable
-  const nodePxR   = isMobile ? 32 : 24; // radio px para redirigir al nodo
+  const nodePxR   = isMobile ? 80 : 60; // radio px para redirigir al nodo más cercano
 
   allEdges.forEach(e => {
     if (e.from_node !== nodeId && e.to_node !== nodeId) return;
@@ -226,14 +226,18 @@ function showNodeEdges(nodeId) {
       const hitLine = L.polyline(coords, { opacity: 0, weight: hitWeight, interactive: true, renderer: edgeHitRenderer, pane: 'edgesHitPane' });
       hitLine.on('click', function(ev) {
         L.DomEvent.stopPropagation(ev);
-        // Si el click cae cerca de cualquier nodo, seleccionarlo en lugar de mostrar el popup
+        // Buscar el nodo más cercano al click. Si está dentro del umbral, seleccionarlo.
+        // El umbral es generoso porque el z-index SVG no garantiza que el marker
+        // intercepte el click antes que el hit line.
         const clickPt = map.latLngToContainerPoint(ev.latlng);
-        const nearNode = allNodes.find(n => {
-          if (n.latitude == null || n.longitude == null) return false;
+        let nearest = null, nearestDist = Infinity;
+        allNodes.forEach(n => {
+          if (n.latitude == null || n.longitude == null) return;
           const pt = map.latLngToContainerPoint([n.latitude, n.longitude]);
-          return Math.hypot(clickPt.x - pt.x, clickPt.y - pt.y) < nodePxR;
+          const d  = Math.hypot(clickPt.x - pt.x, clickPt.y - pt.y);
+          if (d < nodePxR && d < nearestDist) { nearest = n; nearestDist = d; }
         });
-        if (nearNode) { markerClicked = true; selectNode(nearNode.node_id); return; }
+        if (nearest) { markerClicked = true; selectNode(nearest.node_id); return; }
         L.popup({ className: 'edge-popup' })
           .setLatLng(ev.latlng)
           .setContent(edgePopupContent(meta))

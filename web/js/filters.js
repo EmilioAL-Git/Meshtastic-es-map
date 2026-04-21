@@ -20,13 +20,8 @@ function toggleFilterPanel() {
 }
 
 function toggleFilter(cat) {
-  const onlyThis = activeFilters.size === 1 && activeFilters.has(cat);
-  activeFilters.clear();
-  if (onlyThis) {
-    ALL_CATS.forEach(c => activeFilters.add(c));
-  } else {
-    activeFilters.add(cat);
-  }
+  if (activeFilters.has(cat)) activeFilters.delete(cat);
+  else                        activeFilters.add(cat);
   document.querySelectorAll('.fchip').forEach(el =>
     el.classList.toggle('active', activeFilters.has(el.dataset.cat))
   );

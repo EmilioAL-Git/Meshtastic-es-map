@@ -592,6 +592,14 @@ body.embed-mode .search-input {
   border-color: var(--border);
 }
 
+/* ── Buscador sin resultados ─────────────────────────────────────────────── */
+.search-no-results {
+  padding: 10px 14px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
 @media (max-width: 768px) {
   body.embed-mode .filter-toggle-btn {
     top: 58px; /* debajo del buscador flotante */

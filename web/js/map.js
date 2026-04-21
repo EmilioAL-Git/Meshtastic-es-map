@@ -18,17 +18,32 @@ function initMap() {
       const c = L.DomUtil.create('div', 'map-zoom-ctrl');
       c.innerHTML = `
         <button class="map-zoom-btn" id="zoom-in"  title="Acercar">+</button>
-        <button class="map-zoom-btn" id="zoom-out" title="Alejar">−</button>`;
+        <button class="map-zoom-btn" id="zoom-out" title="Alejar">−</button>
+        <button class="map-zoom-btn" id="zoom-locate" title="Mi ubicación">◎</button>`;
       L.DomEvent.disableClickPropagation(c);
-      c.querySelector('#zoom-in' ).addEventListener('click', () => map.zoomIn());
+      c.querySelector('#zoom-in').addEventListener('click', () => map.zoomIn());
       c.querySelector('#zoom-out').addEventListener('click', () => map.zoomOut());
+      c.querySelector('#zoom-locate').addEventListener('click', () => {
+        map.locate({ setView: true, maxZoom: 14 });
+      });
       return c;
     }
   });
   new ZoomCtrl().addTo(map);
 
+  // Pane dedicado para markers — z-index 450, por encima del overlayPane (400)
+  map.createPane('markersPane');
+  map.getPane('markersPane').style.zIndex = 450;
+  markerRenderer = L.svg({ pane: 'markersPane', padding: 0.5 });
+
   edgeGroup = L.layerGroup().addTo(map);
   map.on('zoomend', updateMarkerSizes);
+
+  // Cerrar panel al tap en el fondo del mapa (móvil)
+  map.on('click', () => {
+    if (markerClicked) { markerClicked = false; return; }
+    if (window.innerWidth <= 768 && selectedNodeId) closeDetail();
+  });
 }
 
 // ─── Helpers de color/icono ───────────────────────────────────────────────────
@@ -41,13 +56,14 @@ function nodeColor(node) {
 }
 
 function circleMarkerOptions(color, size = 9) {
+  const isOld = color === C_OLD;
   return {
-    radius: size,
+    radius: isOld ? Math.max(size - 1, 2) : size,
     fillColor: color,
     color: '#1e293b',
-    weight: 1,
-    opacity: 1,
-    fillOpacity: (color === C_RECENT || color === C_GATEWAY) ? 1 : 0.85,
+    weight: isOld ? 0.5 : 1,
+    opacity: isOld ? 0.4 : 1,
+    fillOpacity: (color === C_RECENT || color === C_GATEWAY) ? 1 : isOld ? 0.3 : 0.85,
     renderer: canvasRenderer,
   };
 }
@@ -93,7 +109,7 @@ function renderNodes(nodes) {
     if (node.latitude == null || node.longitude == null) return;
 
     const color  = nodeColor(node);
-    const marker = L.circleMarker([node.latitude, node.longitude], circleMarkerOptions(color, sz));
+    const marker = L.circleMarker([node.latitude, node.longitude], { ...circleMarkerOptions(color, sz), renderer: markerRenderer });
 
     if (!isMobile && !isEmbed) {
       const name = node.long_name || node.short_name || node.node_id;
@@ -121,92 +137,28 @@ function renderNodes(nodes) {
       `);
     }
 
-    marker.on('click', () => selectNode(node.node_id));
+    marker.on('click', () => { markerClicked = true; selectNode(node.node_id); });
     marker.addTo(map);
     markers[node.node_id] = marker;
   });
 }
 
 // ─── Edges ────────────────────────────────────────────────────────────────────
-function nodeName(nodeId) {
-  const n = allNodes.find(n => n.node_id === nodeId);
-  return n ? (n.long_name || n.short_name || nodeId) : nodeId;
-}
-
-function edgeNodeCard(name, node) {
-  const hw   = node?.hardware || '—';
-  const role = node?.role     || '—';
-  const gw   = node?.is_mqtt_gateway;
-  return `
-    <div style="flex:1;min-width:0">
-      <div style="color:#f1f5f9;font-weight:700;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(name)}</div>
-      <div style="color:#64748b;font-size:10px;margin-top:3px">${escHtml(hw)}</div>
-      <div style="color:#64748b;font-size:10px">${escHtml(role)}</div>
-      ${gw ? '<div style="color:#f59e0b;font-size:10px">⚡ Gateway</div>' : ''}
-    </div>`;
-}
-
-function edgePopupContent(m) {
-  const fromNode  = allNodes.find(n => n.node_id === m.from_node);
-  const toNode    = allNodes.find(n => n.node_id === m.to_node);
-  const fromName  = m.from_name || m.from_node;
-  const toName    = m.to_name   || m.to_node;
-  const typeLabel = m.type === 'neighbor' ? 'Enlace directo' : 'Traceroute';
-  const typeIcon  = m.type === 'neighbor' ? '⬡' : '↝';
-  const agoSec    = m.last_seen ? (Date.now() / 1000 - m.last_seen) : null;
-  const agoStr    = agoSec != null
-    ? (agoSec < 3600 ? `hace ${Math.round(agoSec / 60)} min` : `hace ${Math.round(agoSec / 3600)}h`)
-    : '—';
-
-  return `
-    <div style="font-family:'Space Mono',monospace;min-width:220px;padding:2px 0">
-      <div style="font-size:10px;color:#5eead4;letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px">
-        ${typeIcon} ${typeLabel}
-      </div>
-      <div style="display:flex;align-items:flex-start;gap:10px">
-        ${edgeNodeCard(fromName, fromNode)}
-        <div style="color:#475569;font-size:16px;padding-top:4px;flex-shrink:0">→</div>
-        ${edgeNodeCard(toName, toNode)}
-      </div>
-      <div style="margin-top:8px;padding-top:7px;border-top:1px solid #1e293b;font-size:10px;color:#475569">
-        ${agoStr}
-      </div>
-    </div>`;
-}
-
 function showNodeEdges(nodeId) {
   edgeGroup.clearLayers();
 
-  const isMobile = window.innerWidth <= 768;
-  const isEmbed  = document.body.classList.contains('embed-mode');
-
   allEdges.forEach(e => {
     if (e.from_node !== nodeId && e.to_node !== nodeId) return;
-    if (e.from_lat == null || e.to_lat == null) return;
+    if (e.from_lat == null || e.from_lon == null || e.to_lat == null || e.to_lon == null) return;
+    if (Math.abs(e.from_lat) < 0.5 && Math.abs(e.from_lon) < 0.5) return;
+    if (Math.abs(e.to_lat)   < 0.5 && Math.abs(e.to_lon)   < 0.5) return;
 
     const coords = [[e.from_lat, e.from_lon], [e.to_lat, e.to_lon]];
     const type   = e.edge_type === 'neighbor' ? 'neighbor' : 'traceroute';
-    const meta   = {
-      from_node: e.from_node, to_node: e.to_node,
-      from_name: e.from_name, to_name: e.to_name,
-      last_seen: e.last_seen, type,
-    };
 
     edgeGroup.addLayer(
       L.polyline(coords, { ...EDGE_STYLE_HI[type], interactive: false, renderer: canvasRenderer })
     );
-
-    if (!isEmbed) {
-      const hitLine = L.polyline(coords, { opacity: 0, weight: isMobile ? 30 : 20, interactive: true, renderer: canvasRenderer });
-      hitLine.on('click', function(ev) {
-        L.DomEvent.stopPropagation(ev);
-        L.popup({ className: 'edge-popup' })
-          .setLatLng(ev.latlng)
-          .setContent(edgePopupContent(meta))
-          .openOn(map);
-      });
-      edgeGroup.addLayer(hitLine);
-    }
   });
 }
 

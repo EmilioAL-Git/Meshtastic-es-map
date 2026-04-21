@@ -49,6 +49,12 @@ async function loadAll() {
         if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
       }
     }
+
+    // Enlace directo a un nodo: ?node=!abcd1234
+    if (firstLoad) {
+      const nodeParam = new URLSearchParams(location.search).get('node');
+      if (nodeParam) selectNode(nodeParam, true);
+    }
     firstLoad = false;
 
   } catch (e) {

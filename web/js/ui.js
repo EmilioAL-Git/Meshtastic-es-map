@@ -25,19 +25,19 @@ function selectNode(nodeId, fly = false) {
       interactive: false,
       zIndexOffset: 1000,
     }).addTo(map);
+  }
 
-    if (fly) {
-      map.stop();
-      const zoom     = Math.max(map.getZoom(), 16);
-      const isMobile = window.innerWidth <= 768;
-      const offsetPx = isMobile ? Math.round(window.innerHeight * 0.22) : 0;
-      if (offsetPx > 0) {
-        const targetPx  = map.project([node.latitude, node.longitude], zoom);
-        const shiftedPx = targetPx.add([0, offsetPx]);
-        map.flyTo(map.unproject(shiftedPx, zoom), zoom, { animate: true, duration: 0.6 });
-      } else {
-        map.flyTo([node.latitude, node.longitude], zoom, { animate: true, duration: 0.6 });
-      }
+  if (fly) {
+    map.stop();
+    const zoom     = Math.max(map.getZoom(), 16);
+    const isMobile = window.innerWidth <= 768;
+    const offsetPx = isMobile ? Math.round(window.innerHeight * 0.22) : 0;
+    if (offsetPx > 0) {
+      const targetPx  = map.project([node.latitude, node.longitude], zoom);
+      const shiftedPx = targetPx.add([0, offsetPx]);
+      map.flyTo(map.unproject(shiftedPx, zoom), zoom, { animate: true, duration: 0.6 });
+    } else {
+      map.flyTo([node.latitude, node.longitude], zoom, { animate: true, duration: 0.6 });
     }
   }
 
@@ -80,7 +80,13 @@ function selectNode(nodeId, fly = false) {
     ['Último visto', ago],
   ];
 
-  const nodeEdges  = allEdges.filter(e => e.from_node === nodeId || e.to_node === nodeId);
+  // Solo conexiones con nodos activos (vistos en las últimas 24h)
+  const nodeEdges = allEdges.filter(e => {
+    if (e.from_node !== nodeId && e.to_node !== nodeId) return false;
+    const otherId = e.from_node === nodeId ? e.to_node : e.from_node;
+    const other   = allNodes.find(n => n.node_id === otherId);
+    return other && other.last_seen_ago_min != null && other.last_seen_ago_min < 1440;
+  });
   const nNeighbour = nodeEdges.filter(e => e.edge_type === 'neighbor').length;
   const nTrace     = nodeEdges.filter(e => e.edge_type !== 'neighbor').length;
   if (nodeEdges.length > 0) {
@@ -90,14 +96,21 @@ function selectNode(nodeId, fly = false) {
     fields.splice(fields.length - 1, 0, ['Conexiones', parts.join(' · ')]);
   }
 
-  document.getElementById('detail-body').innerHTML = fields
+  const fieldsHtml = fields
     .map(([k, v]) => `<div class="detail-row">
       <span class="detail-key">${k}</span>
       <span class="detail-val ${k === 'ID' ? 'accent' : ''}">${escHtml(String(v))}</span>
     </div>`).join('');
 
+  document.getElementById('detail-body').innerHTML = fieldsHtml;
+
   document.getElementById('detail-panel').classList.add('visible');
   document.body.classList.add('detail-open');
+
+  // Actualizar URL con el nodo seleccionado (sin recargar la página)
+  const url = new URL(location.href);
+  url.searchParams.set('node', nodeId);
+  history.replaceState(null, '', url);
 
   const listItem = document.querySelector(`.node-item[data-id="${nodeId}"]`);
   if (listItem) listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -113,6 +126,11 @@ function closeDetail() {
   document.getElementById('detail-panel').classList.remove('visible');
   document.body.classList.remove('detail-open');
   clearNodeEdges();
+
+  // Limpiar ?node= de la URL
+  const url = new URL(location.href);
+  url.searchParams.delete('node');
+  history.replaceState(null, '', url);
 }
 
 // ─── Toast ────────────────────────────────────────────────────────────────────

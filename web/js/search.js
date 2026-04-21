@@ -12,7 +12,11 @@ function onSearchInput() {
     return name.includes(q) || id.includes(q);
   }).slice(0, 5);
 
-  if (!results.length) { dd.classList.remove('open'); return; }
+  if (!results.length) {
+    dd.innerHTML = '<div class="search-no-results">Sin resultados</div>';
+    dd.classList.add('open');
+    return;
+  }
 
   const dotClass = n => n.is_mqtt_gateway ? 'dot-gateway'
                       : n.is_recent       ? 'dot-recent'

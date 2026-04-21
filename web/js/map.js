@@ -69,6 +69,26 @@ function circleMarkerOptions(color, size = 9) {
   };
 }
 
+function makeRouterIcon(color, radius) {
+  const r  = Math.max(radius, 6);
+  const d  = r * 2 + 2;
+  const cx = d / 2, cy = d / 2;
+  const poleBot = cy + r * 0.28;
+  const poleTop = cy - r * 0.20;
+  const arcY    = cy - r * 0.62;
+  const arcW    = r * 0.52;
+  return L.divIcon({
+    html: `<svg width="${d}" height="${d}" viewBox="0 0 ${d} ${d}" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="${color}" stroke="#1e293b" stroke-width="1"/>
+      <line x1="${cx}" y1="${poleBot}" x2="${cx}" y2="${poleTop}" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+      <path d="M${cx - arcW} ${poleTop + r * 0.15} Q${cx} ${arcY} ${cx + arcW} ${poleTop + r * 0.15}" stroke="white" stroke-width="1.2" fill="none" stroke-linecap="round"/>
+    </svg>`,
+    iconSize:   [d, d],
+    iconAnchor: [cx, cy],
+    className:  '',
+  });
+}
+
 function makeSelectedIcon(color) {
   return L.divIcon({
     html: `
@@ -93,7 +113,10 @@ function markerSize() {
 function updateMarkerSizes() {
   const sz = markerSize();
   allNodes.forEach(n => {
-    if (markers[n.node_id]) markers[n.node_id].setRadius(sz);
+    const m = markers[n.node_id];
+    if (!m) return;
+    if (m.setRadius) m.setRadius(sz);
+    else if (isRouter(n) && !n.is_mqtt_gateway) m.setIcon(makeRouterIcon(nodeColor(n), sz));
   });
 }
 
@@ -109,8 +132,11 @@ function renderNodes(nodes) {
   nodes.forEach(node => {
     if (node.latitude == null || node.longitude == null) return;
 
-    const color  = nodeColor(node);
-    const marker = L.circleMarker([node.latitude, node.longitude], { ...circleMarkerOptions(color, sz), renderer: markerRenderer });
+    const color       = nodeColor(node);
+    const useIconMarker = isRouter(node) && !node.is_mqtt_gateway;
+    const marker = useIconMarker
+      ? L.marker([node.latitude, node.longitude], { icon: makeRouterIcon(color, sz), pane: 'markersPane', zIndexOffset: 20 })
+      : L.circleMarker([node.latitude, node.longitude], { ...circleMarkerOptions(color, sz), renderer: markerRenderer });
 
     if (!isMobile && !isEmbed) {
       const name = node.long_name || node.short_name || node.node_id;

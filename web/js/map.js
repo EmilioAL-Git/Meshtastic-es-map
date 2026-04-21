@@ -31,6 +31,12 @@ function initMap() {
   });
   new ZoomCtrl().addTo(map);
 
+  // Pane para hit lines de edges — z-index 350, por debajo del overlayPane (400)
+  // donde viven los circleMarkers. Así los markers siempre interceptan el click primero.
+  map.createPane('edgesHitPane');
+  map.getPane('edgesHitPane').style.zIndex = 350;
+  edgeHitRenderer = L.svg({ pane: 'edgesHitPane', padding: 0.5 });
+
   edgeGroup = L.layerGroup().addTo(map);
   map.on('zoomend', updateMarkerSizes);
 
@@ -211,7 +217,7 @@ function showNodeEdges(nodeId) {
     );
 
     if (!isEmbed) {
-      const hitLine = L.polyline(coords, { opacity: 0, weight: isMobile ? 30 : 20, interactive: true, renderer: canvasRenderer });
+      const hitLine = L.polyline(coords, { opacity: 0, weight: isMobile ? 20 : 14, interactive: true, renderer: edgeHitRenderer, pane: 'edgesHitPane' });
       hitLine.on('click', function(ev) {
         L.DomEvent.stopPropagation(ev);
         // Si el click cae cerca de cualquier nodo, seleccionarlo en lugar de mostrar el popup

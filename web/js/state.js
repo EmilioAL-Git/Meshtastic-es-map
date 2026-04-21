@@ -15,6 +15,7 @@ let selectedNodeId = null;
 let selOverlay     = null;   // L.marker con animación de pulso
 let map;
 let edgeGroup;
+let edgeHitRenderer;
 let searchIndex    = -1;
 let markerClicked  = false;  // evita que map.click cierre el panel tras seleccionar un nodo
 

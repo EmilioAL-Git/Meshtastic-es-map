@@ -80,7 +80,13 @@ function selectNode(nodeId, fly = false) {
     ['Último visto', ago],
   ];
 
-  const nodeEdges  = allEdges.filter(e => e.from_node === nodeId || e.to_node === nodeId);
+  // Solo conexiones con nodos activos (vistos en las últimas 24h)
+  const nodeEdges = allEdges.filter(e => {
+    if (e.from_node !== nodeId && e.to_node !== nodeId) return false;
+    const otherId = e.from_node === nodeId ? e.to_node : e.from_node;
+    const other   = allNodes.find(n => n.node_id === otherId);
+    return other && other.last_seen_ago_min != null && other.last_seen_ago_min < 1440;
+  });
   const nNeighbour = nodeEdges.filter(e => e.edge_type === 'neighbor').length;
   const nTrace     = nodeEdges.filter(e => e.edge_type !== 'neighbor').length;
   if (nodeEdges.length > 0) {

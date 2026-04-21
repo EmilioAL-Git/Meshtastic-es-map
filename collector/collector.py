@@ -525,7 +525,14 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
     active_24h    = conn.execute("SELECT COUNT(*) FROM nodes WHERE last_seen >= ?", (now - 86400,)).fetchone()[0]
     active_1h     = conn.execute("SELECT COUNT(*) FROM nodes WHERE last_seen >= ?", (now - 3600,)).fetchone()[0]
     gateways      = conn.execute("SELECT COUNT(*) FROM nodes WHERE is_mqtt_gateway = 1").fetchone()[0]
-    active_edges  = conn.execute("SELECT COUNT(*) FROM edges WHERE last_seen >= ?", (cutoff,)).fetchone()[0]
+    active_edges  = conn.execute("""
+        SELECT COUNT(*) FROM edges e
+        JOIN nodes fn ON fn.node_id = e.from_node
+        JOIN nodes tn ON tn.node_id = e.to_node
+        WHERE e.last_seen  >= ?
+          AND fn.last_seen >= ?
+          AND tn.last_seen >= ?
+    """, (now - 86400, now - 86400, now - 86400)).fetchone()[0]
     last_snapshot = conn.execute("SELECT MAX(collected_at) FROM snapshots").fetchone()[0]
     total_snaps   = conn.execute("SELECT COUNT(*) FROM snapshots").fetchone()[0]
     failed_snaps  = conn.execute(

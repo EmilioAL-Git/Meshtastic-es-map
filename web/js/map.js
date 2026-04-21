@@ -185,6 +185,15 @@ function edgePopupContent(m) {
     </div>`;
 }
 
+// Recorta los extremos de una línea para que el área de clic no llegue hasta el nodo
+function trimLine(coords, fraction = 0.18) {
+  const [a, b] = coords;
+  return [
+    [a[0] + (b[0] - a[0]) * fraction, a[1] + (b[1] - a[1]) * fraction],
+    [b[0] + (a[0] - b[0]) * fraction, b[1] + (a[1] - b[1]) * fraction],
+  ];
+}
+
 function showNodeEdges(nodeId) {
   edgeGroup.clearLayers();
 
@@ -210,7 +219,7 @@ function showNodeEdges(nodeId) {
     );
 
     if (!isEmbed) {
-      const hitLine = L.polyline(coords, { opacity: 0, weight: isMobile ? 30 : 20, interactive: true, renderer: canvasRenderer });
+      const hitLine = L.polyline(trimLine(coords), { opacity: 0, weight: isMobile ? 30 : 20, interactive: true, renderer: canvasRenderer });
       hitLine.on('click', function(ev) {
         L.DomEvent.stopPropagation(ev);
         L.popup({ className: 'edge-popup' })

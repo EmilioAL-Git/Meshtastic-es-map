@@ -185,20 +185,12 @@ function edgePopupContent(m) {
     </div>`;
 }
 
-// Recorta los extremos de una línea para que el área de clic no llegue hasta el nodo
-function trimLine(coords, fraction = 0.18) {
-  const [a, b] = coords;
-  return [
-    [a[0] + (b[0] - a[0]) * fraction, a[1] + (b[1] - a[1]) * fraction],
-    [b[0] + (a[0] - b[0]) * fraction, b[1] + (a[1] - b[1]) * fraction],
-  ];
-}
-
 function showNodeEdges(nodeId) {
   edgeGroup.clearLayers();
 
-  const isMobile = window.innerWidth <= 768;
-  const isEmbed  = document.body.classList.contains('embed-mode');
+  const isMobile  = window.innerWidth <= 768;
+  const isEmbed   = document.body.classList.contains('embed-mode');
+  const nodePxR   = isMobile ? 28 : 20; // radio en px — si el click cae aquí, es el nodo
 
   allEdges.forEach(e => {
     if (e.from_node !== nodeId && e.to_node !== nodeId) return;
@@ -219,9 +211,17 @@ function showNodeEdges(nodeId) {
     );
 
     if (!isEmbed) {
-      const hitLine = L.polyline(trimLine(coords), { opacity: 0, weight: isMobile ? 30 : 20, interactive: true, renderer: canvasRenderer });
+      const hitLine = L.polyline(coords, { opacity: 0, weight: isMobile ? 30 : 20, interactive: true, renderer: canvasRenderer });
       hitLine.on('click', function(ev) {
         L.DomEvent.stopPropagation(ev);
+        // Si el click cae cerca de cualquier nodo, seleccionarlo en lugar de mostrar el popup
+        const clickPt = map.latLngToContainerPoint(ev.latlng);
+        const nearNode = allNodes.find(n => {
+          if (n.latitude == null || n.longitude == null) return false;
+          const pt = map.latLngToContainerPoint([n.latitude, n.longitude]);
+          return Math.hypot(clickPt.x - pt.x, clickPt.y - pt.y) < nodePxR;
+        });
+        if (nearNode) { markerClicked = true; selectNode(nearNode.node_id); return; }
         L.popup({ className: 'edge-popup' })
           .setLatLng(ev.latlng)
           .setContent(edgePopupContent(meta))

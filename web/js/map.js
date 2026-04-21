@@ -31,13 +31,7 @@ function initMap() {
   });
   new ZoomCtrl().addTo(map);
 
-  // Panes personalizados para controlar el orden de eventos:
-  //   edgesHitPane (350) < overlayPane (400) < markersPane (450)
-  // Los markers siempre reciben el click antes que cualquier hit line de edge.
-  map.createPane('edgesHitPane');
-  map.getPane('edgesHitPane').style.zIndex = 350;
-  edgeHitRenderer = L.svg({ pane: 'edgesHitPane', padding: 0.5 });
-
+  // Pane dedicado para markers — z-index 450, por encima del overlayPane (400)
   map.createPane('markersPane');
   map.getPane('markersPane').style.zIndex = 450;
   markerRenderer = L.svg({ pane: 'markersPane', padding: 0.5 });
@@ -150,59 +144,8 @@ function renderNodes(nodes) {
 }
 
 // ─── Edges ────────────────────────────────────────────────────────────────────
-function nodeName(nodeId) {
-  const n = allNodes.find(n => n.node_id === nodeId);
-  return n ? (n.long_name || n.short_name || nodeId) : nodeId;
-}
-
-function edgeNodeCard(name, node) {
-  const hw   = node?.hardware || '—';
-  const role = node?.role     || '—';
-  const gw   = node?.is_mqtt_gateway;
-  return `
-    <div style="flex:1;min-width:0">
-      <div style="color:#f1f5f9;font-weight:700;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(name)}</div>
-      <div style="color:#64748b;font-size:10px;margin-top:3px">${escHtml(hw)}</div>
-      <div style="color:#64748b;font-size:10px">${escHtml(role)}</div>
-      ${gw ? '<div style="color:#f59e0b;font-size:10px">⚡ Gateway</div>' : ''}
-    </div>`;
-}
-
-function edgePopupContent(m) {
-  const fromNode  = allNodes.find(n => n.node_id === m.from_node);
-  const toNode    = allNodes.find(n => n.node_id === m.to_node);
-  const fromName  = m.from_name || m.from_node;
-  const toName    = m.to_name   || m.to_node;
-  const typeLabel = m.type === 'neighbor' ? 'Enlace directo' : 'Traceroute';
-  const typeIcon  = m.type === 'neighbor' ? '⬡' : '↝';
-  const agoSec    = m.last_seen ? (Date.now() / 1000 - m.last_seen) : null;
-  const agoStr    = agoSec != null
-    ? (agoSec < 3600 ? `hace ${Math.round(agoSec / 60)} min` : `hace ${Math.round(agoSec / 3600)}h`)
-    : '—';
-
-  return `
-    <div style="font-family:'Space Mono',monospace;min-width:220px;padding:2px 0">
-      <div style="font-size:10px;color:#5eead4;letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px">
-        ${typeIcon} ${typeLabel}
-      </div>
-      <div style="display:flex;align-items:flex-start;gap:10px">
-        ${edgeNodeCard(fromName, fromNode)}
-        <div style="color:#475569;font-size:16px;padding-top:4px;flex-shrink:0">→</div>
-        ${edgeNodeCard(toName, toNode)}
-      </div>
-      <div style="margin-top:8px;padding-top:7px;border-top:1px solid #1e293b;font-size:10px;color:#475569">
-        ${agoStr}
-      </div>
-    </div>`;
-}
-
 function showNodeEdges(nodeId) {
   edgeGroup.clearLayers();
-
-  const isMobile  = window.innerWidth <= 768;
-  const isEmbed   = document.body.classList.contains('embed-mode');
-  const hitWeight = isMobile ? 10 : 6;  // ancho hit line: mínimo viable
-  const nodePxR   = isMobile ? 80 : 60; // radio px para redirigir al nodo más cercano
 
   allEdges.forEach(e => {
     if (e.from_node !== nodeId && e.to_node !== nodeId) return;
@@ -212,39 +155,10 @@ function showNodeEdges(nodeId) {
 
     const coords = [[e.from_lat, e.from_lon], [e.to_lat, e.to_lon]];
     const type   = e.edge_type === 'neighbor' ? 'neighbor' : 'traceroute';
-    const meta   = {
-      from_node: e.from_node, to_node: e.to_node,
-      from_name: e.from_name, to_name: e.to_name,
-      last_seen: e.last_seen, type,
-    };
 
     edgeGroup.addLayer(
       L.polyline(coords, { ...EDGE_STYLE_HI[type], interactive: false, renderer: canvasRenderer })
     );
-
-    if (!isEmbed) {
-      const hitLine = L.polyline(coords, { opacity: 0, weight: hitWeight, interactive: true, renderer: edgeHitRenderer, pane: 'edgesHitPane' });
-      hitLine.on('click', function(ev) {
-        L.DomEvent.stopPropagation(ev);
-        // Buscar el nodo más cercano al click. Si está dentro del umbral, seleccionarlo.
-        // El umbral es generoso porque el z-index SVG no garantiza que el marker
-        // intercepte el click antes que el hit line.
-        const clickPt = map.latLngToContainerPoint(ev.latlng);
-        let nearest = null, nearestDist = Infinity;
-        allNodes.forEach(n => {
-          if (n.latitude == null || n.longitude == null) return;
-          const pt = map.latLngToContainerPoint([n.latitude, n.longitude]);
-          const d  = Math.hypot(clickPt.x - pt.x, clickPt.y - pt.y);
-          if (d < nodePxR && d < nearestDist) { nearest = n; nearestDist = d; }
-        });
-        if (nearest) { markerClicked = true; selectNode(nearest.node_id); return; }
-        L.popup({ className: 'edge-popup' })
-          .setLatLng(ev.latlng)
-          .setContent(edgePopupContent(meta))
-          .openOn(map);
-      });
-      edgeGroup.addLayer(hitLine);
-    }
   });
 }
 

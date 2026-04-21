@@ -31,11 +31,16 @@ function initMap() {
   });
   new ZoomCtrl().addTo(map);
 
-  // Pane para hit lines de edges — z-index 350, por debajo del overlayPane (400)
-  // donde viven los circleMarkers. Así los markers siempre interceptan el click primero.
+  // Panes personalizados para controlar el orden de eventos:
+  //   edgesHitPane (350) < overlayPane (400) < markersPane (450)
+  // Los markers siempre reciben el click antes que cualquier hit line de edge.
   map.createPane('edgesHitPane');
   map.getPane('edgesHitPane').style.zIndex = 350;
   edgeHitRenderer = L.svg({ pane: 'edgesHitPane', padding: 0.5 });
+
+  map.createPane('markersPane');
+  map.getPane('markersPane').style.zIndex = 450;
+  markerRenderer = L.svg({ pane: 'markersPane', padding: 0.5 });
 
   edgeGroup = L.layerGroup().addTo(map);
   map.on('zoomend', updateMarkerSizes);
@@ -110,7 +115,7 @@ function renderNodes(nodes) {
     if (node.latitude == null || node.longitude == null) return;
 
     const color  = nodeColor(node);
-    const marker = L.circleMarker([node.latitude, node.longitude], circleMarkerOptions(color, sz));
+    const marker = L.circleMarker([node.latitude, node.longitude], { ...circleMarkerOptions(color, sz), renderer: markerRenderer });
 
     if (!isMobile && !isEmbed) {
       const name = node.long_name || node.short_name || node.node_id;

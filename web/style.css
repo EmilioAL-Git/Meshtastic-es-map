@@ -223,7 +223,7 @@ header {
 /* ── Panel de detalle ── */
 .detail-panel {
   position: absolute;
-  bottom: calc(28px + 20px);
+  bottom: calc(32px + 20px);
   left: 20px;
   width: 320px;
   background: var(--panel);
@@ -302,7 +302,7 @@ header {
 /* ── Leyenda ── */
 .legend {
   position: absolute;
-  bottom: calc(28px + 20px);
+  bottom: calc(32px + 20px);
   right: 20px;
   background: var(--panel);
   border: 1px solid var(--border);
@@ -385,50 +385,91 @@ header {
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
-  height: 28px;
+  height: 32px;
   flex-shrink: 0;
   background: var(--panel);
   border-top: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 rgba(94,234,212,.06);
   font-size: 11px;
   color: var(--muted);
   font-family: var(--mono);
   z-index: 600;
 }
 
-.app-footer a {
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.footer-brand {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  white-space: nowrap;
+}
+
+.footer-sep {
+  width: 1px;
+  height: 14px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.footer-source {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.footer-source a {
   color: var(--muted);
   text-decoration: none;
   transition: color .15s;
 }
 
-.app-footer a:hover { color: var(--accent); }
-
-.footer-desc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.footer-source a:hover { color: var(--accent); }
 
 .footer-right {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   flex-shrink: 0;
-  margin-left: 16px;
+  margin-left: 12px;
 }
 
 .footer-gh {
   display: flex;
   align-items: center;
   gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 10px;
+  transition: border-color .15s, color .15s, box-shadow .15s;
 }
 
-.footer-gh svg { width: 13px; height: 13px; }
+.footer-gh:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 8px rgba(94,234,212,.15);
+}
 
 .footer-version {
-  background: var(--panel2);
-  border: 1px solid var(--border);
+  background: rgba(94,234,212,.08);
+  border: 1px solid rgba(94,234,212,.25);
   border-radius: 4px;
-  padding: 1px 6px;
+  padding: 2px 7px;
   font-size: 10px;
   color: var(--accent);
-  letter-spacing: .04em;
+  letter-spacing: .05em;
 }
 
 /* ── Filtros ── */
@@ -461,7 +502,7 @@ header {
 
 .filter-panel {
   position: absolute;
-  bottom: calc(28px + 20px);
+  bottom: calc(32px + 20px);
   left: 20px;
   z-index: 500;
   display: flex;

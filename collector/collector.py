@@ -190,6 +190,8 @@ def parse_nodes(raw: list | dict) -> list[dict]:
     else:
         items = raw
 
+    if not items:
+        log.warning("parse_nodes: la respuesta no contiene nodos")
     nodes = []
     for n in items:
         if not isinstance(n, dict):
@@ -204,26 +206,26 @@ def parse_nodes(raw: list | dict) -> list[dict]:
 
         # Coordenadas: meshview las guarda como enteros ×1e7
         # Ej: 415422579 → 41.5422579
-        lat_raw = n.get("last_lat") or n.get("latitude") or n.get("lat")
-        lon_raw = n.get("last_long") or n.get("longitude") or n.get("lon")
+        lat_raw = _first_not_none(n.get("last_lat"), n.get("latitude"), n.get("lat"))
+        lon_raw = _first_not_none(n.get("last_long"), n.get("longitude"), n.get("lon"))
         lat = _decode_coord(lat_raw)
         lon = _decode_coord(lon_raw)
-        alt = _safe_float(n.get("altitude") or n.get("last_alt"))
+        alt = _safe_float(_first_not_none(n.get("altitude"), n.get("last_alt")))
 
         # Telemetría (puede venir directa o anidada)
         telem    = n.get("device_metrics") or n.get("telemetry") or {}
-        battery  = n.get("battery_level") or telem.get("battery_level")
-        voltage  = n.get("voltage")       or telem.get("voltage")
-        chan_ut  = n.get("channel_utilization") or telem.get("channel_utilization")
-        air_ut   = n.get("air_util_tx")   or telem.get("air_util_tx")
+        battery  = _first_not_none(n.get("battery_level"), telem.get("battery_level"))
+        voltage  = _first_not_none(n.get("voltage"),       telem.get("voltage"))
+        chan_ut  = _first_not_none(n.get("channel_utilization"), telem.get("channel_utilization"))
+        air_ut   = _first_not_none(n.get("air_util_tx"),   telem.get("air_util_tx"))
 
         # Timestamps en microsegundos → convertir a segundos
-        last_seen_raw = (
-            n.get("last_seen_us") or n.get("last_seen") or
-            n.get("last_update")  or n.get("updated_at")
+        last_seen_raw = _first_not_none(
+            n.get("last_seen_us"), n.get("last_seen"),
+            n.get("last_update"),  n.get("updated_at")
         )
         last_seen      = _to_unix_seconds(last_seen_raw)
-        first_seen_raw = n.get("first_seen_us") or n.get("first_seen")
+        first_seen_raw = _first_not_none(n.get("first_seen_us"), n.get("first_seen"))
         first_seen     = _to_unix_seconds(first_seen_raw)
 
         nodes.append({
@@ -302,7 +304,7 @@ def parse_edges(raw: list | dict) -> list[dict]:
         to_node   = _int_to_node_id(to_raw)
         if not from_node or not to_node:
             continue
-        last_seen_raw = e.get("last_seen_us") or e.get("last_seen") or e.get("updated_at")
+        last_seen_raw = _first_not_none(e.get("last_seen_us"), e.get("last_seen"), e.get("updated_at"))
         edges.append({
             "from_node": from_node,
             "to_node":   to_node,
@@ -327,6 +329,14 @@ def _to_unix_seconds(v) -> int | None:
         return v
     except (TypeError, ValueError):
         return None
+
+
+def _first_not_none(*args):
+    """Devuelve el primer argumento que no sea None (trata 0 como válido)."""
+    for a in args:
+        if a is not None:
+            return a
+    return None
 
 
 def _safe_float(v) -> float | None:
@@ -458,6 +468,14 @@ def record_snapshot(conn, collected_at, nodes_count, edges_count, active_nodes, 
 
 # ─── Exportación JSON estática ────────────────────────────────────────────────
 
+def _write_atomic(path: Path, data) -> None:
+    """Escribe data como JSON en path usando fichero temporal + rename atómico."""
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f)
+    tmp.replace(path)
+
+
 def export_json(conn: sqlite3.Connection, out_dir: Path):
     """Genera nodes.json, edges.json, stats.json para el frontend estático."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -484,8 +502,7 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
         n["last_seen_ago_min"] = round((now - ls) / 60) if ls else None
         n["is_recent"]         = bool(ls and (now - ls) < 3600)
 
-    with open(out_dir / "nodes.json", "w", encoding="utf-8") as f:
-        json.dump({"nodes": nodes, "count": len(nodes), "generated_at": now}, f)
+    _write_atomic(out_dir / "nodes.json", {"nodes": nodes, "count": len(nodes), "generated_at": now})
 
     # ── edges.json ──
     cur = conn.execute("""
@@ -516,8 +533,7 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
     cols  = [d[0] for d in cur.description]
     edges = [dict(zip(cols, row)) for row in cur.fetchall()]
 
-    with open(out_dir / "edges.json", "w", encoding="utf-8") as f:
-        json.dump({"edges": edges, "count": len(edges)}, f)
+    _write_atomic(out_dir / "edges.json", {"edges": edges, "count": len(edges)})
 
     # ── stats.json ──
     total_nodes   = conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
@@ -539,37 +555,35 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
         "SELECT COUNT(*) FROM snapshots WHERE nodes_count = 0"
     ).fetchone()[0]
 
-    with open(out_dir / "stats.json", "w", encoding="utf-8") as f:
-        json.dump({
-            "nodes": {
-                "total":         total_nodes,
-                "with_position": with_pos,
-                "active_24h":    active_24h,
-                "active_1h":     active_1h,
-                "mqtt_gateways": gateways,
-            },
-            "edges":    {"active_24h": active_edges},
-            "snapshots": {
-                "last_at":   last_snapshot,
-                "total":     total_snaps,
-                "failed":    failed_snaps,
-            },
-            "collector": {
-                "source":          MESHVIEW_BASE,
-                "retention_days":  RETENTION_DAYS,
-                "interval_min":    INTERVAL_MIN,
-            },
-            "generated_at": now,
-        }, f)
+    _write_atomic(out_dir / "stats.json", {
+        "nodes": {
+            "total":         total_nodes,
+            "with_position": with_pos,
+            "active_24h":    active_24h,
+            "active_1h":     active_1h,
+            "mqtt_gateways": gateways,
+        },
+        "edges":    {"active_24h": active_edges},
+        "snapshots": {
+            "last_at":   last_snapshot,
+            "total":     total_snaps,
+            "failed":    failed_snaps,
+        },
+        "collector": {
+            "source":          MESHVIEW_BASE,
+            "retention_days":  RETENTION_DAYS,
+            "interval_min":    INTERVAL_MIN,
+        },
+        "generated_at": now,
+    })
 
     # ── config.json ──
-    with open(out_dir / "config.json", "w", encoding="utf-8") as f:
-        json.dump({
-            "map_auto_fit": MAP_AUTO_FIT,
-            "map_lat":      MAP_LAT,
-            "map_lng":      MAP_LNG,
-            "map_zoom":     MAP_ZOOM,
-        }, f)
+    _write_atomic(out_dir / "config.json", {
+        "map_auto_fit": MAP_AUTO_FIT,
+        "map_lat":      MAP_LAT,
+        "map_lng":      MAP_LNG,
+        "map_zoom":     MAP_ZOOM,
+    })
 
     log.info(f"JSON exportado → {out_dir}  ({len(nodes)} nodos, {len(edges)} edges)")
 

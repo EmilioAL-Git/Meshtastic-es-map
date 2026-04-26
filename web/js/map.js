@@ -25,6 +25,7 @@ function initMap() {
       c.querySelector('#zoom-out').addEventListener('click', () => map.zoomOut());
       c.querySelector('#zoom-locate').addEventListener('click', () => {
         map.locate({ setView: true, maxZoom: 14 });
+        map.once('locationerror', () => showToast('No se pudo obtener tu ubicación'));
       });
       return c;
     }

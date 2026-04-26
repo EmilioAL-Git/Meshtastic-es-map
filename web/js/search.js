@@ -6,11 +6,12 @@ function onSearchInput() {
 
   if (!q) { dd.classList.remove('open'); return; }
 
-  const results = allNodes.filter(n => {
+  const allResults = allNodes.filter(n => {
     const name = (n.long_name || n.short_name || '').toLowerCase();
     const id   = (n.node_id || '').toLowerCase();
     return name.includes(q) || id.includes(q);
-  }).slice(0, 5);
+  });
+  const results = allResults.slice(0, 5);
 
   if (!results.length) {
     dd.innerHTML = '<div class="search-no-results">Sin resultados</div>';
@@ -18,20 +19,20 @@ function onSearchInput() {
     return;
   }
 
-  const dotClass = n => n.is_mqtt_gateway ? 'dot-gateway'
-                      : n.is_recent       ? 'dot-recent'
-                      : (n.last_seen_ago_min != null && n.last_seen_ago_min < 1440) ? 'dot-active'
-                      : 'dot-old';
   const ago = n => n.last_seen_ago_min != null
     ? (n.last_seen_ago_min < 60 ? `${n.last_seen_ago_min}m` : `${Math.floor(n.last_seen_ago_min/60)}h`)
     : '?';
 
   dd.innerHTML = results.map(n => `
     <div class="search-result" data-id="${escHtml(n.node_id)}">
-      <div class="node-dot ${dotClass(n)}"></div>
+      <div class="node-dot dot-${nodeCategory(n)}"></div>
       <div class="result-name">${escHtml(n.long_name || n.short_name || n.node_id)}</div>
       <div class="result-meta">${ago(n)}</div>
     </div>`).join('');
+
+  if (allResults.length > 5) {
+    dd.innerHTML += `<div class="search-more">y ${allResults.length - 5} más — afina la búsqueda</div>`;
+  }
 
   dd.querySelectorAll('.search-result').forEach(el => {
     el.addEventListener('mousedown', () => { selectNode(el.dataset.id, true); closeSearch(); });
@@ -57,7 +58,9 @@ function onSearchKey(e) {
     selectNode(items[searchIndex].dataset.id, true);
     closeSearch();
   } else if (e.key === 'Escape') {
-    closeSearch();
+    document.getElementById('search-dropdown').classList.remove('open');
+    searchIndex = -1;
+    setMapControlsVisible(true);
   }
   items.forEach((el, i) => el.classList.toggle('active', i === searchIndex));
 }

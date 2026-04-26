@@ -32,6 +32,8 @@ cp collector/collector.py "$INSTALL_DIR/collector/"
 cp web/index.html         "$INSTALL_DIR/web/"
 cp web/style.css          "$INSTALL_DIR/web/"
 cp web/favicon.svg        "$INSTALL_DIR/web/"
+mkdir -p "$INSTALL_DIR/web/js"
+cp web/js/*.js            "$INSTALL_DIR/web/js/"
 
 # ─── 4. Entorno Python virtual ────────────────────────────────────────────────
 info "Creando entorno virtual Python…"

@@ -18,6 +18,7 @@
   if (new URLSearchParams(location.search).has('embed') || window.self !== window.top) {
     document.body.classList.add('embed-mode');
   }
+  try { if (localStorage.getItem('mesh_cookie_ok') === '1') document.body.dataset.cookieOk = '1'; } catch {}
 </script>
 
 <!-- Loading -->
@@ -145,6 +146,19 @@
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
+
+<!-- Cookie consent -->
+<div class="cookie-banner" id="cookie-banner">
+  <div class="cookie-text">
+    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <circle cx="8" cy="8" r="7" stroke="#fbbf24" stroke-width="1.5"/>
+      <line x1="8" y1="5" x2="8" y2="8.5" stroke="#fbbf24" stroke-width="1.5" stroke-linecap="round"/>
+      <circle cx="8" cy="11" r="0.75" fill="#fbbf24"/>
+    </svg>
+    Esta web usa <strong>almacenamiento local</strong> para guardar tus preferencias de filtros. No se usan cookies de terceros ni datos de seguimiento.
+  </div>
+  <button class="cookie-btn" onclick="acceptCookies()">Entendido</button>
+</div>
 
 <!-- Footer -->
 <footer class="app-footer">

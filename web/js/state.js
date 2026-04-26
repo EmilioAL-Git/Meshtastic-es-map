@@ -11,6 +11,8 @@ let allNodes       = [];
 let allEdges       = [];
 let markers        = {};     // node_id → Leaflet circleMarker
 let firstLoad      = true;
+let autoFitDone    = false;
+let loadRunning    = false;
 let selectedNodeId = null;
 let selOverlay     = null;   // L.marker con animación de pulso
 let map;
@@ -22,7 +24,8 @@ let markerClicked  = false;  // evita que map.click cierre el panel tras selecci
 const ALL_CATS      = ['gateway', 'router', 'recent', 'active', 'old'];
 const FILTER_KEY    = 'mesh_active_filters';
 const _saved        = (() => { try { return JSON.parse(localStorage.getItem(FILTER_KEY)); } catch { return null; } })();
-const activeFilters = new Set(_saved ? _saved.filter(c => ALL_CATS.includes(c)) : ALL_CATS);
+const _validSaved   = _saved ? _saved.filter(c => ALL_CATS.includes(c)) : null;
+const activeFilters = new Set(_validSaved && _validSaved.length > 0 ? _validSaved : ALL_CATS);
 
 // ─── Colores ──────────────────────────────────────────────────────────────────
 const C_RECENT  = '#5eead4';
@@ -50,12 +53,12 @@ const canvasRenderer = L.svg({ padding: 0.5 });
 
 // ─── Utilidades ───────────────────────────────────────────────────────────────
 function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 function row(k, v) {
   return `<tr>
     <td style="color:#64748b;padding:2px 8px 2px 0;white-space:nowrap">${k}</td>
-    <td style="color:#e2e8f0;text-align:right">${v}</td>
+    <td style="color:#e2e8f0;text-align:right">${escHtml(String(v))}</td>
   </tr>`;
 }

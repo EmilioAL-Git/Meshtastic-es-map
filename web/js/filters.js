@@ -40,6 +40,9 @@ function applyFilters() {
     const show = activeFilters.has(nodeCategory(n));
     if (!markers[n.node_id]) return;
     if (show) markers[n.node_id].addTo(map);
-    else      map.removeLayer(markers[n.node_id]);
+    else {
+      map.removeLayer(markers[n.node_id]);
+      if (n.node_id === selectedNodeId) closeDetail();
+    }
   });
 }

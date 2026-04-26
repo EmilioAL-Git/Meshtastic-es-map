@@ -6,6 +6,8 @@ async function fetchJSON(path) {
 }
 
 async function loadAll() {
+  if (loadRunning) return;
+  loadRunning = true;
   try {
     const [nodesResp, edgesResp, statsResp] = await Promise.allSettled([
       fetchJSON('/data/nodes.json'),
@@ -19,7 +21,8 @@ async function loadAll() {
       applyFilters();
       // Re-ocultar marker del nodo seleccionado tras re-renderizar
       if (selectedNodeId && markers[selectedNodeId]) {
-        markers[selectedNodeId].setStyle({ fillOpacity: 0, opacity: 0 });
+        if (markers[selectedNodeId].setStyle)
+          markers[selectedNodeId].setStyle({ fillOpacity: 0, opacity: 0 });
       }
     } else {
       console.error('Error cargando nodos:', nodesResp.reason);
@@ -28,6 +31,7 @@ async function loadAll() {
 
     if (edgesResp.status === 'fulfilled') {
       allEdges = edgesResp.value.edges || [];
+      if (selectedNodeId) showNodeEdges(selectedNodeId);
     }
 
     if (statsResp.status === 'fulfilled') {
@@ -42,27 +46,48 @@ async function loadAll() {
     document.getElementById('last-update').textContent =
       'actualizado ' + now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
 
-    if (MAP_AUTO_FIT && firstLoad) {
+    if (MAP_AUTO_FIT && !autoFitDone) {
       const nodesWithPos = allNodes.filter(n => n.latitude != null);
       if (nodesWithPos.length > 1 && Object.keys(markers).length > 0) {
         const bounds = L.latLngBounds(nodesWithPos.map(n => [n.latitude, n.longitude]));
-        if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
+        if (bounds.isValid()) {
+          map.fitBounds(bounds, { padding: [40, 40] });
+          autoFitDone = true;
+        }
       }
     }
 
     // Enlace directo a un nodo: ?node=!abcd1234
     if (firstLoad) {
       const nodeParam = new URLSearchParams(location.search).get('node');
-      if (nodeParam) selectNode(nodeParam, true);
+      if (nodeParam) {
+        const found = allNodes.find(n => n.node_id === nodeParam);
+        if (found) selectNode(nodeParam, true);
+        else showToast(`Nodo ${nodeParam} no encontrado en la red`);
+      }
+      firstLoad = false;
     }
-    firstLoad = false;
 
   } catch (e) {
     console.error(e);
     showToast('⚠ Error de conexión con la API');
   } finally {
     document.getElementById('loading').classList.add('hidden');
+    loadRunning = false;
   }
+}
+
+// ─── Cookie consent ───────────────────────────────────────────────────────────
+(function() {
+  try {
+    if (localStorage.getItem('mesh_cookie_ok') === '1')
+      document.getElementById('cookie-banner').classList.add('hidden');
+  } catch {}
+})();
+
+function acceptCookies() {
+  try { localStorage.setItem('mesh_cookie_ok', '1'); } catch {}
+  document.getElementById('cookie-banner').classList.add('hidden');
 }
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────

@@ -1,15 +1,10 @@
 // ─── Selección de nodo ────────────────────────────────────────────────────────
 function selectNode(nodeId, fly = false) {
-  const prevNodeId = selectedNodeId;
-  selectedNodeId   = nodeId;
   const node = allNodes.find(n => n.node_id === nodeId);
   if (!node) return;
 
-  if (node.latitude == null || node.longitude == null) {
-    closeDetail();
-    showToast('Ubicación no disponible para este nodo');
-    return;
-  }
+  const prevNodeId = selectedNodeId;
+  selectedNodeId   = nodeId;
 
   // Restaurar marker anterior y colocar overlay animado en el nuevo
   if (selOverlay) { map.removeLayer(selOverlay); selOverlay = null; }
@@ -19,43 +14,39 @@ function selectNode(nodeId, fly = false) {
       markers[prevNodeId].setStyle({ fillOpacity: circleMarkerOptions(nodeColor(prev)).fillOpacity, opacity: 1 });
   }
 
-  if (markers[nodeId]) {
-    if (markers[nodeId].setStyle) markers[nodeId].setStyle({ fillOpacity: 0, opacity: 0 });
-    selOverlay = L.marker([node.latitude, node.longitude], {
-      icon: makeSelectedIcon(nodeColor(node)),
-      interactive: false,
-      zIndexOffset: 1000,
-    }).addTo(map);
-  }
-
-  if (fly) {
-    map.stop();
-    const zoom     = Math.max(map.getZoom(), 16);
-    const isMobile = window.innerWidth <= 768;
-    const offsetPx = isMobile ? Math.round(window.innerHeight * 0.22) : 0;
-    if (offsetPx > 0) {
-      const targetPx  = map.project([node.latitude, node.longitude], zoom);
-      const shiftedPx = targetPx.add([0, offsetPx]);
-      map.flyTo(map.unproject(shiftedPx, zoom), zoom, { animate: true, duration: 0.6 });
-    } else {
-      map.flyTo([node.latitude, node.longitude], zoom, { animate: true, duration: 0.6 });
+  if (node.latitude != null && node.longitude != null) {
+    if (markers[nodeId]) {
+      if (markers[nodeId].setStyle) markers[nodeId].setStyle({ fillOpacity: 0, opacity: 0 });
+      selOverlay = L.marker([node.latitude, node.longitude], {
+        icon: makeSelectedIcon(nodeColor(node)),
+        interactive: false,
+        zIndexOffset: 1000,
+      }).addTo(map);
     }
+
+    if (fly) {
+      map.stop();
+      const zoom     = Math.max(map.getZoom(), 16);
+      const isMobile = window.innerWidth <= 768;
+      const offsetPx = isMobile ? Math.round(window.innerHeight * 0.22) : 0;
+      if (offsetPx > 0) {
+        const targetPx  = map.project([node.latitude, node.longitude], zoom);
+        const shiftedPx = targetPx.add([0, offsetPx]);
+        map.flyTo(map.unproject(shiftedPx, zoom), zoom, { animate: true, duration: 0.6 });
+      } else {
+        map.flyTo([node.latitude, node.longitude], zoom, { animate: true, duration: 0.6 });
+      }
+    }
+
+    showNodeEdges(nodeId);
+  } else {
+    showToast('Ubicación no disponible para este nodo');
   }
-
-  showNodeEdges(nodeId);
-
-  document.querySelectorAll('.node-item').forEach(el =>
-    el.classList.toggle('selected', el.dataset.id === nodeId)
-  );
 
   // Panel de detalle
   const name = node.long_name || node.short_name || nodeId;
   document.getElementById('detail-title').textContent = name;
-  document.getElementById('detail-dot').className = `node-dot dot-${
-    node.is_mqtt_gateway ? 'gateway' :
-    isRouter(node)       ? 'router'  :
-    node.is_recent       ? 'recent'  : 'active'
-  }`;
+  document.getElementById('detail-dot').className = `node-dot dot-${nodeCategory(node)}`;
 
   const ago = node.last_seen_ago_min != null
     ? (node.last_seen_ago_min < 60
@@ -114,9 +105,6 @@ function selectNode(nodeId, fly = false) {
   const url = new URL(location.href);
   url.searchParams.set('node', nodeId);
   history.replaceState(null, '', url);
-
-  const listItem = document.querySelector(`.node-item[data-id="${nodeId}"]`);
-  if (listItem) listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function closeDetail() {
@@ -124,7 +112,7 @@ function closeDetail() {
   if (selectedNodeId && markers[selectedNodeId]) {
     const n = allNodes.find(n => n.node_id === selectedNodeId);
     if (n && markers[selectedNodeId].setStyle)
-    markers[selectedNodeId].setStyle({ fillOpacity: circleMarkerOptions(nodeColor(n)).fillOpacity, opacity: 1 });
+      markers[selectedNodeId].setStyle({ fillOpacity: circleMarkerOptions(nodeColor(n)).fillOpacity, opacity: 1 });
   }
   selectedNodeId = null;
   document.getElementById('detail-panel').classList.remove('visible');

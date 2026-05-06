@@ -1,9 +1,9 @@
-FROM python:3.12-slim
+FROM docker.io/python:3.12-alpine
 
 WORKDIR /app
 COPY collector/collector.py collector/entrypoint.py ./
 
-RUN useradd -r -s /bin/false appuser
+RUN adduser -S -s /bin/false -u 500 appuser
 
 # Arranca como root → entrypoint.py fija permisos → baja a appuser
 CMD ["python", "/app/entrypoint.py", "--daemon", "--db", "/data/meshtastic-es-map.db"]

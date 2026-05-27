@@ -842,7 +842,7 @@ body.embed-mode .app-footer { display: none; }
   .legend {
     display: block;
     padding: 7px 12px;
-    bottom: calc(32px + 12px);
+    bottom: calc(32px + env(safe-area-inset-bottom) + 36px);
   }
   .legend-title,
   .legend-item:not(.legend-edge),

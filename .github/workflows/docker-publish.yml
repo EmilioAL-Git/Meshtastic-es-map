@@ -2,7 +2,7 @@ name: Build and Publish Docker Collector
 
 on:
   push:
-    branches: ["*"]
+    branches: ["main"]
     tags: ["v*"]
 
 jobs:

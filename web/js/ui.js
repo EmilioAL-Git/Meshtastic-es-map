@@ -102,18 +102,18 @@ function selectNode(nodeId, fly = false) {
   document.body.classList.add('detail-open');
 
   if (window.innerWidth <= 768) {
-    requestAnimationFrame(() => {
-      const legend = document.querySelector('.legend');
-      const panel  = document.getElementById('detail-panel');
-      if (legend && panel) {
+    const legend = document.querySelector('.legend');
+    const panel  = document.getElementById('detail-panel');
+    if (legend && panel) {
+      panel.addEventListener('animationend', () => {
         const top = panel.getBoundingClientRect().top;
         legend.style.position = 'fixed';
         legend.style.bottom   = (window.innerHeight - top + 4) + 'px';
         legend.style.left     = '16px';
         legend.style.right    = 'auto';
         legend.style.top      = 'auto';
-      }
-    });
+      }, { once: true });
+    }
   }
 
   // Actualizar URL con el nodo seleccionado (sin recargar la página)

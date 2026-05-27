@@ -1,58 +1,52 @@
 // ─── Selección de nodo ────────────────────────────────────────────────────────
 function selectNode(nodeId, fly = false) {
-  const prevNodeId = selectedNodeId;
-  selectedNodeId   = nodeId;
   const node = allNodes.find(n => n.node_id === nodeId);
   if (!node) return;
 
-  if (node.latitude == null || node.longitude == null) {
-    closeDetail();
-    showToast('Ubicación no disponible para este nodo');
-    return;
-  }
+  const prevNodeId = selectedNodeId;
+  selectedNodeId   = nodeId;
 
   // Restaurar marker anterior y colocar overlay animado en el nuevo
   if (selOverlay) { map.removeLayer(selOverlay); selOverlay = null; }
   if (prevNodeId && markers[prevNodeId]) {
     const prev = allNodes.find(n => n.node_id === prevNodeId);
-    if (prev) markers[prevNodeId].setStyle({ fillOpacity: circleMarkerOptions(nodeColor(prev)).fillOpacity, opacity: 1 });
+    if (prev && markers[prevNodeId].setStyle)
+      markers[prevNodeId].setStyle({ fillOpacity: circleMarkerOptions(nodeColor(prev)).fillOpacity, opacity: 1 });
   }
 
-  if (markers[nodeId]) {
-    markers[nodeId].setStyle({ fillOpacity: 0, opacity: 0 });
-    selOverlay = L.marker([node.latitude, node.longitude], {
-      icon: makeSelectedIcon(nodeColor(node)),
-      interactive: false,
-      zIndexOffset: 1000,
-    }).addTo(map);
-  }
-
-  if (fly) {
-    map.stop();
-    const zoom     = Math.max(map.getZoom(), 16);
-    const isMobile = window.innerWidth <= 768;
-    const offsetPx = isMobile ? Math.round(window.innerHeight * 0.22) : 0;
-    if (offsetPx > 0) {
-      const targetPx  = map.project([node.latitude, node.longitude], zoom);
-      const shiftedPx = targetPx.add([0, offsetPx]);
-      map.flyTo(map.unproject(shiftedPx, zoom), zoom, { animate: true, duration: 0.6 });
-    } else {
-      map.flyTo([node.latitude, node.longitude], zoom, { animate: true, duration: 0.6 });
+  if (node.latitude != null && node.longitude != null) {
+    if (markers[nodeId]) {
+      if (markers[nodeId].setStyle) markers[nodeId].setStyle({ fillOpacity: 0, opacity: 0 });
+      selOverlay = L.marker([node.latitude, node.longitude], {
+        icon: makeSelectedIcon(nodeColor(node)),
+        interactive: false,
+        zIndexOffset: 1000,
+      }).addTo(map);
     }
+
+    if (fly) {
+      map.stop();
+      const zoom     = Math.max(map.getZoom(), 16);
+      const isMobile = window.innerWidth <= 768;
+      const offsetPx = isMobile ? Math.round(window.innerHeight * 0.22) : 0;
+      if (offsetPx > 0) {
+        const targetPx  = map.project([node.latitude, node.longitude], zoom);
+        const shiftedPx = targetPx.add([0, offsetPx]);
+        map.flyTo(map.unproject(shiftedPx, zoom), zoom, { animate: true, duration: 0.6 });
+      } else {
+        map.flyTo([node.latitude, node.longitude], zoom, { animate: true, duration: 0.6 });
+      }
+    }
+
+    showNodeEdges(nodeId);
+  } else {
+    showToast('Ubicación no disponible para este nodo');
   }
-
-  showNodeEdges(nodeId);
-
-  document.querySelectorAll('.node-item').forEach(el =>
-    el.classList.toggle('selected', el.dataset.id === nodeId)
-  );
 
   // Panel de detalle
   const name = node.long_name || node.short_name || nodeId;
   document.getElementById('detail-title').textContent = name;
-  document.getElementById('detail-dot').className = `node-dot dot-${
-    node.is_mqtt_gateway ? 'gateway' : node.is_recent ? 'recent' : 'active'
-  }`;
+  document.getElementById('detail-dot').className = `node-dot dot-${nodeCategory(node)}`;
 
   const ago = node.last_seen_ago_min != null
     ? (node.last_seen_ago_min < 60
@@ -107,20 +101,41 @@ function selectNode(nodeId, fly = false) {
   document.getElementById('detail-panel').classList.add('visible');
   document.body.classList.add('detail-open');
 
+  if (window.innerWidth <= 768) {
+    const legend = document.querySelector('.legend');
+    const panel  = document.getElementById('detail-panel');
+    if (legend && panel) {
+      panel.addEventListener('animationend', () => {
+        const top = panel.getBoundingClientRect().top;
+        legend.style.position = 'fixed';
+        legend.style.bottom   = (window.innerHeight - top + 4) + 'px';
+        legend.style.left     = '10px';
+        legend.style.right    = 'auto';
+        legend.style.top      = 'auto';
+      }, { once: true });
+    }
+  }
+
   // Actualizar URL con el nodo seleccionado (sin recargar la página)
   const url = new URL(location.href);
   url.searchParams.set('node', nodeId);
   history.replaceState(null, '', url);
-
-  const listItem = document.querySelector(`.node-item[data-id="${nodeId}"]`);
-  if (listItem) listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function closeDetail() {
+  const legend = document.querySelector('.legend');
+  if (legend) {
+    legend.style.position = '';
+    legend.style.bottom   = '';
+    legend.style.left     = '';
+    legend.style.right    = '';
+    legend.style.top      = '';
+  }
   if (selOverlay) { map.removeLayer(selOverlay); selOverlay = null; }
   if (selectedNodeId && markers[selectedNodeId]) {
     const n = allNodes.find(n => n.node_id === selectedNodeId);
-    if (n) markers[selectedNodeId].setStyle({ fillOpacity: circleMarkerOptions(nodeColor(n)).fillOpacity, opacity: 1 });
+    if (n && markers[selectedNodeId].setStyle)
+      markers[selectedNodeId].setStyle({ fillOpacity: circleMarkerOptions(nodeColor(n)).fillOpacity, opacity: 1 });
   }
   selectedNodeId = null;
   document.getElementById('detail-panel').classList.remove('visible');

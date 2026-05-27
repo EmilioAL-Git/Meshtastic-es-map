@@ -25,6 +25,7 @@ function initMap() {
       c.querySelector('#zoom-out').addEventListener('click', () => map.zoomOut());
       c.querySelector('#zoom-locate').addEventListener('click', () => {
         map.locate({ setView: true, maxZoom: 14 });
+        map.once('locationerror', () => showToast('No se pudo obtener tu ubicación'));
       });
       return c;
     }
@@ -49,6 +50,7 @@ function initMap() {
 // ─── Helpers de color/icono ───────────────────────────────────────────────────
 function nodeColor(node) {
   if (node.is_mqtt_gateway) return C_GATEWAY;
+  if (isRouter(node))       return C_ROUTER;
   if (node.is_recent)       return C_RECENT;
   const ago = node.last_seen_ago_min;
   if (ago !== null && ago < 1440) return C_ACTIVE;
@@ -66,6 +68,22 @@ function circleMarkerOptions(color, size = 9) {
     fillOpacity: (color === C_RECENT || color === C_GATEWAY) ? 1 : isOld ? 0.3 : 0.85,
     renderer: canvasRenderer,
   };
+}
+
+function makeRouterIcon(color, radius) {
+  const inner = radius;
+  const outer = radius + 4;
+  const d     = outer * 2 + 2;
+  const cx    = d / 2;
+  return L.divIcon({
+    html: `<svg width="${d}" height="${d}" viewBox="0 0 ${d} ${d}" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="${cx}" cy="${cx}" r="${outer}" fill="none" stroke="${color}" stroke-width="1.5" opacity="0.7"/>
+      <circle cx="${cx}" cy="${cx}" r="${inner}" fill="${color}" stroke="#1e293b" stroke-width="1"/>
+    </svg>`,
+    iconSize:   [d, d],
+    iconAnchor: [cx, cx],
+    className:  '',
+  });
 }
 
 function makeSelectedIcon(color) {
@@ -92,7 +110,10 @@ function markerSize() {
 function updateMarkerSizes() {
   const sz = markerSize();
   allNodes.forEach(n => {
-    if (markers[n.node_id]) markers[n.node_id].setRadius(sz);
+    const m = markers[n.node_id];
+    if (!m) return;
+    if (m.setRadius) m.setRadius(sz);
+    else if (isRouter(n) && !n.is_mqtt_gateway) m.setIcon(makeRouterIcon(nodeColor(n), sz));
   });
 }
 
@@ -108,8 +129,11 @@ function renderNodes(nodes) {
   nodes.forEach(node => {
     if (node.latitude == null || node.longitude == null) return;
 
-    const color  = nodeColor(node);
-    const marker = L.circleMarker([node.latitude, node.longitude], { ...circleMarkerOptions(color, sz), renderer: markerRenderer });
+    const color       = nodeColor(node);
+    const useIconMarker = isRouter(node) && !node.is_mqtt_gateway;
+    const marker = useIconMarker
+      ? L.marker([node.latitude, node.longitude], { icon: makeRouterIcon(color, sz), pane: 'markersPane' })
+      : L.circleMarker([node.latitude, node.longitude], { ...circleMarkerOptions(color, sz), renderer: markerRenderer });
 
     if (!isMobile && !isEmbed) {
       const name = node.long_name || node.short_name || node.node_id;
@@ -123,6 +147,7 @@ function renderNodes(nodes) {
           <div style="font-weight:700;font-size:13px;margin-bottom:6px;color:#00e5a0">${escHtml(name)}</div>
           <div style="font-size:11px;color:#64748b;margin-bottom:8px">${escHtml(node.node_id)}</div>
           ${node.is_mqtt_gateway ? '<div style="background:rgba(245,158,11,.15);color:#f59e0b;font-size:11px;padding:2px 6px;border-radius:4px;margin-bottom:6px;display:inline-block">⚡ GATEWAY MQTT</div><br>' : ''}
+          ${isRouter(node) && !node.is_mqtt_gateway ? `<div style="background:rgba(251,146,60,.15);color:#fb923c;font-size:11px;padding:2px 6px;border-radius:4px;margin-bottom:6px;display:inline-block">⇆ ${escHtml(node.role)}</div><br>` : ''}
           <table style="font-size:11px;width:100%;border-collapse:collapse">
             ${node.hardware      ? row('Hardware', node.hardware) : ''}
             ${node.role          ? row('Rol', node.role) : ''}

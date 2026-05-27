@@ -11,6 +11,8 @@ let allNodes       = [];
 let allEdges       = [];
 let markers        = {};     // node_id → Leaflet circleMarker
 let firstLoad      = true;
+let autoFitDone    = false;
+let loadRunning    = false;
 let selectedNodeId = null;
 let selOverlay     = null;   // L.marker con animación de pulso
 let map;
@@ -19,14 +21,22 @@ let markerRenderer;
 let searchIndex    = -1;
 let markerClicked  = false;  // evita que map.click cierre el panel tras seleccionar un nodo
 
-const activeFilters = new Set(['gateway', 'recent', 'active', 'old']);
-const ALL_CATS      = ['gateway', 'recent', 'active', 'old'];
+const ALL_CATS      = ['gateway', 'router', 'recent', 'active', 'old'];
+const FILTER_KEY    = 'mesh_active_filters';
+const _saved        = (() => { try { return JSON.parse(localStorage.getItem(FILTER_KEY)); } catch { return null; } })();
+const _validSaved   = _saved ? _saved.filter(c => ALL_CATS.includes(c)) : null;
+const activeFilters = new Set(_validSaved && _validSaved.length > 0 ? _validSaved : ALL_CATS);
 
 // ─── Colores ──────────────────────────────────────────────────────────────────
 const C_RECENT  = '#5eead4';
 const C_ACTIVE  = '#7dd3fc';
 const C_GATEWAY = '#fbbf24';
+const C_ROUTER  = '#fb923c';
 const C_OLD     = '#64748b';
+
+// ─── Roles considerados router ────────────────────────────────────────────────
+const ROUTER_ROLES = new Set(['ROUTER', 'ROUTER_CLIENT', 'REPEATER']);
+function isRouter(n) { return n.role && ROUTER_ROLES.has(n.role.toUpperCase()); }
 
 // ─── Estilos de edge ─────────────────────────────────────────────────────────
 const EDGE_STYLE = {
@@ -43,12 +53,12 @@ const canvasRenderer = L.svg({ padding: 0.5 });
 
 // ─── Utilidades ───────────────────────────────────────────────────────────────
 function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 function row(k, v) {
   return `<tr>
     <td style="color:#64748b;padding:2px 8px 2px 0;white-space:nowrap">${k}</td>
-    <td style="color:#e2e8f0;text-align:right">${v}</td>
+    <td style="color:#e2e8f0;text-align:right">${escHtml(String(v))}</td>
   </tr>`;
 }

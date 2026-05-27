@@ -201,6 +201,7 @@ header {
 .dot-active  { background: var(--accent2); }
 .dot-old     { background: var(--muted); }
 .dot-gateway { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+.dot-router  { background: #fb923c; box-shadow: 0 0 6px #fb923c; }
 
 .result-name {
   font-family: var(--mono);
@@ -354,6 +355,62 @@ header {
 }
 
 .empty-state svg { margin-bottom: 12px; opacity: .3; }
+
+/* ── Cookie banner ── */
+.cookie-banner {
+  position: fixed;
+  bottom: calc(32px + env(safe-area-inset-bottom) + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--panel);
+  border: 1px solid rgba(251,191,36,.3);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 24px rgba(0,0,0,.6);
+  padding: 10px 16px;
+  z-index: 8000;
+  max-width: 560px;
+  width: calc(100vw - 40px);
+  animation: slideUp .25s ease;
+}
+
+.cookie-banner.hidden { display: none; }
+body[data-cookie-ok="1"] .cookie-banner { display: none; }
+
+.cookie-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  font-family: var(--sans);
+  flex: 1;
+  line-height: 1.5;
+}
+
+.cookie-text svg { flex-shrink: 0; }
+.cookie-text strong { color: var(--text); font-weight: 600; }
+
+.cookie-btn {
+  flex-shrink: 0;
+  background: rgba(94,234,212,.1);
+  border: 1px solid rgba(94,234,212,.35);
+  border-radius: 6px;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  white-space: nowrap;
+}
+
+.cookie-btn:hover {
+  background: rgba(94,234,212,.2);
+  border-color: var(--accent);
+}
 
 /* ── Toast ── */
 .toast {
@@ -682,6 +739,15 @@ body.embed-mode .app-footer { display: none; }
   text-align: center;
 }
 
+.search-more {
+  padding: 7px 14px;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+  border-top: 1px solid var(--border);
+  font-style: italic;
+}
+
 @media (max-width: 768px) {
   body.embed-mode .filter-toggle-btn {
     top: 58px; /* debajo del buscador flotante */
@@ -772,8 +838,35 @@ body.embed-mode .app-footer { display: none; }
 
   body.detail-open .filter-panel { display: none !important; }
 
-  /* ── Leyenda oculta en móvil ── */
-  .legend { display: none; }
+  /* ── Leyenda: solo líneas en móvil (izquierda) ── */
+  .legend {
+    display: block;
+    padding: 7px 12px;
+    bottom: calc(32px + env(safe-area-inset-bottom) + 36px);
+    left: 10px;
+    right: auto;
+  }
+  .legend-title,
+  .legend-item:not(.legend-edge),
+  .legend-sep { display: none; }
+  .legend-item.legend-edge { margin-bottom: 4px; }
+
+  /* ── Cookie banner en móvil: apilado vertical ── */
+  .cookie-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    bottom: calc(32px + env(safe-area-inset-bottom) + 8px);
+  }
+  .cookie-text { font-size: 11px; }
+  .cookie-btn  { align-self: flex-end; }
+
+  /* ── Con panel abierto: JS posiciona la leyenda; atribución detrás ── */
+  body.detail-open .leaflet-bottom {
+    z-index: 600;
+  }
+  .legend-item.legend-edge:last-child { margin-bottom: 0; }
 
   /* ── Zoom y filtro más grandes para touch ── */
   .map-zoom-btn {

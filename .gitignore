@@ -8,4 +8,4 @@ __pycache__/
 *.log
 .env
 web/data/*.json
-CLAUDE.md
+*.md

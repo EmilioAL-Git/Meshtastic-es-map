@@ -843,7 +843,7 @@ body.embed-mode .app-footer { display: none; }
     display: block;
     padding: 7px 12px;
     bottom: calc(32px + env(safe-area-inset-bottom) + 36px);
-    left: 20px;
+    left: 10px;
     right: auto;
   }
   .legend-title,

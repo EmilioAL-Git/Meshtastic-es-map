@@ -109,7 +109,7 @@ function selectNode(nodeId, fly = false) {
         const top = panel.getBoundingClientRect().top;
         legend.style.position = 'fixed';
         legend.style.bottom   = (window.innerHeight - top + 4) + 'px';
-        legend.style.left     = '16px';
+        legend.style.left     = '10px';
         legend.style.right    = 'auto';
         legend.style.top      = 'auto';
       }, { once: true });

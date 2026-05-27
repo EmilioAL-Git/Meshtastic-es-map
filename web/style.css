@@ -838,25 +838,20 @@ body.embed-mode .app-footer { display: none; }
 
   body.detail-open .filter-panel { display: none !important; }
 
-  /* ── Leyenda: solo líneas en móvil ── */
+  /* ── Leyenda: solo líneas en móvil (izquierda) ── */
   .legend {
     display: block;
     padding: 7px 12px;
     bottom: calc(32px + env(safe-area-inset-bottom) + 36px);
+    left: 20px;
+    right: auto;
   }
   .legend-title,
   .legend-item:not(.legend-edge),
   .legend-sep { display: none; }
   .legend-item.legend-edge { margin-bottom: 4px; }
 
-  /* ── Con panel abierto: leyenda pegada arriba-izquierda del sheet ── */
-  body.detail-open .legend {
-    position: fixed;
-    bottom: calc(55vh + 6px);
-    left: 16px;
-    right: auto;
-    top: auto;
-  }
+  /* ── Con panel abierto: JS posiciona la leyenda; atribución detrás ── */
   body.detail-open .leaflet-bottom {
     z-index: 600;
   }

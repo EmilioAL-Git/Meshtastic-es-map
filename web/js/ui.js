@@ -101,6 +101,21 @@ function selectNode(nodeId, fly = false) {
   document.getElementById('detail-panel').classList.add('visible');
   document.body.classList.add('detail-open');
 
+  if (window.innerWidth <= 768) {
+    requestAnimationFrame(() => {
+      const legend = document.querySelector('.legend');
+      const panel  = document.getElementById('detail-panel');
+      if (legend && panel) {
+        const top = panel.getBoundingClientRect().top;
+        legend.style.position = 'fixed';
+        legend.style.bottom   = (window.innerHeight - top + 4) + 'px';
+        legend.style.left     = '16px';
+        legend.style.right    = 'auto';
+        legend.style.top      = 'auto';
+      }
+    });
+  }
+
   // Actualizar URL con el nodo seleccionado (sin recargar la página)
   const url = new URL(location.href);
   url.searchParams.set('node', nodeId);
@@ -108,6 +123,14 @@ function selectNode(nodeId, fly = false) {
 }
 
 function closeDetail() {
+  const legend = document.querySelector('.legend');
+  if (legend) {
+    legend.style.position = '';
+    legend.style.bottom   = '';
+    legend.style.left     = '';
+    legend.style.right    = '';
+    legend.style.top      = '';
+  }
   if (selOverlay) { map.removeLayer(selOverlay); selOverlay = null; }
   if (selectedNodeId && markers[selectedNodeId]) {
     const n = allNodes.find(n => n.node_id === selectedNodeId);

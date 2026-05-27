@@ -851,6 +851,17 @@ body.embed-mode .app-footer { display: none; }
   .legend-sep { display: none; }
   .legend-item.legend-edge { margin-bottom: 4px; }
 
+  /* ── Cookie banner en móvil: apilado vertical ── */
+  .cookie-banner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    bottom: calc(32px + env(safe-area-inset-bottom) + 8px);
+  }
+  .cookie-text { font-size: 11px; }
+  .cookie-btn  { align-self: flex-end; }
+
   /* ── Con panel abierto: JS posiciona la leyenda; atribución detrás ── */
   body.detail-open .leaflet-bottom {
     z-index: 600;

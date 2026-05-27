@@ -838,8 +838,16 @@ body.embed-mode .app-footer { display: none; }
 
   body.detail-open .filter-panel { display: none !important; }
 
-  /* ── Leyenda oculta en móvil ── */
-  .legend { display: none; }
+  /* ── Leyenda: solo líneas en móvil ── */
+  .legend {
+    padding: 7px 12px;
+    bottom: calc(32px + 12px);
+  }
+  .legend-title,
+  .legend-item:not(.legend-edge),
+  .legend-sep:not(.legend-edge) { display: none; }
+  .legend-sep.legend-edge { margin: 0 0 5px; }
+  .legend-item.legend-edge:last-child { margin-bottom: 0; }
 
   /* ── Zoom y filtro más grandes para touch ── */
   .map-zoom-btn {

@@ -617,17 +617,20 @@ def collect_once(conn: sqlite3.Connection):
     else:
         log.warning("  No se obtuvieron nodos")
 
-    # 2. Edges
-    edges_url = f"{MESHVIEW_BASE}/api/edges"
-    log.info(f"Pidiendo edges a {edges_url} …")
-    raw_edges = fetch_json(edges_url)
-    if raw_edges is not None:
-        save_cache(edges_url, raw_edges)
-        edges = parse_edges(raw_edges)
-        edges_saved = upsert_edges(conn, edges)
+    # 2. Edges (traceroute + neighbor por separado)
+    all_edges = []
+    for etype in ("traceroute", "neighbor"):
+        url = f"{MESHVIEW_BASE}/api/edges?type={etype}"
+        log.info(f"Pidiendo edges ({etype}) a {url} …")
+        raw = fetch_json(url)
+        if raw is not None:
+            save_cache(url, raw)
+            all_edges.extend(parse_edges(raw))
+        else:
+            log.warning(f"  No se obtuvieron edges de tipo {etype}")
+    if all_edges:
+        edges_saved = upsert_edges(conn, all_edges)
         log.info(f"  → {edges_saved} edges guardados/actualizados")
-    else:
-        log.warning("  No se obtuvieron edges (el endpoint puede no existir en esta versión)")
 
     active_nodes = conn.execute(
         "SELECT COUNT(*) FROM nodes WHERE last_seen >= ?", (collected_at - 3600,)

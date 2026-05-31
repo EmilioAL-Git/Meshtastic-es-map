@@ -10,6 +10,12 @@ meshview.meshtastic.es  ──►  collector.py  ──►  SQLite + JSON estát
 
 ---
 
+<div align="center">
+<img src="Captura1.png" width="100%" />
+</div>
+
+---
+
 ## Características
 
 - Mapa interactivo con nodos y conexiones en tiempo real

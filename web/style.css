@@ -346,6 +346,16 @@ header {
 
 .legend-line { flex-shrink: 0; }
 
+.legend-edge[data-edge] {
+  cursor: pointer;
+  transition: opacity .15s;
+  user-select: none;
+}
+.legend-edge[data-edge]:not(.active) {
+  opacity: .35;
+  text-decoration: line-through;
+}
+
 /* ── Empty state ── */
 .empty-state {
   padding: 40px 16px;
@@ -585,6 +595,15 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+.fchip-line { flex-shrink: 0; }
+
+.filter-sep {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 6px 0;
+  width: 100%;
 }
 
 /* ── Zoom control ── */

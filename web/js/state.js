@@ -27,6 +27,12 @@ const _saved        = (() => { try { return JSON.parse(localStorage.getItem(FILT
 const _validSaved   = _saved ? _saved.filter(c => ALL_CATS.includes(c)) : null;
 const activeFilters = new Set(_validSaved && _validSaved.length > 0 ? _validSaved : ALL_CATS);
 
+const ALL_EDGE_CATS     = ['neighbor', 'traceroute'];
+const EDGE_FILTER_KEY   = 'mesh_active_edge_filters';
+const _savedEdge        = (() => { try { return JSON.parse(localStorage.getItem(EDGE_FILTER_KEY)); } catch { return null; } })();
+const _validSavedEdge   = _savedEdge ? _savedEdge.filter(c => ALL_EDGE_CATS.includes(c)) : null;
+const activeEdgeFilters = new Set(_validSavedEdge !== null ? _validSavedEdge : ['neighbor']);
+
 // ─── Colores ──────────────────────────────────────────────────────────────────
 const C_RECENT  = '#5eead4';
 const C_ACTIVE  = '#7dd3fc';

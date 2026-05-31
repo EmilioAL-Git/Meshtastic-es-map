@@ -109,6 +109,19 @@
   <button class="fchip active" data-cat="old" onclick="toggleFilter('old')">
     <span class="fchip-dot" style="background:#64748b"></span>Sin actividad
   </button>
+  <hr class="filter-sep">
+  <button class="fchip active" data-edge="neighbor" onclick="toggleEdgeFilter('neighbor')">
+    <svg class="fchip-line" width="18" height="8" viewBox="0 0 18 8" aria-hidden="true">
+      <line x1="0" y1="4" x2="18" y2="4" stroke="#1d4ed8" stroke-width="2"/>
+    </svg>
+    Vecino directo
+  </button>
+  <button class="fchip" data-edge="traceroute" onclick="toggleEdgeFilter('traceroute')">
+    <svg class="fchip-line" width="18" height="8" viewBox="0 0 18 8" aria-hidden="true">
+      <line x1="0" y1="4" x2="18" y2="4" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="5 4"/>
+    </svg>
+    Traceroute
+  </button>
 </div>
 
 <!-- Detail panel -->
@@ -130,18 +143,24 @@
   <div class="legend-item"><div class="legend-dot" style="background:#fb923c;box-shadow:0 0 5px #fb923c"></div> Router / Repeater</div>
   <div class="legend-item"><div class="legend-dot" style="background:#64748b"></div> Sin actividad reciente</div>
   <hr class="legend-sep">
-  <div class="legend-item legend-edge">
+  <div class="legend-item legend-edge active" data-edge="neighbor" onclick="toggleEdgeFilter('neighbor')" role="button" tabindex="0">
     <svg class="legend-line" width="24" height="10" viewBox="0 0 24 10">
       <line x1="0" y1="5" x2="24" y2="5" stroke="#1d4ed8" stroke-width="2"/>
     </svg>
     Vecino directo
   </div>
-  <div class="legend-item legend-edge">
+  <div class="legend-item legend-edge" data-edge="traceroute" onclick="toggleEdgeFilter('traceroute')" role="button" tabindex="0">
     <svg class="legend-line" width="24" height="10" viewBox="0 0 24 10">
       <line x1="0" y1="5" x2="24" y2="5" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="6 5"/>
     </svg>
     Traceroute
   </div>
+</div>
+
+<!-- Banner novedades -->
+<div class="hint-bubble hidden" id="hint-novedades">
+  <button class="hint-bubble-close" onclick="dismissEdgeHint()" aria-label="Cerrar">✕</button>
+  <strong>Nuevo</strong> — los enlaces del mapa son filtrables. Pulsa en la leyenda o usa el panel de filtros para activar o desactivar <strong>Vecino directo</strong> y <strong>Traceroute</strong>.
 </div>
 
 <!-- Toast -->

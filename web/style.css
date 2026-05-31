@@ -346,6 +346,16 @@ header {
 
 .legend-line { flex-shrink: 0; }
 
+.legend-edge[data-edge] {
+  cursor: pointer;
+  transition: opacity .15s;
+  user-select: none;
+}
+.legend-edge[data-edge]:not(.active) {
+  opacity: .35;
+  text-decoration: line-through;
+}
+
 /* ── Empty state ── */
 .empty-state {
   padding: 40px 16px;
@@ -357,6 +367,63 @@ header {
 .empty-state svg { margin-bottom: 12px; opacity: .3; }
 
 /* ── Cookie banner ── */
+/* ── Hint bubble (novedades) ── */
+.hint-bubble {
+  position: fixed;
+  background: var(--panel);
+  border: 1px solid var(--accent2);
+  border-radius: var(--radius);
+  padding: 10px 28px 10px 12px;
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--sans);
+  line-height: 1.55;
+  max-width: 200px;
+  z-index: 900;
+  box-shadow: 0 4px 20px rgba(0,0,0,.5);
+}
+
+.hint-bubble strong { color: var(--accent2); }
+
+.hint-bubble-close {
+  position: absolute;
+  top: 5px;
+  right: 7px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 2px;
+}
+.hint-bubble-close:hover { color: var(--text); }
+
+.hint-bubble.hidden { display: none; }
+
+/* Flecha apuntando a la derecha (desktop: burbuja a la izquierda de la leyenda) */
+.hint-bubble.arrow-right::after {
+  content: '';
+  position: absolute;
+  right: -7px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 7px solid transparent;
+  border-right: none;
+  border-left-color: var(--accent2);
+}
+
+/* Flecha apuntando hacia abajo (móvil: burbuja encima de la leyenda) */
+.hint-bubble.arrow-down::after {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  left: 18px;
+  border: 7px solid transparent;
+  border-bottom: none;
+  border-top-color: var(--accent2);
+}
+
 .cookie-banner {
   position: fixed;
   bottom: calc(32px + env(safe-area-inset-bottom) + 12px);
@@ -585,6 +652,15 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   height: 8px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+.fchip-line { flex-shrink: 0; }
+
+.filter-sep {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 6px 0;
+  width: 100%;
 }
 
 /* ── Zoom control ── */

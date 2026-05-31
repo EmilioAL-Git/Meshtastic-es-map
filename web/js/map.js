@@ -180,6 +180,7 @@ function showNodeEdges(nodeId) {
 
     const coords = [[e.from_lat, e.from_lon], [e.to_lat, e.to_lon]];
     const type   = e.edge_type === 'neighbor' ? 'neighbor' : 'traceroute';
+    if (!activeEdgeFilters.has(type)) return;
 
     edgeGroup.addLayer(
       L.polyline(coords, { ...EDGE_STYLE_HI[type], interactive: false, renderer: canvasRenderer })

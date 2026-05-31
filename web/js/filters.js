@@ -23,15 +23,27 @@ function toggleFilter(cat) {
   if (activeFilters.has(cat)) activeFilters.delete(cat);
   else                        activeFilters.add(cat);
   try { localStorage.setItem(FILTER_KEY, JSON.stringify([...activeFilters])); } catch {}
-  document.querySelectorAll('.fchip').forEach(el =>
-    el.classList.toggle('active', activeFilters.has(el.dataset.cat))
-  );
+  syncFilterChips();
   applyFilters();
 }
 
 function syncFilterChips() {
-  document.querySelectorAll('.fchip').forEach(el =>
+  document.querySelectorAll('.fchip[data-cat]').forEach(el =>
     el.classList.toggle('active', activeFilters.has(el.dataset.cat))
+  );
+}
+
+function toggleEdgeFilter(type) {
+  if (activeEdgeFilters.has(type)) activeEdgeFilters.delete(type);
+  else                              activeEdgeFilters.add(type);
+  try { localStorage.setItem(EDGE_FILTER_KEY, JSON.stringify([...activeEdgeFilters])); } catch {}
+  syncEdgeFilterChips();
+  if (selectedNodeId) showNodeEdges(selectedNodeId);
+}
+
+function syncEdgeFilterChips() {
+  document.querySelectorAll('[data-edge]').forEach(el =>
+    el.classList.toggle('active', activeEdgeFilters.has(el.dataset.edge))
   );
 }
 

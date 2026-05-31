@@ -78,11 +78,35 @@ async function loadAll() {
 }
 
 // ─── Hint: banner novedades ───────────────────────────────────────────────────
+function positionEdgeHint() {
+  const bubble = document.getElementById('hint-novedades');
+  const legend = document.querySelector('.legend');
+  if (!bubble || !legend || bubble.classList.contains('hidden')) return;
+  const r = legend.getBoundingClientRect();
+  if (window.innerWidth <= 768) {
+    bubble.classList.add('arrow-down');
+    bubble.classList.remove('arrow-right');
+    bubble.style.left   = r.left + 'px';
+    bubble.style.bottom = (window.innerHeight - r.top + 10) + 'px';
+    bubble.style.right  = 'auto';
+    bubble.style.top    = 'auto';
+  } else {
+    bubble.classList.add('arrow-right');
+    bubble.classList.remove('arrow-down');
+    bubble.style.right  = (window.innerWidth - r.left + 10) + 'px';
+    bubble.style.top    = (r.top + r.height / 2 - 35) + 'px';
+    bubble.style.left   = 'auto';
+    bubble.style.bottom = 'auto';
+  }
+}
+
 (function() {
   if (document.body.classList.contains('embed-mode')) return;
   try {
-    if (!localStorage.getItem('mesh_hint_novedades'))
+    if (!localStorage.getItem('mesh_hint_novedades')) {
       document.getElementById('hint-novedades').classList.remove('hidden');
+      requestAnimationFrame(positionEdgeHint);
+    }
   } catch {}
 })();
 

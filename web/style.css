@@ -367,38 +367,62 @@ header {
 .empty-state svg { margin-bottom: 12px; opacity: .3; }
 
 /* ── Cookie banner ── */
-/* ── Hint banner (novedades) ── */
-.hint-banner {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 16px;
-  background: rgba(125,211,252,.07);
-  border-bottom: 1px solid rgba(125,211,252,.2);
-  font-size: 12px;
+/* ── Hint bubble (novedades) ── */
+.hint-bubble {
+  position: fixed;
+  background: var(--panel);
+  border: 1px solid var(--accent2);
+  border-radius: var(--radius);
+  padding: 10px 28px 10px 12px;
+  font-size: 11px;
   color: var(--muted);
   font-family: var(--sans);
-  flex-shrink: 0;
+  line-height: 1.55;
+  max-width: 200px;
   z-index: 900;
+  box-shadow: 0 4px 20px rgba(0,0,0,.5);
 }
 
-.hint-banner strong { color: var(--text); }
+.hint-bubble strong { color: var(--accent2); }
 
-.hint-banner span { flex: 1; }
-
-.hint-close {
+.hint-bubble-close {
+  position: absolute;
+  top: 5px;
+  right: 7px;
   background: none;
   border: none;
   color: var(--muted);
   cursor: pointer;
-  font-size: 14px;
-  padding: 2px 4px;
+  font-size: 12px;
   line-height: 1;
-  flex-shrink: 0;
+  padding: 2px;
 }
-.hint-close:hover { color: var(--text); }
+.hint-bubble-close:hover { color: var(--text); }
 
-.hint-banner.hidden { display: none; }
+.hint-bubble.hidden { display: none; }
+
+/* Flecha apuntando a la derecha (desktop: burbuja a la izquierda de la leyenda) */
+.hint-bubble.arrow-right::after {
+  content: '';
+  position: absolute;
+  right: -7px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 7px solid transparent;
+  border-right: none;
+  border-left-color: var(--accent2);
+}
+
+/* Flecha apuntando hacia abajo (móvil: burbuja encima de la leyenda) */
+.hint-bubble.arrow-down::after {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  left: 18px;
+  border: 7px solid transparent;
+  border-bottom: none;
+  border-top-color: var(--accent2);
+}
 
 .cookie-banner {
   position: fixed;

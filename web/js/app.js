@@ -77,6 +77,20 @@ async function loadAll() {
   }
 }
 
+// ─── Hint: banner novedades ───────────────────────────────────────────────────
+(function() {
+  if (document.body.classList.contains('embed-mode')) return;
+  try {
+    if (!localStorage.getItem('mesh_hint_novedades'))
+      document.getElementById('hint-novedades').classList.remove('hidden');
+  } catch {}
+})();
+
+function dismissEdgeHint() {
+  try { localStorage.setItem('mesh_hint_novedades', '1'); } catch {}
+  document.getElementById('hint-novedades').classList.add('hidden');
+}
+
 // ─── Cookie consent ───────────────────────────────────────────────────────────
 (function() {
   try {

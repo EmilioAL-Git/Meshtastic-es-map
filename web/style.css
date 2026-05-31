@@ -367,6 +367,39 @@ header {
 .empty-state svg { margin-bottom: 12px; opacity: .3; }
 
 /* ── Cookie banner ── */
+/* ── Hint banner (novedades) ── */
+.hint-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: rgba(125,211,252,.07);
+  border-bottom: 1px solid rgba(125,211,252,.2);
+  font-size: 12px;
+  color: var(--muted);
+  font-family: var(--sans);
+  flex-shrink: 0;
+  z-index: 900;
+}
+
+.hint-banner strong { color: var(--text); }
+
+.hint-banner span { flex: 1; }
+
+.hint-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.hint-close:hover { color: var(--text); }
+
+.hint-banner.hidden { display: none; }
+
 .cookie-banner {
   position: fixed;
   bottom: calc(32px + env(safe-area-inset-bottom) + 12px);

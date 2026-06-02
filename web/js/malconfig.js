@@ -44,7 +44,7 @@ function renderMalConfigTable(nodes) {
           <th>#</th>
           <th>Nombre</th>
           <th>Preset</th>
-          <th>Enviados</th>
+          <th>Paquetes enviados</th>
           <th>Recibidos</th>
           <th>Ratio</th>
           <th></th>

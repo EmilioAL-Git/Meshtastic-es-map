@@ -66,6 +66,10 @@
     </div>
     <div class="sep"></div>
     <span class="last-update" id="last-update">—</span>
+    <button class="malconfig-btn" onclick="openMalConfigModal()" title="Ver nodos mal configurados">
+      <svg width="13" height="12" viewBox="0 0 22 20" aria-hidden="true"><polygon points="11,1 21,19 1,19" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round" opacity=".9"/><text x="11" y="15.5" text-anchor="middle" font-size="9" font-weight="bold" font-family="monospace" fill="#1e293b">!</text></svg>
+      Mal configurados
+    </button>
     <div class="search-wrap">
       <svg class="search-icon" viewBox="0 0 16 16" fill="none">
         <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/>
@@ -167,6 +171,21 @@
   <strong>Nuevo</strong> — los enlaces del mapa son filtrables. Pulsa en la leyenda o usa el panel de filtros para activar o desactivar <strong>Vecino directo</strong> y <strong>Traceroute</strong>.
 </div>
 
+<!-- Modal: Nodos mal configurados -->
+<div class="malconfig-modal" id="malconfig-modal">
+  <div class="malconfig-inner">
+    <div class="malconfig-header">
+      <div class="malconfig-title">
+        <svg width="16" height="15" viewBox="0 0 22 20" aria-hidden="true"><polygon points="11,1 21,19 1,19" fill="#f97316" stroke="#ef4444" stroke-width="1.5" stroke-linejoin="round"/><text x="11" y="15.5" text-anchor="middle" font-size="9" font-weight="bold" font-family="monospace" fill="#1e293b">!</text></svg>
+        Nodos mal configurados
+      </div>
+      <button class="malconfig-close" onclick="closeMalConfigModal()" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="malconfig-tabs" id="malconfig-tabs"></div>
+    <div class="malconfig-content" id="malconfig-content"></div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -202,6 +221,7 @@
 <script src="js/filters.js?v=1.2.1"></script>
 <script src="js/search.js?v=1.2.1"></script>
 <script src="js/ui.js?v=1.2.1"></script>
+<script src="js/malconfig.js?v=1.2.1"></script>
 <script src="js/app.js?v=1.2.1"></script>
 </body>
 </html>

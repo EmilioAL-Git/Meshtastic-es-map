@@ -1,3 +1,39 @@
+// ─── Diagnóstico de problemas ─────────────────────────────────────────────────
+function detectIssues(malData) {
+  const p = malData?.packets;
+  if (!p) return [];
+
+  const issues = [];
+  const t = MAL_CONFIG_THRESHOLDS;
+
+  if (p.range_test >= t.range_test.critical)
+    issues.push({ key: 'range_test', label: 'Range Test activo', severity: 'critical' });
+
+  if (p.position >= t.position.critical)
+    issues.push({ key: 'position', label: `Posición muy frecuente (${p.position}/día)`, severity: 'critical' });
+  else if (p.position >= t.position.high)
+    issues.push({ key: 'position', label: `Posición frecuente (${p.position}/día)`, severity: 'high' });
+
+  if (p.nodeinfo >= t.nodeinfo.critical)
+    issues.push({ key: 'nodeinfo', label: `NodeInfo muy frecuente (${p.nodeinfo}/día)`, severity: 'critical' });
+  else if (p.nodeinfo >= t.nodeinfo.high)
+    issues.push({ key: 'nodeinfo', label: `NodeInfo frecuente (${p.nodeinfo}/día)`, severity: 'high' });
+
+  if (p.telemetry >= t.telemetry.critical)
+    issues.push({ key: 'telemetry', label: `Telemetría muy frecuente (${p.telemetry}/día)`, severity: 'critical' });
+  else if (p.telemetry >= t.telemetry.high)
+    issues.push({ key: 'telemetry', label: `Telemetría frecuente (${p.telemetry}/día)`, severity: 'medium' });
+
+  return issues;
+}
+
+function renderIssueChips(issues) {
+  if (!issues.length) return '<span class="issue-none">—</span>';
+  return issues.map(i =>
+    `<span class="issue-chip ${i.severity}">${escHtml(i.label)}</span>`
+  ).join('');
+}
+
 // ─── Modal: Nodos mal configurados ────────────────────────────────────────────
 function openMalConfigModal() {
   document.getElementById('malconfig-modal').classList.add('open');
@@ -45,14 +81,14 @@ function renderMalConfigTable(nodes) {
           <th>Nombre</th>
           <th>Preset</th>
           <th>Paquetes enviados</th>
-          <th>Recibidos</th>
-          <th>Ratio</th>
+          <th>Problemas detectados</th>
           <th></th>
         </tr>
       </thead>
       <tbody>
         ${nodes.map((n, i) => {
-          const hex = toHex(n.node_id);
+          const hex    = toHex(n.node_id);
+          const issues = detectIssues(n);
           return `<tr>
             <td class="mc-rank">${i + 1}</td>
             <td class="mc-name">
@@ -61,8 +97,7 @@ function renderMalConfigTable(nodes) {
             </td>
             <td><span class="mc-preset">${escHtml(n.channel)}</span></td>
             <td class="mc-num">${n.sent.toLocaleString('es-ES')}</td>
-            <td class="mc-num mc-muted">${n.seen.toLocaleString('es-ES')}</td>
-            <td class="mc-num mc-muted">${n.avg.toFixed(2)}</td>
+            <td class="mc-issues">${renderIssueChips(issues)}</td>
             <td><a class="mc-link" href="https://meshview.meshtastic.es/node/${n.node_id}" target="_blank" rel="noopener">Ver →</a></td>
           </tr>`;
         }).join('')}

@@ -56,7 +56,14 @@ const EDGE_STYLE_HI = {
 
 // ─── Nodos mal configurados ───────────────────────────────────────────────────
 const MAL_CONFIG_URL = 'https://datos.meshtastic.es/top-mal-configurados';
-const malConfigurados = new Map();      // !hexvalue → { avg, sent, seen, ... }
+const malConfigurados = new Map();      // !hexvalue → { avg, sent, seen, packets, ... }
+
+const MAL_CONFIG_THRESHOLDS = {
+  range_test: { critical: 1 },
+  position:   { critical: 200, high: 48 },
+  nodeinfo:   { critical: 24,  high: 8  },
+  telemetry:  { critical: 10,  high: 4  },
+};
 
 // ─── Renderer SVG compartido ──────────────────────────────────────────────────
 const canvasRenderer = L.svg({ padding: 0.5 });

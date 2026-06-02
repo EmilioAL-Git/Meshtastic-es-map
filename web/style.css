@@ -307,6 +307,54 @@ header {
 }
 .mal-config-link:hover { text-decoration: underline; }
 
+.mal-config-issue {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  padding: 1px 0;
+}
+.mal-config-issue::before {
+  content: '●';
+  font-size: 8px;
+  flex-shrink: 0;
+}
+.mal-config-issue.issue-critical { color: #ef4444; }
+.mal-config-issue.issue-critical::before { color: #ef4444; }
+.mal-config-issue.issue-high { color: #f97316; }
+.mal-config-issue.issue-high::before { color: #f97316; }
+.mal-config-issue.issue-medium { color: #eab308; }
+.mal-config-issue.issue-medium::before { color: #eab308; }
+
+/* ── Issue chips (tabla modal) ── */
+.mc-issues { min-width: 180px; }
+
+.issue-chip {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  white-space: nowrap;
+  margin: 2px 2px 2px 0;
+}
+.issue-chip.critical {
+  background: rgba(239,68,68,.12);
+  color: #ef4444;
+  border: 1px solid rgba(239,68,68,.3);
+}
+.issue-chip.high {
+  background: rgba(249,115,22,.12);
+  color: #f97316;
+  border: 1px solid rgba(249,115,22,.3);
+}
+.issue-chip.medium {
+  background: rgba(234,179,8,.10);
+  color: #eab308;
+  border: 1px solid rgba(234,179,8,.3);
+}
+.issue-none { color: var(--muted); font-size: 11px; }
+
 .detail-row {
   display: flex;
   justify-content: space-between;
@@ -754,11 +802,9 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   background: var(--panel);
 }
 
-/* Alinear a la derecha cabeceras de columnas numéricas (Enviados, Recibidos, Ratio, Ver) */
+/* Col 4 (Enviados) y col 6 (Ver) alineadas a la derecha */
 .malconfig-table th:nth-child(4),
-.malconfig-table th:nth-child(5),
-.malconfig-table th:nth-child(6),
-.malconfig-table th:nth-child(7) { text-align: right; }
+.malconfig-table th:nth-child(6) { text-align: right; }
 
 .malconfig-table td {
   padding: 9px 10px;
@@ -1069,13 +1115,9 @@ body.embed-mode .app-footer { display: none; }
   .malconfig-modal { padding: 0; align-items: flex-end; }
   .malconfig-inner { max-height: 92dvh; border-radius: var(--radius) var(--radius) 0 0; }
 
-  /* Ocultar columnas Preset, Recibidos y Ratio en móvil */
+  /* Ocultar columna Preset en móvil (Problemas se mantiene visible) */
   .malconfig-table th:nth-child(3),
-  .malconfig-table td:nth-child(3),
-  .malconfig-table th:nth-child(5),
-  .malconfig-table td:nth-child(5),
-  .malconfig-table th:nth-child(6),
-  .malconfig-table td:nth-child(6) { display: none; }
+  .malconfig-table td:nth-child(3) { display: none; }
 
 }
 

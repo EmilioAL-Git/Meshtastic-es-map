@@ -99,8 +99,11 @@ function selectNode(nodeId, fly = false) {
   const malData = malConfigurados.get(node.node_id);
   const malBanner = malData
     ? `<div class="mal-config-banner">
-        <svg width="14" height="13" viewBox="0 0 22 20" aria-hidden="true"><polygon points="11,1 21,19 1,19" fill="#f97316" stroke="#ef4444" stroke-width="2" stroke-linejoin="round"/><text x="11" y="15.5" text-anchor="middle" font-size="10" font-weight="bold" font-family="monospace" fill="#1e293b">!</text></svg>
-        <span>Este nodo puede estar <strong>mal configurado</strong> (avg: ${malData.avg.toFixed(2)}).</span>
+        <div class="mal-config-row">
+          <svg width="14" height="13" viewBox="0 0 22 20" aria-hidden="true"><polygon points="11,1 21,19 1,19" fill="#f97316" stroke="#ef4444" stroke-width="2" stroke-linejoin="round"/><text x="11" y="15.5" text-anchor="middle" font-size="10" font-weight="bold" font-family="monospace" fill="#1e293b">!</text></svg>
+          <span>Este nodo puede estar <strong>mal configurado</strong>.</span>
+        </div>
+        <div class="mal-config-stat">Paquetes enviados en las últimas 24h: <strong>${malData.sent}</strong></div>
         <a class="mal-config-link" href="https://meshtastic.es" target="_blank" rel="noopener">Ver recomendaciones →</a>
       </div>`
     : '';

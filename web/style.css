@@ -276,7 +276,7 @@ header {
 .mal-config-banner {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   padding: 10px 12px;
   margin-bottom: 10px;
   background: rgba(239,68,68,.08);
@@ -287,16 +287,23 @@ header {
   line-height: 1.5;
 }
 
-.mal-config-banner svg { flex-shrink: 0; }
+.mal-config-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mal-config-row svg { flex-shrink: 0; }
 
 .mal-config-banner strong { color: #f97316; }
+
+.mal-config-stat { font-size: 11px; }
 
 .mal-config-link {
   color: #f97316;
   text-decoration: none;
   font-family: var(--mono);
   font-size: 10px;
-  align-self: flex-end;
 }
 .mal-config-link:hover { text-decoration: underline; }
 

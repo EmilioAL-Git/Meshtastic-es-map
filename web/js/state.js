@@ -54,6 +54,10 @@ const EDGE_STYLE_HI = {
   traceroute: { color: '#dc2626', weight: 1.5, opacity: 0.75, dashArray: '6 5' },
 };
 
+// ─── Nodos mal configurados ───────────────────────────────────────────────────
+const MAL_CONFIG_URL = 'https://datos.meshtastic.es/top-mal-configurados';
+const malConfigurados = new Map();      // !hexvalue → { avg, sent, seen, ... }
+
 // ─── Renderer SVG compartido ──────────────────────────────────────────────────
 const canvasRenderer = L.svg({ padding: 0.5 });
 

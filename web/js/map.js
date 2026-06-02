@@ -86,6 +86,18 @@ function makeRouterIcon(color, radius) {
   });
 }
 
+function makeMalConfiguradoIcon(color) {
+  return L.divIcon({
+    html: `<svg width="22" height="20" viewBox="0 0 22 20" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="11,1 21,19 1,19" fill="${color}" stroke="#ef4444" stroke-width="2" stroke-linejoin="round"/>
+      <text x="11" y="15.5" text-anchor="middle" font-size="10" font-weight="bold" font-family="monospace" fill="#1e293b">!</text>
+    </svg>`,
+    iconSize:   [22, 20],
+    iconAnchor: [11, 19],
+    className:  '',
+  });
+}
+
 function makeSelectedIcon(color) {
   return L.divIcon({
     html: `
@@ -112,6 +124,7 @@ function updateMarkerSizes() {
   allNodes.forEach(n => {
     const m = markers[n.node_id];
     if (!m) return;
+    if (malConfigurados.has(n.node_id)) return;
     if (m.setRadius) m.setRadius(sz);
     else if (isRouter(n) && !n.is_mqtt_gateway) m.setIcon(makeRouterIcon(nodeColor(n), sz));
   });
@@ -130,9 +143,13 @@ function renderNodes(nodes) {
     if (node.latitude == null || node.longitude == null) return;
 
     const color       = nodeColor(node);
-    const useIconMarker = isRouter(node) && !node.is_mqtt_gateway;
+    const isMalConfig = malConfigurados.has(node.node_id);
+    const useIconMarker = isMalConfig || (isRouter(node) && !node.is_mqtt_gateway);
     const marker = useIconMarker
-      ? L.marker([node.latitude, node.longitude], { icon: makeRouterIcon(color, sz), pane: 'markersPane' })
+      ? L.marker([node.latitude, node.longitude], {
+          icon: isMalConfig ? makeMalConfiguradoIcon(color) : makeRouterIcon(color, sz),
+          pane: 'markersPane',
+        })
       : L.circleMarker([node.latitude, node.longitude], { ...circleMarkerOptions(color, sz), renderer: markerRenderer });
 
     if (!isMobile && !isEmbed) {

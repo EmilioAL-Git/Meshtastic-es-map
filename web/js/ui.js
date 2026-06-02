@@ -96,7 +96,16 @@ function selectNode(nodeId, fly = false) {
       <span class="detail-val ${k === 'ID' ? 'accent' : ''}">${escHtml(String(v))}</span>
     </div>`).join('');
 
-  document.getElementById('detail-body').innerHTML = fieldsHtml;
+  const malData = malConfigurados.get(node.node_id);
+  const malBanner = malData
+    ? `<div class="mal-config-banner">
+        <svg width="14" height="13" viewBox="0 0 22 20" aria-hidden="true"><polygon points="11,1 21,19 1,19" fill="#f97316" stroke="#ef4444" stroke-width="2" stroke-linejoin="round"/><text x="11" y="15.5" text-anchor="middle" font-size="10" font-weight="bold" font-family="monospace" fill="#1e293b">!</text></svg>
+        <span>Este nodo puede estar <strong>mal configurado</strong> (avg: ${malData.avg.toFixed(2)}).</span>
+        <a class="mal-config-link" href="https://meshtastic.es" target="_blank" rel="noopener">Ver recomendaciones →</a>
+      </div>`
+    : '';
+
+  document.getElementById('detail-body').innerHTML = malBanner + fieldsHtml;
 
   document.getElementById('detail-panel').classList.add('visible');
   document.body.classList.add('detail-open');

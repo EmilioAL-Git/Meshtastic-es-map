@@ -10,13 +10,18 @@ function selectNode(nodeId, fly = false) {
   if (selOverlay) { map.removeLayer(selOverlay); selOverlay = null; }
   if (prevNodeId && markers[prevNodeId]) {
     const prev = allNodes.find(n => n.node_id === prevNodeId);
-    if (prev && markers[prevNodeId].setStyle)
-      markers[prevNodeId].setStyle({ fillOpacity: circleMarkerOptions(nodeColor(prev)).fillOpacity, opacity: 1 });
+    if (prev) {
+      if (markers[prevNodeId].setStyle)
+        markers[prevNodeId].setStyle({ fillOpacity: circleMarkerOptions(nodeColor(prev)).fillOpacity, opacity: 1 });
+      else if (markers[prevNodeId].setOpacity)
+        markers[prevNodeId].setOpacity(1);
+    }
   }
 
   if (node.latitude != null && node.longitude != null) {
     if (markers[nodeId]) {
       if (markers[nodeId].setStyle) markers[nodeId].setStyle({ fillOpacity: 0, opacity: 0 });
+      else if (markers[nodeId].setOpacity) markers[nodeId].setOpacity(0);
       selOverlay = L.marker([node.latitude, node.longitude], {
         icon: makeSelectedIcon(nodeColor(node)),
         interactive: false,
@@ -146,8 +151,12 @@ function closeDetail() {
   if (selOverlay) { map.removeLayer(selOverlay); selOverlay = null; }
   if (selectedNodeId && markers[selectedNodeId]) {
     const n = allNodes.find(n => n.node_id === selectedNodeId);
-    if (n && markers[selectedNodeId].setStyle)
-      markers[selectedNodeId].setStyle({ fillOpacity: circleMarkerOptions(nodeColor(n)).fillOpacity, opacity: 1 });
+    if (n) {
+      if (markers[selectedNodeId].setStyle)
+        markers[selectedNodeId].setStyle({ fillOpacity: circleMarkerOptions(nodeColor(n)).fillOpacity, opacity: 1 });
+      else if (markers[selectedNodeId].setOpacity)
+        markers[selectedNodeId].setOpacity(1);
+    }
   }
   selectedNodeId = null;
   document.getElementById('detail-panel').classList.remove('visible');

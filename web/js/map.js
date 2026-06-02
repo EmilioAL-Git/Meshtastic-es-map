@@ -86,14 +86,14 @@ function makeRouterIcon(color, radius) {
   });
 }
 
-function makeMalConfiguradoIcon(color) {
+function makeMalConfiguradoBadge() {
   return L.divIcon({
-    html: `<svg width="22" height="20" viewBox="0 0 22 20" xmlns="http://www.w3.org/2000/svg">
-      <polygon points="11,1 21,19 1,19" fill="${color}" stroke="#ef4444" stroke-width="2" stroke-linejoin="round"/>
-      <text x="11" y="15.5" text-anchor="middle" font-size="10" font-weight="bold" font-family="monospace" fill="#1e293b">!</text>
+    html: `<svg width="11" height="10" viewBox="0 0 11 10" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="5.5,0.5 10.5,9.5 0.5,9.5" fill="#f97316" stroke="#ef4444" stroke-width="1" stroke-linejoin="round"/>
+      <text x="5.5" y="8" text-anchor="middle" font-size="5" font-weight="bold" font-family="monospace" fill="#1e293b">!</text>
     </svg>`,
-    iconSize:   [22, 20],
-    iconAnchor: [11, 19],
+    iconSize:   [11, 10],
+    iconAnchor: [-5, 10],  // aparece arriba-derecha del nodo
     className:  '',
   });
 }
@@ -120,36 +120,37 @@ function markerSize() {
 }
 
 function updateMarkerSizes() {
-  const sz = markerSize();
+  const sz      = markerSize();
+  const badgeOp = map.getZoom() <= 7 ? 0 : 1;
   allNodes.forEach(n => {
     const m = markers[n.node_id];
     if (!m) return;
-    if (malConfigurados.has(n.node_id)) return;
     if (m.setRadius) m.setRadius(sz);
     else if (isRouter(n) && !n.is_mqtt_gateway) m.setIcon(makeRouterIcon(nodeColor(n), sz));
+    const b = malMarkers[n.node_id];
+    if (b) b.setOpacity(badgeOp);
   });
 }
 
 // ─── Renderizar nodos ─────────────────────────────────────────────────────────
 function renderNodes(nodes) {
   Object.values(markers).forEach(m => map.removeLayer(m));
-  markers = {};
+  Object.values(malMarkers).forEach(m => map.removeLayer(m));
+  markers    = {};
+  malMarkers = {};
 
   const isMobile = window.innerWidth <= 768;
   const isEmbed  = document.body.classList.contains('embed-mode');
   const sz       = markerSize();
+  const badgeOp  = map.getZoom() <= 7 ? 0 : 1;
 
   nodes.forEach(node => {
     if (node.latitude == null || node.longitude == null) return;
 
-    const color       = nodeColor(node);
-    const isMalConfig = malConfigurados.has(node.node_id);
-    const useIconMarker = isMalConfig || (isRouter(node) && !node.is_mqtt_gateway);
+    const color         = nodeColor(node);
+    const useIconMarker = isRouter(node) && !node.is_mqtt_gateway;
     const marker = useIconMarker
-      ? L.marker([node.latitude, node.longitude], {
-          icon: isMalConfig ? makeMalConfiguradoIcon(color) : makeRouterIcon(color, sz),
-          pane: 'markersPane',
-        })
+      ? L.marker([node.latitude, node.longitude], { icon: makeRouterIcon(color, sz), pane: 'markersPane' })
       : L.circleMarker([node.latitude, node.longitude], { ...circleMarkerOptions(color, sz), renderer: markerRenderer });
 
     if (!isMobile && !isEmbed) {
@@ -182,6 +183,16 @@ function renderNodes(nodes) {
     marker.on('click', () => { markerClicked = true; selectNode(node.node_id); });
     marker.addTo(map);
     markers[node.node_id] = marker;
+
+    if (malConfigurados.has(node.node_id)) {
+      const badge = L.marker([node.latitude, node.longitude], {
+        icon: makeMalConfiguradoBadge(),
+        interactive: false,
+        pane: 'markersPane',
+        opacity: badgeOp,
+      }).addTo(map);
+      malMarkers[node.node_id] = badge;
+    }
   });
 }
 

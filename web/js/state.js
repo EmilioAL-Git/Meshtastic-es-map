@@ -10,6 +10,7 @@ let MAP_ZOOM     = 8;
 let allNodes       = [];
 let allEdges       = [];
 let markers        = {};     // node_id → Leaflet circleMarker
+let malMarkers     = {};     // node_id → Leaflet badge marker (triángulo de aviso)
 let firstLoad      = true;
 let autoFitDone    = false;
 let loadRunning    = false;

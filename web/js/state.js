@@ -9,8 +9,7 @@ let MAP_ZOOM     = 8;
 // ─── Estado global ────────────────────────────────────────────────────────────
 let allNodes       = [];
 let allEdges       = [];
-let markers        = {};     // node_id → Leaflet circleMarker
-let malMarkers     = {};     // node_id → Leaflet badge marker (triángulo de aviso)
+let markers        = {};     // node_id → Leaflet marker
 let firstLoad      = true;
 let autoFitDone    = false;
 let loadRunning    = false;

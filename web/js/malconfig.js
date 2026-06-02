@@ -63,7 +63,7 @@ function renderMalConfigTable(nodes) {
             <td class="mc-num">${n.sent.toLocaleString('es-ES')}</td>
             <td class="mc-num mc-muted">${n.seen.toLocaleString('es-ES')}</td>
             <td class="mc-num mc-muted">${n.avg.toFixed(2)}</td>
-            <td><a class="mc-link" href="https://meshview.meshtastic.es/node/${escHtml(hex)}" target="_blank" rel="noopener">Ver →</a></td>
+            <td><a class="mc-link" href="https://meshview.meshtastic.es/node/${n.node_id}" target="_blank" rel="noopener">Ver →</a></td>
           </tr>`;
         }).join('')}
       </tbody>

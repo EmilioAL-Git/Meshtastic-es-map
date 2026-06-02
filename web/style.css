@@ -754,6 +754,12 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   background: var(--panel);
 }
 
+/* Alinear a la derecha cabeceras de columnas numéricas (Enviados, Recibidos, Ratio, Ver) */
+.malconfig-table th:nth-child(4),
+.malconfig-table th:nth-child(5),
+.malconfig-table th:nth-child(6),
+.malconfig-table th:nth-child(7) { text-align: right; }
+
 .malconfig-table td {
   padding: 9px 10px;
   border-bottom: 1px solid rgba(31,45,69,.4);
@@ -1057,6 +1063,20 @@ body.embed-mode .app-footer { display: none; }
   body.embed-mode .filter-toggle-btn {
     top: 58px; /* debajo del buscador flotante */
   }
+}
+
+@media (max-width: 768px) {
+  .malconfig-modal { padding: 0; align-items: flex-end; }
+  .malconfig-inner { max-height: 92dvh; border-radius: var(--radius) var(--radius) 0 0; }
+
+  /* Ocultar columnas Preset, Recibidos y Ratio en móvil */
+  .malconfig-table th:nth-child(3),
+  .malconfig-table td:nth-child(3),
+  .malconfig-table th:nth-child(5),
+  .malconfig-table td:nth-child(5),
+  .malconfig-table th:nth-child(6),
+  .malconfig-table td:nth-child(6) { display: none; }
+
 }
 
 @media (max-width: 768px) {

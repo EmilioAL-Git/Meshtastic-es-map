@@ -295,7 +295,7 @@ header {
 
 .mal-config-row svg { flex-shrink: 0; }
 
-.mal-config-banner strong { color: #f97316; }
+.mal-config-banner strong { color: var(--text); }
 
 .mal-config-stat { font-size: 11px; }
 

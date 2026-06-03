@@ -59,12 +59,15 @@ const MAL_CONFIG_URL = 'https://datos.meshtastic.es/top-mal-configurados';
 const malConfigurados = new Map();      // !hexvalue → { avg, sent, seen, packets, ... }
 
 const MAL_CONFIG_THRESHOLDS = {
-  range_test: { critical: 1 },
-  position:   { critical: 200, high: 48 },
-  nodeinfo:   { critical: 24,  high: 8  },
-  telemetry:  { critical: 10,  high: 4  },
-  routing:    { high: 30 },
-  traceroute: { high: 30 },
+  range_test:            { critical: 1 },
+  position_fixed:        { critical: 48, high: 12  },
+  position_mobile:       { critical: 96, high: 48  },
+  nodeinfo:              { critical: 24, high: 8   },
+  telemetry_device:      { critical: 10, high: 4   },
+  telemetry_environment: { high: 6,      medium: 6 },
+  telemetry_power:       { high: 10,     medium: 6 },
+  routing:               { critical: 150, high: 30 },
+  traceroute_auto:       { critical: 50, high: 20  },
 };
 
 // ─── Renderer SVG compartido ──────────────────────────────────────────────────

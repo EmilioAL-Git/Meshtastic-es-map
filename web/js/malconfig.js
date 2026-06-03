@@ -103,11 +103,12 @@ function detectIssues(malData) {
   // Routing: solo avisar si es automático (uniforme en el tiempo)
   // Privados, admin remota, etc. generan ACKs irregulares → no se avisa
   // Fallback si no hay datos de uniformidad: umbral muy alto (150/día)
-  const routingCount = p.routing || 0;
-  const routingAuto  = ro?.is_automatic ?? (routingCount >= t.routing.critical);
+  const routingCount      = p.routing || 0;
+  const routingAuto       = ro?.is_automatic ?? (routingCount >= t.routing.critical);
+  const routingShortCycle = ro && !ro.is_automatic && ro.avg_interval_min < 10 && routingCount > 50;
 
-  if (routingAuto && routingCount >= t.routing.high)
-    issues.push({ key: 'routing', label: `Routing automático (${p.routing}/día)`, severity: routingCount >= t.routing.critical ? 'critical' : 'high' });
+  if ((routingAuto || routingShortCycle) && routingCount >= t.routing.high)
+    issues.push({ key: 'routing', label: `Routing excesivo (${p.routing}/día)`, severity: routingCount >= t.routing.critical ? 'critical' : 'high' });
 
   // Traceroute — solo avisar si es automático
   if (tr?.is_automatic) {

@@ -53,6 +53,7 @@ function detectIssues(malData) {
   const tel = malData?.telemetry_detail || {};
   const tr  = malData?.traceroute_detail;
   const ni  = malData?.nodeinfo_detail;
+  const ro  = malData?.routing_detail;
 
   // Range Test
   if ((p.range_test || 0) >= t.range_test.critical)
@@ -99,11 +100,15 @@ function detectIssues(malData) {
     issues.push({ key: 'telemetry_device', label: `Telemetría muy frecuente (${p.telemetry}/día)`, severity: 'critical' });
   }
 
-  // Routing
-  if ((p.routing || 0) >= t.routing.critical)
-    issues.push({ key: 'routing', label: `Routing excesivo (${p.routing}/día)`, severity: 'critical' });
-  else if ((p.routing || 0) >= t.routing.high)
-    issues.push({ key: 'routing', label: `Routing elevado (${p.routing}/día)`, severity: 'high' });
+  // Routing — solo avisar si es automático (o sin datos y conteo muy alto)
+  const routingCount = p.routing || 0;
+  const routingAuto  = ro ? ro.is_automatic : routingCount >= t.routing.critical;
+  if (routingAuto) {
+    if (routingCount >= t.routing.critical)
+      issues.push({ key: 'routing', label: `Routing automático excesivo (${p.routing}/día)`, severity: 'critical' });
+    else if (routingCount >= t.routing.high)
+      issues.push({ key: 'routing', label: `Routing automático elevado (${p.routing}/día)`, severity: 'high' });
+  }
 
   // Traceroute — solo avisar si es automático
   if (tr?.is_automatic) {

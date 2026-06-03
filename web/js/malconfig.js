@@ -110,13 +110,13 @@ function detectIssues(malData) {
   if ((routingAuto || routingShortCycle) && routingCount >= t.routing.high)
     issues.push({ key: 'routing', label: `Routing excesivo (${p.routing}/día)`, severity: routingCount >= t.routing.critical ? 'critical' : 'high' });
 
-  // Traceroute — solo avisar si es automático
-  if (tr?.is_automatic) {
-    if ((p.traceroute || 0) >= t.traceroute_auto.critical)
-      issues.push({ key: 'traceroute_auto', label: `Traceroute automático excesivo (${p.traceroute}/día)`, severity: 'critical' });
-    else if ((p.traceroute || 0) >= t.traceroute_auto.high)
-      issues.push({ key: 'traceroute_auto', label: `Traceroute automático (${p.traceroute}/día)`, severity: 'high' });
-  }
+  // Traceroute — avisar si es automático O si el ciclo es corto aunque el CV sea alto
+  const tracerouteCount      = p.traceroute || 0;
+  const tracerouteAuto       = tr?.is_automatic ?? false;
+  const tracerouteShortCycle = tr && !tr.is_automatic && tr.avg_interval_min < 20 && tracerouteCount > 50;
+
+  if ((tracerouteAuto || tracerouteShortCycle) && tracerouteCount >= t.traceroute_auto.high)
+    issues.push({ key: 'traceroute_auto', label: `Traceroute sistemático (${p.traceroute}/día)`, severity: tracerouteCount >= t.traceroute_auto.critical ? 'critical' : 'high' });
 
   return issues;
 }

@@ -52,6 +52,7 @@ function detectIssues(malData) {
   const mob = malData?.mobility;
   const tel = malData?.telemetry_detail || {};
   const tr  = malData?.traceroute_detail;
+  const ni  = malData?.nodeinfo_detail;
 
   // Range Test
   if ((p.range_test || 0) >= t.range_test.critical)
@@ -72,11 +73,15 @@ function detectIssues(malData) {
     }
   }
 
-  // NodeInfo
-  if ((p.nodeinfo || 0) >= t.nodeinfo.critical)
-    issues.push({ key: 'nodeinfo', label: `NodeInfo muy frecuente (${p.nodeinfo}/día)`, severity: 'critical' });
-  else if ((p.nodeinfo || 0) >= t.nodeinfo.high)
-    issues.push({ key: 'nodeinfo', label: `NodeInfo frecuente (${p.nodeinfo}/día)`, severity: 'high' });
+  // NodeInfo — solo avisar si es automático (o sin datos de uniformidad y conteo muy alto)
+  const nodeinfoCount = p.nodeinfo || 0;
+  const nodeinfoAuto  = ni ? ni.is_automatic : nodeinfoCount >= t.nodeinfo.critical;
+  if (nodeinfoAuto) {
+    if (nodeinfoCount >= t.nodeinfo.critical)
+      issues.push({ key: 'nodeinfo', label: `NodeInfo automático muy frecuente (${p.nodeinfo}/día)`, severity: 'critical' });
+    else if (nodeinfoCount >= t.nodeinfo.high)
+      issues.push({ key: 'nodeinfo', label: `NodeInfo automático frecuente (${p.nodeinfo}/día)`, severity: 'high' });
+  }
 
   // Telemetría — por sub-tipo si disponible
   if (tel.device !== undefined) {
@@ -130,6 +135,7 @@ function openNodeReport(nodeId) {
   const tel    = malData.telemetry_detail || {};
   const mob    = malData.mobility;
   const tr     = malData.traceroute_detail;
+  const ni     = malData.nodeinfo_detail;
   const hex    = toHex(malData.node_id);
   const name   = escHtml(malData.long_name || malData.short_name || hex);
   const total  = malData.sent || 1;
@@ -187,6 +193,9 @@ function openNodeReport(nodeId) {
       }
       if (k === 'traceroute' && tr) {
         subHtml = `<div class="nr-bar-sub"><span>${tr.is_automatic ? '⚡ Automático' : 'Manual'} · cada ${tr.avg_interval_min}min</span></div>`;
+      }
+      if (k === 'nodeinfo' && ni) {
+        subHtml = `<div class="nr-bar-sub"><span>${ni.is_automatic ? '⚡ Automático' : 'Manual/petición'} · cada ${ni.avg_interval_min}min</span></div>`;
       }
       return `<div class="nr-bar-row ${hasIssue ? 'nr-bar-flagged' : ''}">
         <div class="nr-bar-label">${escHtml(label)}</div>

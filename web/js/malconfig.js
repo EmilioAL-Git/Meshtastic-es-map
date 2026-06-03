@@ -42,76 +42,9 @@ const ISSUE_DEFS = {
   },
 };
 
-// ─── Diagnóstico de problemas ─────────────────────────────────────────────────
+// ─── Diagnóstico de problemas (calculado en el servidor, leído aquí) ──────────
 function detectIssues(malData) {
-  const p   = malData?.packets;
-  if (!p) return [];
-
-  const issues = [];
-  const t   = MAL_CONFIG_THRESHOLDS;
-  const mob = malData?.mobility;
-  const tel = malData?.telemetry_detail || {};
-  const tr  = malData?.traceroute_detail;
-  const ni  = malData?.nodeinfo_detail;
-  const ro  = malData?.routing_detail;
-
-  // Range Test
-  if ((p.range_test || 0) >= t.range_test.critical)
-    issues.push({ key: 'range_test', label: `Range Test activo (${p.range_test}/día)`, severity: 'critical' });
-
-  // Posición — umbrales distintos según movilidad
-  if ((p.position || 0) > 0) {
-    if (mob !== null && mob !== undefined) {
-      const pt    = mob.is_fixed ? t.position_fixed : t.position_mobile;
-      const key   = mob.is_fixed ? 'position_fixed' : 'position_mobile';
-      const label = mob.is_fixed ? 'Posición muy frecuente para nodo fijo' : 'Posición muy frecuente para nodo móvil';
-      if (p.position >= pt.critical)
-        issues.push({ key, label: `${label} (${p.position}/día)`, severity: 'critical' });
-      else if (p.position >= pt.high)
-        issues.push({ key, label: `${label.replace('muy ', '')} (${p.position}/día)`, severity: 'high' });
-    } else if (p.position >= t.position_fixed.critical) {
-      issues.push({ key: 'position_unknown', label: `Posición frecuente (${p.position}/día)`, severity: 'high' });
-    }
-  }
-
-  // NodeInfo — solo avisar si es automático (o sin datos de uniformidad y conteo muy alto)
-  const nodeinfoCount = p.nodeinfo || 0;
-  const nodeinfoAuto  = ni ? ni.is_automatic : nodeinfoCount >= t.nodeinfo.critical;
-  if (nodeinfoAuto) {
-    if (nodeinfoCount >= t.nodeinfo.critical)
-      issues.push({ key: 'nodeinfo', label: `NodeInfo automático muy frecuente (${p.nodeinfo}/día)`, severity: 'critical' });
-    else if (nodeinfoCount >= t.nodeinfo.high)
-      issues.push({ key: 'nodeinfo', label: `NodeInfo automático frecuente (${p.nodeinfo}/día)`, severity: 'high' });
-  }
-
-  // Telemetría — por sub-tipo si disponible
-  if (tel.device !== undefined) {
-    if ((tel.device || 0) >= t.telemetry_device.critical)
-      issues.push({ key: 'telemetry_device', label: `Telemetría dispositivo muy frecuente (${tel.device}/día)`, severity: 'critical' });
-    else if ((tel.device || 0) >= t.telemetry_device.high)
-      issues.push({ key: 'telemetry_device', label: `Telemetría dispositivo frecuente (${tel.device}/día)`, severity: 'medium' });
-
-    if ((tel.environment || 0) >= t.telemetry_environment.high)
-      issues.push({ key: 'telemetry_environment', label: `Telemetría entorno frecuente (${tel.environment}/día)`, severity: 'medium' });
-
-    if ((tel.power || 0) >= t.telemetry_power.high)
-      issues.push({ key: 'telemetry_power', label: `Telemetría eléctrica frecuente (${tel.power}/día)`, severity: 'medium' });
-  } else if ((p.telemetry || 0) >= t.telemetry_device.critical) {
-    issues.push({ key: 'telemetry_device', label: `Telemetría muy frecuente (${p.telemetry}/día)`, severity: 'critical' });
-  }
-
-  // Routing: solo avisar si es automático (uniforme en el tiempo)
-  // Privados, admin remota, etc. generan ACKs irregulares → no se avisa
-  // Fallback si no hay datos de uniformidad: umbral muy alto (150/día)
-  const routingCount = p.routing || 0;
-  if ((ro?.is_automatic ?? (routingCount >= t.routing.critical)) && routingCount >= t.routing.high)
-    issues.push({ key: 'routing', label: `Routing excesivo (${p.routing}/día)`, severity: routingCount >= t.routing.critical ? 'critical' : 'high' });
-
-  const tracerouteCount = p.traceroute || 0;
-  if (tr?.is_automatic && tracerouteCount >= t.traceroute_auto.high)
-    issues.push({ key: 'traceroute_auto', label: `Traceroute sistemático (${p.traceroute}/día)`, severity: tracerouteCount >= t.traceroute_auto.critical ? 'critical' : 'high' });
-
-  return issues;
+  return malData?.issues || [];
 }
 
 function renderIssueChips(issues) {

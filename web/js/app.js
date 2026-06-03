@@ -9,11 +9,20 @@ async function loadAll() {
   if (loadRunning) return;
   loadRunning = true;
   try {
-    const [nodesResp, edgesResp, statsResp] = await Promise.allSettled([
+    const [nodesResp, edgesResp, statsResp, malResp] = await Promise.allSettled([
       fetchJSON('/data/nodes.json'),
       fetchJSON('/data/edges.json'),
       fetchJSON('/data/stats.json'),
+      fetch(MAL_CONFIG_URL + '?t=' + Date.now()).then(r => r.ok ? r.json() : null).catch(() => null),
     ]);
+
+    malConfigurados.clear();
+    if (malResp.status === 'fulfilled' && malResp.value?.nodes) {
+      malResp.value.nodes.forEach(n => {
+        const hex = '!' + n.node_id.toString(16).padStart(8, '0');
+        malConfigurados.set(hex, n);
+      });
+    }
 
     if (nodesResp.status === 'fulfilled') {
       allNodes = nodesResp.value.nodes || [];

@@ -273,6 +273,189 @@ header {
 
 .detail-body { padding: 14px 16px; }
 
+.mal-config-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  background: rgba(239,68,68,.08);
+  border: 1px solid rgba(239,68,68,.35);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.mal-config-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mal-config-row svg { flex-shrink: 0; }
+
+.mal-config-banner strong { color: var(--text); }
+
+.mal-config-stat { font-size: 11px; }
+
+.mal-config-link {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #f97316;
+  text-decoration: none;
+  font-family: var(--mono);
+  font-size: 10px;
+  align-self: flex-start;
+}
+.mal-config-link:hover { text-decoration: underline; }
+
+.mal-config-issue {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  padding: 1px 0;
+}
+.mal-config-issue::before {
+  content: '●';
+  font-size: 8px;
+  flex-shrink: 0;
+}
+.mal-config-issue.issue-critical { color: #ef4444; }
+.mal-config-issue.issue-critical::before { color: #ef4444; }
+.mal-config-issue.issue-high { color: #f97316; }
+.mal-config-issue.issue-high::before { color: #f97316; }
+.mal-config-issue.issue-medium { color: #eab308; }
+.mal-config-issue.issue-medium::before { color: #eab308; }
+
+/* ── Issue chips (tabla modal) ── */
+.mc-issues { min-width: 180px; }
+
+.issue-chip {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  white-space: nowrap;
+  margin: 2px 2px 2px 0;
+}
+.issue-chip.critical {
+  background: rgba(239,68,68,.12);
+  color: #ef4444;
+  border: 1px solid rgba(239,68,68,.3);
+}
+.issue-chip.high {
+  background: rgba(249,115,22,.12);
+  color: #f97316;
+  border: 1px solid rgba(249,115,22,.3);
+}
+.issue-chip.medium {
+  background: rgba(234,179,8,.10);
+  color: #eab308;
+  border: 1px solid rgba(234,179,8,.3);
+}
+.issue-none { color: var(--muted); font-size: 11px; }
+
+/* ── Modal reporte de nodo ── */
+.nr-inner { max-width: 560px; }
+
+.nr-header { margin-bottom: 12px; }
+
+/* Indicador fijo/móvil */
+.nr-mobility {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+.nr-mobility strong { color: var(--text); }
+.nr-mob-icon { font-size: 14px; flex-shrink: 0; }
+.nr-mobility-fixed  { background: rgba(94,234,212,.08); border: 1px solid rgba(94,234,212,.2); color: var(--muted); }
+.nr-mobility-mobile { background: rgba(125,211,252,.08); border: 1px solid rgba(125,211,252,.2); color: var(--muted); }
+
+/* Chip fijo/móvil en tabla */
+.mob-chip {
+  display: inline-block;
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  vertical-align: middle;
+  margin-left: 4px;
+  font-family: var(--mono);
+}
+.mob-fixed  { background: rgba(94,234,212,.12);  color: #5eead4; }
+.mob-mobile { background: rgba(125,211,252,.12); color: #7dd3fc; }
+
+/* Sub-info en barras de desglose */
+.nr-bar-col { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.nr-bar-sub { display: flex; gap: 10px; font-size: 10px; color: var(--muted); font-family: var(--mono); }
+.nr-node-name { font-family: var(--mono); font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.nr-node-meta { font-size: 11px; color: var(--muted); }
+
+.nr-section-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+  margin: 18px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.nr-issue {
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  border-left: 3px solid;
+}
+.nr-issue-critical { background: rgba(239,68,68,.07);  border-color: #ef4444; }
+.nr-issue-high     { background: rgba(249,115,22,.07); border-color: #f97316; }
+.nr-issue-medium   { background: rgba(234,179,8,.07);  border-color: #eab308; }
+
+.nr-issue-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.nr-issue-desc { font-size: 11px; color: var(--muted); line-height: 1.5; margin-bottom: 6px; }
+.nr-issue-fix  { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+.nr-issue-fix strong { color: var(--text); }
+
+.nr-no-issues { font-size: 12px; color: var(--muted); padding: 10px 0; }
+
+.nr-breakdown { display: flex; flex-direction: column; gap: 6px; }
+
+.nr-bar-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 90px;
+  align-items: start;
+  gap: 8px;
+  font-size: 11px;
+  padding: 3px 0;
+}
+.nr-bar-flagged .nr-bar-label { color: var(--text); font-weight: 600; }
+.nr-bar-label { color: var(--muted); white-space: nowrap; }
+.nr-bar-track { background: var(--panel2); border-radius: 3px; height: 6px; overflow: hidden; }
+.nr-bar-fill  { height: 100%; background: var(--accent2); border-radius: 3px; transition: width .3s; }
+.nr-bar-flagged .nr-bar-fill { background: #f97316; }
+.nr-bar-num  { font-family: var(--mono); color: var(--text); text-align: right; white-space: nowrap; }
+.nr-bar-pct  { color: var(--muted); }
+
+.nr-meshview { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+.nr-meshview a { color: #f97316; text-decoration: none; font-family: var(--mono); font-size: 11px; }
+.nr-meshview a:hover { text-decoration: underline; }
+
 .detail-row {
   display: flex;
   justify-content: space-between;
@@ -583,6 +766,223 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   letter-spacing: .05em;
 }
 
+/* ── Botón mal configurados ── */
+.malconfig-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: rgba(249,115,22,.12);
+  border: 1px solid rgba(249,115,22,.35);
+  border-radius: var(--radius);
+  color: #f97316;
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.malconfig-btn:hover { background: rgba(249,115,22,.22); }
+
+/* ── Modal mal configurados ── */
+.malconfig-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  z-index: 9500;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.malconfig-modal.open { display: flex; }
+
+.malconfig-inner {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 860px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.malconfig-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.malconfig-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.malconfig-close {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 4px 6px;
+  line-height: 1;
+}
+.malconfig-close:hover { color: var(--text); }
+
+.malconfig-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.malconfig-tab {
+  padding: 4px 12px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.malconfig-tab.active,
+.malconfig-tab:hover {
+  background: rgba(249,115,22,.15);
+  border-color: rgba(249,115,22,.4);
+  color: #f97316;
+}
+
+.malconfig-content {
+  overflow-y: auto;
+  flex: 1;
+  padding: 0 18px 18px;
+}
+
+.malconfig-empty {
+  padding: 40px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.malconfig-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-top: 12px;
+}
+
+.malconfig-table th {
+  text-align: left;
+  padding: 8px 10px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  background: var(--panel);
+}
+
+/* Col 4 (Enviados) y col 6 (Ver) alineadas a la derecha */
+.malconfig-table th:nth-child(4),
+.malconfig-table th:nth-child(6) { text-align: right; }
+
+.malconfig-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid rgba(31,45,69,.4);
+  vertical-align: middle;
+}
+
+.malconfig-table tr:last-child td { border-bottom: none; }
+.malconfig-table tr:hover td { background: rgba(255,255,255,.02); }
+
+.mc-rank {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  width: 30px;
+}
+
+.mc-name { min-width: 160px; }
+
+.mc-longname {
+  color: var(--text);
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.mc-id {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+}
+
+.mc-preset {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.mc-num {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  text-align: right;
+}
+.mc-muted { color: var(--muted); }
+
+.mc-link {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: #f97316;
+  text-decoration: none;
+  font-family: var(--mono);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.mc-link:hover { text-decoration: underline; }
+
+.nr-back {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  margin-right: 10px;
+}
+.nr-back:hover { color: var(--text); }
+
 /* ── Filtros ── */
 .filter-toggle-btn {
   display: none; /* solo visible en móvil, posicionado en el mapa */
@@ -828,6 +1228,16 @@ body.embed-mode .app-footer { display: none; }
   body.embed-mode .filter-toggle-btn {
     top: 58px; /* debajo del buscador flotante */
   }
+}
+
+@media (max-width: 768px) {
+  .malconfig-modal { padding: 0; align-items: flex-end; }
+  .malconfig-inner { max-height: 92dvh; border-radius: var(--radius) var(--radius) 0 0; }
+
+  /* Ocultar columna Preset en móvil (Problemas se mantiene visible) */
+  .malconfig-table th:nth-child(3),
+  .malconfig-table td:nth-child(3) { display: none; }
+
 }
 
 @media (max-width: 768px) {

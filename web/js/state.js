@@ -9,7 +9,7 @@ let MAP_ZOOM     = 8;
 // ─── Estado global ────────────────────────────────────────────────────────────
 let allNodes       = [];
 let allEdges       = [];
-let markers        = {};     // node_id → Leaflet circleMarker
+let markers        = {};     // node_id → Leaflet marker
 let firstLoad      = true;
 let autoFitDone    = false;
 let loadRunning    = false;
@@ -52,6 +52,22 @@ const EDGE_STYLE = {
 const EDGE_STYLE_HI = {
   neighbor:   { color: '#1d4ed8', weight: 2,   opacity: 0.85, dashArray: null  },
   traceroute: { color: '#dc2626', weight: 1.5, opacity: 0.75, dashArray: '6 5' },
+};
+
+// ─── Nodos mal configurados ───────────────────────────────────────────────────
+const MAL_CONFIG_URL = 'https://datos.meshtastic.es/top-mal-configurados';
+const malConfigurados = new Map();      // !hexvalue → { avg, sent, seen, packets, ... }
+
+const MAL_CONFIG_THRESHOLDS = {
+  range_test:            { critical: 1 },
+  position_fixed:        { critical: 48, high: 12  },
+  position_mobile:       { critical: 96, high: 48  },
+  nodeinfo:              { critical: 24, high: 8   },
+  telemetry_device:      { critical: 10, high: 4   },
+  telemetry_environment: { high: 6,      medium: 6 },
+  telemetry_power:       { high: 10,     medium: 6 },
+  routing:               { critical: 150, high: 30 },
+  traceroute_auto:       { critical: 50, high: 20  },
 };
 
 // ─── Renderer SVG compartido ──────────────────────────────────────────────────

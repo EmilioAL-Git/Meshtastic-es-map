@@ -1,27 +1,27 @@
 // ─── Definiciones de problemas con descripción y solución ─────────────────────
 const ISSUE_DEFS = {
   range_test: {
-    desc: 'El módulo Range Test está activo y generando tráfico. Debe desactivarse cuando no se estén haciendo pruebas de cobertura.',
+    desc: 'El módulo Range Test está activo y genera tráfico innecesario. Debe desactivarse cuando no se estén realizando pruebas de cobertura.',
     fix:  'Módulos → Range Test → Desactivar',
   },
   position: {
-    desc: 'El nodo emite su posición con demasiada frecuencia. Para nodos fijos se recomienda una vez al día; para móviles, mínimo cada 30 minutos.',
+    desc: 'Según las buenas prácticas de meshtastic.es, un nodo fijo debe emitir su posición 1 vez al día (86 400 s). Un nodo móvil, máximo cada 30 min (1 800 s, 48 veces/día). Valores más altos mejoran el rendimiento de la red.',
     fix:  'Config → Posición → Broadcast Interval → 86400 (fijo) o 1800 (móvil)',
   },
   nodeinfo: {
-    desc: 'El nodo transmite su información (nombre, hardware...) con demasiada frecuencia. Debería emitirse una vez al día como máximo.',
+    desc: 'Según las buenas prácticas de meshtastic.es, el NodeInfo debe emitirse 1 vez al día (86 400 s). La información del nodo raramente cambia, no es necesario enviarlo con más frecuencia.',
     fix:  'Config → Dispositivo → Node Info Broadcast Interval → 86400',
   },
   telemetry: {
-    desc: 'Las métricas del dispositivo (batería, voltaje, uso del canal) se envían con demasiada frecuencia. Se recomienda cada 12 horas para nodos fijos.',
+    desc: 'Según las buenas prácticas de meshtastic.es, la telemetría del dispositivo debe enviarse cada 12 h (43 200 s), lo que equivale a 2 veces al día. Valores más bajos saturan el canal innecesariamente.',
     fix:  'Módulos → Telemetría del dispositivo → Intervalo → 43200',
   },
   routing: {
-    desc: 'Un alto número de paquetes de routing (ACKs de protocolo) puede indicar el módulo Store & Forward mal configurado o un flujo de mensajes excesivo.',
+    desc: 'Un alto número de paquetes de routing (ACKs de protocolo) puede indicar que el módulo Store & Forward está mal configurado, o que el nodo retransmite en exceso.',
     fix:  'Módulos → Store & Forward → desactivar si no es necesario',
   },
   traceroute: {
-    desc: 'Se están generando muchos traceroutes automáticamente, lo que consume ancho de banda de la red.',
+    desc: 'Se están generando muchos traceroutes automáticamente, consumiendo ancho de banda de la red. Comprueba si tienes el traceroute periódico activo.',
     fix:  'Config → Dispositivo → desactivar traceroute periódico si está activo',
   },
 };
@@ -131,6 +131,11 @@ function openNodeReport(nodeId) {
       <a href="https://meshview.meshtastic.es/node/${malData.node_id}" target="_blank" rel="noopener">Ver actividad en meshview →</a>
     </div>`;
 
+  // Si el listado estaba abierto, cerrarlo para que el reporte quede al frente
+  const fromList = document.getElementById('malconfig-modal').classList.contains('open');
+  closeMalConfigModal();
+
+  document.getElementById('node-report-back').style.display = fromList ? '' : 'none';
   document.getElementById('node-report-modal').classList.add('open');
 }
 

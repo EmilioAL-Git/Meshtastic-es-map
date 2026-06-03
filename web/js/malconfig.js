@@ -100,14 +100,21 @@ function detectIssues(malData) {
     issues.push({ key: 'telemetry_device', label: `Telemetría muy frecuente (${p.telemetry}/día)`, severity: 'critical' });
   }
 
-  // Routing — solo avisar si es automático (o sin datos y conteo muy alto)
+  // Routing:
+  //  - Automático (CV bajo): siempre avisar si supera umbral
+  //  - Manual pero con proporción muy alta del tráfico total (>50%): también avisar
+  //    (ej. CVALDESS con 88% routing = anomalía clara aunque no sea uniforme)
+  //  - Manual y proporción normal: no avisar (admin remota legítima)
   const routingCount = p.routing || 0;
-  const routingAuto  = ro ? ro.is_automatic : routingCount >= t.routing.critical;
-  if (routingAuto) {
+  const routingRatio = malData.sent > 0 ? routingCount / malData.sent : 0;
+  const routingAuto  = ro?.is_automatic ?? (routingCount >= t.routing.critical);
+  const routingHighProportion = routingCount >= t.routing.high && routingRatio > 0.5;
+
+  if (routingAuto || routingHighProportion) {
     if (routingCount >= t.routing.critical)
-      issues.push({ key: 'routing', label: `Routing automático excesivo (${p.routing}/día)`, severity: 'critical' });
+      issues.push({ key: 'routing', label: `Routing excesivo (${p.routing}/día, ${Math.round(routingRatio*100)}% del tráfico)`, severity: 'critical' });
     else if (routingCount >= t.routing.high)
-      issues.push({ key: 'routing', label: `Routing automático elevado (${p.routing}/día)`, severity: 'high' });
+      issues.push({ key: 'routing', label: `Routing elevado (${p.routing}/día, ${Math.round(routingRatio*100)}% del tráfico)`, severity: 'high' });
   }
 
   // Traceroute — solo avisar si es automático

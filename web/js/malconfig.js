@@ -242,7 +242,9 @@ function closeMalConfigModal() {
 }
 
 function renderMalConfigModal() {
-  const all      = [...malConfigurados.values()].sort((a, b) => b.sent - a.sent);
+  const all      = [...malConfigurados.values()]
+    .filter(n => detectIssues(n).length > 0)
+    .sort((a, b) => b.sent - a.sent);
   const channels = ['Todos', ...[...new Set(all.map(n => n.channel))].sort()];
 
   document.getElementById('malconfig-tabs').innerHTML = channels.map((ch, i) =>
@@ -255,7 +257,9 @@ function renderMalConfigModal() {
 function switchMalConfigTab(channel, btn) {
   document.querySelectorAll('.malconfig-tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
-  const all      = [...malConfigurados.values()].sort((a, b) => b.sent - a.sent);
+  const all      = [...malConfigurados.values()]
+    .filter(n => detectIssues(n).length > 0)
+    .sort((a, b) => b.sent - a.sent);
   const filtered = channel === 'Todos' ? all : all.filter(n => n.channel === channel);
   renderMalConfigTable(filtered);
 }

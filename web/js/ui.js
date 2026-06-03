@@ -101,22 +101,19 @@ function selectNode(nodeId, fly = false) {
       <span class="detail-val ${k === 'ID' ? 'accent' : ''}">${escHtml(String(v))}</span>
     </div>`).join('');
 
-  const malData  = malConfigurados.get(node.node_id);
+  const malData   = malConfigurados.get(node.node_id);
+  const malIssues = malData ? detectIssues(malData) : [];
   let   malBanner = '';
-  if (malData) {
-    const issues   = detectIssues(malData);
-    const issuesHtml = issues.slice(0, 3).map(i =>
+  if (malData && malIssues.length > 0) {
+    const issuesHtml = malIssues.slice(0, 3).map(i =>
       `<div class="mal-config-issue issue-${i.severity}">${escHtml(i.label)}</div>`
     ).join('');
-    const bodyHtml = issues.length
-      ? issuesHtml
-      : `<div class="mal-config-stat">Paquetes enviados en las últimas 24h: <strong>${malData.sent}</strong></div>`;
     malBanner = `<div class="mal-config-banner">
       <div class="mal-config-row">
         <svg width="14" height="13" viewBox="0 0 22 20" aria-hidden="true"><polygon points="11,1 21,19 1,19" fill="#f97316" stroke="#ef4444" stroke-width="2" stroke-linejoin="round"/><text x="11" y="15.5" text-anchor="middle" font-size="10" font-weight="bold" font-family="monospace" fill="#1e293b">!</text></svg>
         <span>Este nodo puede estar <strong>mal configurado</strong>.</span>
       </div>
-      ${bodyHtml}
+      ${issuesHtml}
       <button class="mal-config-link" onclick="openNodeReport('${node.node_id}')">Ver recomendaciones →</button>
     </div>`;
   }

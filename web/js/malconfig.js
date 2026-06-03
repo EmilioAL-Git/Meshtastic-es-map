@@ -37,8 +37,8 @@ const ISSUE_DEFS = {
     fix:  'Módulos → Store & Forward → desactivar si no es necesario',
   },
   traceroute_auto: {
-    desc: 'Se están generando traceroutes periódicos, consumiendo ancho de banda de la red. Comprueba si tienes el traceroute periódico activo.',
-    fix:  'Config → Dispositivo → desactivar traceroute periódico',
+    desc: 'Este nodo está generando traceroutes de forma sistemática (posiblemente una herramienta de monitorización de red). Genera tráfico considerable en la red.',
+    fix:  'Configura la herramienta de monitorización (MeshSense, MeshMonitor...) para reducir la frecuencia de traceroutes o el número de nodos destino',
   },
 };
 

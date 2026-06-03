@@ -108,7 +108,7 @@ function openNodeReport(nodeId) {
 
   const breakdownHtml = Object.entries(PACKET_LABELS)
     .filter(([k]) => p[k] != null)
-    .sort(([, a], [, b]) => (p[b] || 0) - (p[a] || 0))
+    .sort(([ka], [kb]) => (p[kb] || 0) - (p[ka] || 0))
     .map(([k, label]) => {
       const count    = p[k] || 0;
       const pct      = Math.round((count / total) * 100);
@@ -175,7 +175,7 @@ function closeMalConfigModal() {
 function renderMalConfigModal() {
   const all      = [...malConfigurados.values()]
     .filter(n => detectIssues(n).length > 0)
-    .sort((a, b) => b.sent - a.sent);
+    .sort((a, b) => (b.sent || 0) - (a.sent || 0));
   const channels = ['Todos', ...[...new Set(all.map(n => n.channel))].sort()];
 
   document.getElementById('malconfig-tabs').innerHTML = channels.map((ch, i) =>
@@ -190,7 +190,7 @@ function switchMalConfigTab(channel, btn) {
   btn.classList.add('active');
   const all      = [...malConfigurados.values()]
     .filter(n => detectIssues(n).length > 0)
-    .sort((a, b) => b.sent - a.sent);
+    .sort((a, b) => (b.sent || 0) - (a.sent || 0));
   const filtered = channel === 'Todos' ? all : all.filter(n => n.channel === channel);
   renderMalConfigTable(filtered);
 }

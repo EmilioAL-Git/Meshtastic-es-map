@@ -45,10 +45,6 @@ const ROUTER_ROLES = new Set(['ROUTER', 'ROUTER_CLIENT', 'REPEATER']);
 function isRouter(n) { return n.role && ROUTER_ROLES.has(n.role.toUpperCase()); }
 
 // ─── Estilos de edge ─────────────────────────────────────────────────────────
-const EDGE_STYLE = {
-  neighbor:   { color: '#1d4ed8', weight: 2,   opacity: 0,    dashArray: null  },
-  traceroute: { color: '#dc2626', weight: 1.5, opacity: 0,    dashArray: '6 5' },
-};
 const EDGE_STYLE_HI = {
   neighbor:   { color: '#1d4ed8', weight: 2,   opacity: 0.85, dashArray: null  },
   traceroute: { color: '#dc2626', weight: 1.5, opacity: 0.75, dashArray: '6 5' },

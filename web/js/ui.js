@@ -117,7 +117,7 @@ function selectNode(nodeId, fly = false) {
         <span>Este nodo puede estar <strong>mal configurado</strong>.</span>
       </div>
       ${bodyHtml}
-      <a class="mal-config-link" href="https://meshtastic.es" target="_blank" rel="noopener">Ver recomendaciones →</a>
+      <button class="mal-config-link" onclick="openNodeReport('${node.node_id}')">Ver recomendaciones →</button>
     </div>`;
   }
 

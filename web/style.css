@@ -355,6 +355,67 @@ header {
 }
 .issue-none { color: var(--muted); font-size: 11px; }
 
+/* ── Modal reporte de nodo ── */
+.nr-inner { max-width: 560px; }
+
+.nr-header { margin-bottom: 18px; }
+.nr-node-name { font-family: var(--mono); font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.nr-node-meta { font-size: 11px; color: var(--muted); }
+
+.nr-section-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: var(--muted);
+  margin: 18px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.nr-issue {
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  border-left: 3px solid;
+}
+.nr-issue-critical { background: rgba(239,68,68,.07);  border-color: #ef4444; }
+.nr-issue-high     { background: rgba(249,115,22,.07); border-color: #f97316; }
+.nr-issue-medium   { background: rgba(234,179,8,.07);  border-color: #eab308; }
+
+.nr-issue-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.nr-issue-desc { font-size: 11px; color: var(--muted); line-height: 1.5; margin-bottom: 6px; }
+.nr-issue-fix  { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+.nr-issue-fix strong { color: var(--text); }
+
+.nr-no-issues { font-size: 12px; color: var(--muted); padding: 10px 0; }
+
+.nr-breakdown { display: flex; flex-direction: column; gap: 6px; }
+
+.nr-bar-row {
+  display: grid;
+  grid-template-columns: 100px 1fr 90px;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+.nr-bar-flagged .nr-bar-label { color: var(--text); font-weight: 600; }
+.nr-bar-label { color: var(--muted); white-space: nowrap; }
+.nr-bar-track { background: var(--panel2); border-radius: 3px; height: 6px; overflow: hidden; }
+.nr-bar-fill  { height: 100%; background: var(--accent2); border-radius: 3px; transition: width .3s; }
+.nr-bar-flagged .nr-bar-fill { background: #f97316; }
+.nr-bar-num  { font-family: var(--mono); color: var(--text); text-align: right; white-space: nowrap; }
+.nr-bar-pct  { color: var(--muted); }
+
+.nr-meshview { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border); }
+.nr-meshview a { color: #f97316; text-decoration: none; font-family: var(--mono); font-size: 11px; }
+.nr-meshview a:hover { text-decoration: underline; }
+
 .detail-row {
   display: flex;
   justify-content: space-between;

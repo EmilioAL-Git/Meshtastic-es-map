@@ -108,7 +108,7 @@ function detectIssues(malData) {
   const routingCount = p.routing || 0;
   const routingRatio = malData.sent > 0 ? routingCount / malData.sent : 0;
   const routingAuto  = ro?.is_automatic ?? (routingCount >= t.routing.critical);
-  const routingHighProportion = routingCount >= t.routing.high && routingRatio > 0.5;
+  const routingHighProportion = routingCount >= t.routing.high && routingRatio > 0.65;
 
   if (routingAuto || routingHighProportion) {
     if (routingCount >= t.routing.critical)

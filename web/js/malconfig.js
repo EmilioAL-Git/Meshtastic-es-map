@@ -86,15 +86,15 @@ function detectIssues(malData) {
   // Telemetría — por sub-tipo si disponible
   if (tel.device !== undefined) {
     if ((tel.device || 0) >= t.telemetry_device.critical)
-      issues.push({ key: 'telemetry_device', label: `Tel. dispositivo muy frecuente (${tel.device}/día)`, severity: 'critical' });
+      issues.push({ key: 'telemetry_device', label: `Telemetría dispositivo muy frecuente (${tel.device}/día)`, severity: 'critical' });
     else if ((tel.device || 0) >= t.telemetry_device.high)
-      issues.push({ key: 'telemetry_device', label: `Tel. dispositivo frecuente (${tel.device}/día)`, severity: 'medium' });
+      issues.push({ key: 'telemetry_device', label: `Telemetría dispositivo frecuente (${tel.device}/día)`, severity: 'medium' });
 
     if ((tel.environment || 0) >= t.telemetry_environment.high)
-      issues.push({ key: 'telemetry_environment', label: `Tel. entorno frecuente (${tel.environment}/día)`, severity: 'medium' });
+      issues.push({ key: 'telemetry_environment', label: `Telemetría entorno frecuente (${tel.environment}/día)`, severity: 'medium' });
 
     if ((tel.power || 0) >= t.telemetry_power.high)
-      issues.push({ key: 'telemetry_power', label: `Tel. eléctrica frecuente (${tel.power}/día)`, severity: 'medium' });
+      issues.push({ key: 'telemetry_power', label: `Telemetría eléctrica frecuente (${tel.power}/día)`, severity: 'medium' });
   } else if ((p.telemetry || 0) >= t.telemetry_device.critical) {
     issues.push({ key: 'telemetry_device', label: `Telemetría muy frecuente (${p.telemetry}/día)`, severity: 'critical' });
   }

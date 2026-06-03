@@ -24,6 +24,12 @@ function detectIssues(malData) {
   else if (p.telemetry >= t.telemetry.high)
     issues.push({ key: 'telemetry', label: `Telemetría frecuente (${p.telemetry}/día)`, severity: 'medium' });
 
+  if (p.routing >= t.routing.high)
+    issues.push({ key: 'routing', label: `Routing excesivo (${p.routing}/día)`, severity: 'high' });
+
+  if (p.traceroute >= t.traceroute.high)
+    issues.push({ key: 'traceroute', label: `Traceroute excesivo (${p.traceroute}/día)`, severity: 'high' });
+
   return issues;
 }
 

@@ -63,6 +63,8 @@ const MAL_CONFIG_THRESHOLDS = {
   position:   { critical: 200, high: 48 },
   nodeinfo:   { critical: 24,  high: 8  },
   telemetry:  { critical: 10,  high: 4  },
+  routing:    { high: 30 },
+  traceroute: { high: 30 },
 };
 
 // ─── Renderer SVG compartido ──────────────────────────────────────────────────

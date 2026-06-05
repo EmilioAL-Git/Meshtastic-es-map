@@ -36,6 +36,10 @@ const ISSUE_DEFS = {
     desc: 'Un alto número de paquetes de routing (ACKs de protocolo) puede indicar que el módulo Store & Forward está mal configurado, o tráfico de control excesivo.',
     fix:  'Módulos → Store & Forward → desactivar si no es necesario',
   },
+  position_flags: {
+    desc: 'Este nodo fijo está enviando campos de velocidad y/o rumbo en sus paquetes de posición. Estos campos solo tienen sentido en nodos móviles. Para nodos fijos solo es necesario el DOP.',
+    fix:  'Config → Posición → Position Flags → desactivar SPEED y HEADING',
+  },
   traceroute_auto: {
     desc: 'Este nodo está generando traceroutes de forma sistemática (posiblemente una herramienta de monitorización de red). Genera tráfico considerable en la red.',
     fix:  'Configura la herramienta de monitorización (MeshSense, MeshMonitor...) para reducir la frecuencia de traceroutes o el número de nodos destino',

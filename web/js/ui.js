@@ -111,7 +111,7 @@ function selectNode(nodeId, fly = false) {
     malBanner = `<div class="mal-config-banner">
       <div class="mal-config-row">
         <svg width="14" height="13" viewBox="0 0 22 20" aria-hidden="true"><polygon points="11,1 21,19 1,19" fill="#f97316" stroke="#ef4444" stroke-width="2" stroke-linejoin="round"/><text x="11" y="15.5" text-anchor="middle" font-size="10" font-weight="bold" font-family="monospace" fill="#1e293b">!</text></svg>
-        <span>Este nodo puede estar <strong>mal configurado</strong>.</span>
+        <span>Este nodo puede estar <strong>no optimizado</strong>.</span>
       </div>
       ${issuesHtml}
       <button class="mal-config-link" onclick="openNodeReport('${node.node_id}')">Ver recomendaciones →</button>

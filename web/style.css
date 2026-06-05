@@ -767,7 +767,7 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 }
 
 /* ── Botón mal configurados ── */
-.malconfig-btn {
+.noopt-btn {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -783,7 +783,7 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   transition: background .15s;
   flex-shrink: 0;
 }
-.malconfig-btn:hover { background: rgba(249,115,22,.22); }
+.noopt-btn:hover { background: rgba(249,115,22,.22); }
 
 /* ── Modal mal configurados ── */
 .malconfig-modal {

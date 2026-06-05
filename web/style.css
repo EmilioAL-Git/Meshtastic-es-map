@@ -820,6 +820,8 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   flex-shrink: 0;
 }
 
+.malconfig-subtitle { font-weight: 400; color: var(--muted); font-size: 11px; }
+
 .malconfig-title {
   display: flex;
   align-items: center;

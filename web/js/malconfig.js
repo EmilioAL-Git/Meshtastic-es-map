@@ -37,7 +37,7 @@ const ISSUE_DEFS = {
     fix:  'Módulos → Store & Forward → desactivar si no es necesario',
   },
   position_flags: {
-    desc: 'Este nodo fijo está enviando campos de velocidad y/o rumbo en sus paquetes de posición. Según meshtastic.es, para nodos fijos solo debe activarse el flag DOP — el resto genera tráfico innecesario.',
+    desc: 'Este nodo fijo está enviando campos de velocidad y/o rumbo GPS en sus paquetes de posición. Según meshtastic.es, para nodos fijos solo debe activarse el flag DOP — los datos de movimiento del GPS generan tráfico innecesario en un nodo estático.',
     fix:  'Config → Posición → Position Flags → activar solo DOP, desactivar SPEED, HEADING y el resto',
   },
   traceroute_auto: {

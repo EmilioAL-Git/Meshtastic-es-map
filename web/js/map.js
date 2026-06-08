@@ -148,8 +148,9 @@ function updateMarkerSizes() {
 }
 
 // ─── Desagrupación de nodos superpuestos ──────────────────────────────────────
-const SPREAD_PREC  = 10000; // agrupa nodos dentro de ~11 m (4 decimales)
-const SPREAD_MINPX = 16;    // radio mínimo del círculo en píxeles
+const SPREAD_PREC     = 100000; // agrupa nodos dentro de ~1 m (5 decimales) — solo coords prácticamente idénticas
+const SPREAD_MINPX    = 14;     // radio mínimo del círculo en píxeles
+const SPREAD_MIN_ZOOM = 15;     // solo desagrupar a partir de este nivel de zoom
 
 function computeSpreadGroups(nodes) {
   spreadGroups.clear();
@@ -174,8 +175,9 @@ function computeSpreadGroups(nodes) {
 function getSpreadLatLng(nodeId, lat, lng, zoom) {
   const info = spreadGroups.get(nodeId);
   if (!info) return [lat, lng];
-  const z      = zoom != null ? zoom : map.getZoom();
-  const radius = Math.max(SPREAD_MINPX, Math.ceil(2.5 * info.total));
+  const z = zoom != null ? zoom : map.getZoom();
+  if (z < SPREAD_MIN_ZOOM) return [lat, lng];
+  const radius = Math.max(SPREAD_MINPX, Math.ceil(info.total * SPREAD_MINPX / (2 * Math.PI)));
   const center = map.project([info.centerLat, info.centerLng], z);
   const angle  = (2 * Math.PI * info.idx) / info.total - Math.PI / 2;
   const ll     = map.unproject(
@@ -186,6 +188,7 @@ function getSpreadLatLng(nodeId, lat, lng, zoom) {
 
 function renderSpreadLegs() {
   spreadLegsGroup.clearLayers();
+  if (map.getZoom() < SPREAD_MIN_ZOOM) return;
   spreadGroups.forEach((info, nodeId) => {
     const [dLat, dLng] = getSpreadLatLng(nodeId, info.centerLat, info.centerLng);
     spreadLegsGroup.addLayer(L.polyline(

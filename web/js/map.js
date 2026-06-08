@@ -149,7 +149,7 @@ function updateMarkerSizes() {
 }
 
 // ─── Desagrupación de nodos superpuestos ──────────────────────────────────────
-const SPREAD_PREC     = 5000; // agrupa nodos dentro de ~20 m
+const SPREAD_PREC     = 14000; // agrupa nodos dentro de ~8 m
 const SPREAD_MINPX    = 18;   // radio mínimo del círculo en píxeles
 const SPREAD_MIN_ZOOM = 15;   // solo desagrupar a partir de este nivel de zoom
 

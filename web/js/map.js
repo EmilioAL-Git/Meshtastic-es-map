@@ -155,19 +155,29 @@ const SPREAD_MIN_ZOOM = 15;   // solo desagrupar a partir de este nivel de zoom
 
 function computeSpreadGroups(nodes) {
   spreadGroups.clear();
-  const buckets = new Map();
-  nodes.forEach(node => {
-    if (node.latitude == null || node.longitude == null) return;
-    const key = `${Math.round(node.latitude * SPREAD_PREC)},${Math.round(node.longitude * SPREAD_PREC)}`;
-    if (!buckets.has(key)) buckets.set(key, []);
-    buckets.get(key).push(node);
-  });
-  buckets.forEach(group => {
+  const THRESHOLD = 1 / SPREAD_PREC; // grados — equivale a ~8 m
+  const valid    = nodes.filter(n => n.latitude != null && n.longitude != null);
+  const assigned = new Set();
+
+  valid.forEach(node => {
+    if (assigned.has(node.node_id)) return;
+    const group = [node];
+    assigned.add(node.node_id);
+
+    valid.forEach(other => {
+      if (assigned.has(other.node_id)) return;
+      if (Math.abs(node.latitude  - other.latitude)  <= THRESHOLD &&
+          Math.abs(node.longitude - other.longitude) <= THRESHOLD) {
+        group.push(other);
+        assigned.add(other.node_id);
+      }
+    });
+
     if (group.length < 2) return;
     const centerLat = group.reduce((s, n) => s + n.latitude,  0) / group.length;
     const centerLng = group.reduce((s, n) => s + n.longitude, 0) / group.length;
-    group.forEach((node, idx) => {
-      spreadGroups.set(node.node_id, { centerLat, centerLng, idx, total: group.length });
+    group.forEach((n, idx) => {
+      spreadGroups.set(n.node_id, { centerLat, centerLng, idx, total: group.length });
     });
   });
 }

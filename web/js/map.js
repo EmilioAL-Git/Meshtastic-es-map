@@ -178,7 +178,8 @@ function getSpreadLatLng(nodeId, lat, lng, zoom) {
   if (!info) return [lat, lng];
   const z = zoom != null ? zoom : map.getZoom();
   if (z < SPREAD_MIN_ZOOM) return [lat, lng];
-  const radius = Math.max(SPREAD_MINPX, Math.ceil(info.total * SPREAD_MINPX / (2 * Math.PI)));
+  const baseRadius = Math.max(SPREAD_MINPX, Math.ceil(info.total * SPREAD_MINPX / (2 * Math.PI)));
+  const radius     = baseRadius + Math.max(0, z - SPREAD_MIN_ZOOM) * 12;
   const center = map.project([info.centerLat, info.centerLng], z);
   const angle  = (2 * Math.PI * info.idx) / info.total - Math.PI / 2;
   const ll     = map.unproject(

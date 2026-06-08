@@ -117,9 +117,10 @@ function makeSelectedIcon(color) {
 
 function markerSize() {
   const z = map.getZoom();
-  if (z <= 7) return 3;
-  if (z <= 9) return 4;
-  return 6;
+  const mobile = window.innerWidth <= 768;
+  if (z <= 7) return mobile ? 5  : 3;
+  if (z <= 9) return mobile ? 7  : 4;
+  return mobile ? 10 : 6;
 }
 
 function updateMarkerSizes() {
@@ -148,7 +149,7 @@ function updateMarkerSizes() {
 }
 
 // ─── Desagrupación de nodos superpuestos ──────────────────────────────────────
-const SPREAD_PREC     = 100000; // agrupa nodos dentro de ~1 m (5 decimales) — solo coords prácticamente idénticas
+const SPREAD_PREC     = 10000; // agrupa nodos dentro de ~11 m (4 decimales)
 const SPREAD_MINPX    = 14;     // radio mínimo del círculo en píxeles
 const SPREAD_MIN_ZOOM = 15;     // solo desagrupar a partir de este nivel de zoom
 

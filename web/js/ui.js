@@ -19,10 +19,13 @@ function selectNode(nodeId, fly = false) {
   }
 
   if (node.latitude != null && node.longitude != null) {
+    const targetZoom  = fly ? Math.max(map.getZoom(), 16) : map.getZoom();
+    const [sLat, sLng] = getSpreadLatLng(nodeId, node.latitude, node.longitude, targetZoom);
+
     if (markers[nodeId]) {
       if (markers[nodeId].setStyle) markers[nodeId].setStyle({ fillOpacity: 0, opacity: 0 });
       else if (markers[nodeId].setOpacity) markers[nodeId].setOpacity(0);
-      selOverlay = L.marker([node.latitude, node.longitude], {
+      selOverlay = L.marker([sLat, sLng], {
         icon: makeSelectedIcon(nodeColor(node)),
         interactive: false,
         zIndexOffset: 1000,
@@ -31,15 +34,15 @@ function selectNode(nodeId, fly = false) {
 
     if (fly) {
       map.stop();
-      const zoom     = Math.max(map.getZoom(), 16);
+      const zoom     = targetZoom;
       const isMobile = window.innerWidth <= 768;
       const offsetPx = isMobile ? Math.round(window.innerHeight * 0.22) : 0;
       if (offsetPx > 0) {
-        const targetPx  = map.project([node.latitude, node.longitude], zoom);
+        const targetPx  = map.project([sLat, sLng], zoom);
         const shiftedPx = targetPx.add([0, offsetPx]);
         map.flyTo(map.unproject(shiftedPx, zoom), zoom, { animate: true, duration: 0.6 });
       } else {
-        map.flyTo([node.latitude, node.longitude], zoom, { animate: true, duration: 0.6 });
+        map.flyTo([sLat, sLng], zoom, { animate: true, duration: 0.6 });
       }
     }
 

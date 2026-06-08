@@ -37,6 +37,7 @@ function initMap() {
   map.getPane('markersPane').style.zIndex = 450;
   markerRenderer = L.svg({ pane: 'markersPane', padding: 0.5 });
 
+  spreadLegsGroup = L.layerGroup().addTo(map);
   edgeGroup = L.layerGroup().addTo(map);
   map.on('zoomend', updateMarkerSizes);
 
@@ -126,10 +127,71 @@ function updateMarkerSizes() {
   allNodes.forEach(n => {
     const m = markers[n.node_id];
     if (!m) return;
+    if (spreadGroups.has(n.node_id)) {
+      const [dLat, dLng] = getSpreadLatLng(n.node_id, n.latitude, n.longitude);
+      m.setLatLng([dLat, dLng]);
+    }
     const md = malConfigurados.get(n.node_id);
     if (md && detectIssues(md).length > 0) m.setIcon(makeMalConfiguradoIcon(nodeColor(n), sz));
     else if (m.setRadius) m.setRadius(sz);
     else if (isRouter(n) && !n.is_mqtt_gateway) m.setIcon(makeRouterIcon(nodeColor(n), sz));
+  });
+  renderSpreadLegs();
+  // Reposicionar overlay de selección si el nodo está en un grupo spread
+  if (selectedNodeId && selOverlay) {
+    const selNode = allNodes.find(n => n.node_id === selectedNodeId);
+    if (selNode && spreadGroups.has(selectedNodeId)) {
+      const [dLat, dLng] = getSpreadLatLng(selectedNodeId, selNode.latitude, selNode.longitude);
+      selOverlay.setLatLng([dLat, dLng]);
+    }
+  }
+}
+
+// ─── Desagrupación de nodos superpuestos ──────────────────────────────────────
+const SPREAD_PREC  = 10000; // agrupa nodos dentro de ~11 m (4 decimales)
+const SPREAD_MINPX = 16;    // radio mínimo del círculo en píxeles
+
+function computeSpreadGroups(nodes) {
+  spreadGroups.clear();
+  const buckets = new Map();
+  nodes.forEach(node => {
+    if (node.latitude == null || node.longitude == null) return;
+    const key = `${Math.round(node.latitude * SPREAD_PREC)},${Math.round(node.longitude * SPREAD_PREC)}`;
+    if (!buckets.has(key)) buckets.set(key, []);
+    buckets.get(key).push(node);
+  });
+  buckets.forEach(group => {
+    if (group.length < 2) return;
+    const centerLat = group.reduce((s, n) => s + n.latitude,  0) / group.length;
+    const centerLng = group.reduce((s, n) => s + n.longitude, 0) / group.length;
+    group.forEach((node, idx) => {
+      spreadGroups.set(node.node_id, { centerLat, centerLng, idx, total: group.length });
+    });
+  });
+}
+
+// zoom es opcional; si se omite usa el zoom actual del mapa
+function getSpreadLatLng(nodeId, lat, lng, zoom) {
+  const info = spreadGroups.get(nodeId);
+  if (!info) return [lat, lng];
+  const z      = zoom != null ? zoom : map.getZoom();
+  const radius = Math.max(SPREAD_MINPX, Math.ceil(2.5 * info.total));
+  const center = map.project([info.centerLat, info.centerLng], z);
+  const angle  = (2 * Math.PI * info.idx) / info.total - Math.PI / 2;
+  const ll     = map.unproject(
+    [center.x + radius * Math.cos(angle), center.y + radius * Math.sin(angle)], z
+  );
+  return [ll.lat, ll.lng];
+}
+
+function renderSpreadLegs() {
+  spreadLegsGroup.clearLayers();
+  spreadGroups.forEach((info, nodeId) => {
+    const [dLat, dLng] = getSpreadLatLng(nodeId, info.centerLat, info.centerLng);
+    spreadLegsGroup.addLayer(L.polyline(
+      [[info.centerLat, info.centerLng], [dLat, dLng]],
+      { color: '#94a3b8', weight: 1, opacity: 0.45, interactive: false, renderer: canvasRenderer }
+    ));
   });
 }
 
@@ -138,6 +200,8 @@ function renderNodes(nodes) {
   Object.values(markers).forEach(m => map.removeLayer(m));
   markers = {};
 
+  computeSpreadGroups(nodes);
+
   const isMobile = window.innerWidth <= 768;
   const isEmbed  = document.body.classList.contains('embed-mode');
   const sz       = markerSize();
@@ -145,14 +209,15 @@ function renderNodes(nodes) {
   nodes.forEach(node => {
     if (node.latitude == null || node.longitude == null) return;
 
-    const color       = nodeColor(node);
-    const malData     = malConfigurados.get(node.node_id);
-    const isMalConfig = !!malData && detectIssues(malData).length > 0;
+    const [dLat, dLng] = getSpreadLatLng(node.node_id, node.latitude, node.longitude);
+    const color        = nodeColor(node);
+    const malData      = malConfigurados.get(node.node_id);
+    const isMalConfig  = !!malData && detectIssues(malData).length > 0;
     const marker = isMalConfig
-      ? L.marker([node.latitude, node.longitude], { icon: makeMalConfiguradoIcon(color, sz), pane: 'markersPane' })
+      ? L.marker([dLat, dLng], { icon: makeMalConfiguradoIcon(color, sz), pane: 'markersPane' })
       : (isRouter(node) && !node.is_mqtt_gateway)
-        ? L.marker([node.latitude, node.longitude], { icon: makeRouterIcon(color, sz), pane: 'markersPane' })
-        : L.circleMarker([node.latitude, node.longitude], { ...circleMarkerOptions(color, sz), renderer: markerRenderer });
+        ? L.marker([dLat, dLng], { icon: makeRouterIcon(color, sz), pane: 'markersPane' })
+        : L.circleMarker([dLat, dLng], { ...circleMarkerOptions(color, sz), renderer: markerRenderer });
 
     if (!isMobile && !isEmbed) {
       const name = node.long_name || node.short_name || node.node_id;
@@ -185,6 +250,8 @@ function renderNodes(nodes) {
     marker.addTo(map);
     markers[node.node_id] = marker;
   });
+
+  renderSpreadLegs();
 }
 
 // ─── Edges ────────────────────────────────────────────────────────────────────

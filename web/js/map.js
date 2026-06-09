@@ -153,9 +153,10 @@ function updateMarkerSizes() {
 }
 
 // ─── Desagrupación / clustering de nodos superpuestos ─────────────────────────
-const SPREAD_GEO      = 0.0001; // ~10 m en grados (umbral geográfico fijo)
-const SPREAD_MINPX    = 18;     // radio mínimo del círculo de separación
-const SPREAD_MIN_ZOOM = 17;     // zoom a partir del cual se separan individualmente
+const SPREAD_GEO       = 0.0001; // ~10 m en grados (umbral geográfico fijo)
+const SPREAD_MINPX     = 18;     // radio mínimo del círculo de separación
+const CLUSTER_MIN_ZOOM = 17;     // zoom a partir del cual aparecen los badges de cluster
+const SPREAD_MIN_ZOOM  = 19;     // zoom a partir del cual se separan en estrella
 
 let spiderLegs = [];  // polylines del patrón estrella
 
@@ -275,6 +276,8 @@ function renderClusters() {
   });
   setTimeout(() => Object.values(removing).forEach(m => map.removeLayer(m)), 180);
 
+  // Badges solo visibles entre CLUSTER_MIN_ZOOM y SPREAD_MIN_ZOOM
+  if (map.getZoom() < CLUSTER_MIN_ZOOM) return;
   if (map.getZoom() >= SPREAD_MIN_ZOOM) return;
 
   // Agrupar por centroide

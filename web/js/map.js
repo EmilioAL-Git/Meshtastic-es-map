@@ -154,7 +154,7 @@ function updateMarkerSizes() {
 
 // ─── Desagrupación / clustering de nodos superpuestos ─────────────────────────
 const SPREAD_GEO       = 0.0001; // ~10 m en grados (umbral geográfico fijo)
-const SPREAD_MINPX     = 18;     // radio mínimo del círculo de separación
+const SPREAD_MINPX     = 36;     // radio mínimo del círculo de separación
 const CLUSTER_MIN_ZOOM = 12;     // zoom a partir del cual aparecen los badges de cluster
 const SPREAD_MIN_ZOOM  = 19;     // zoom a partir del cual se separan en estrella
 
@@ -235,7 +235,7 @@ function getSpreadLatLng(nodeId, lat, lng, zoom) {
   if (z < SPREAD_MIN_ZOOM) return [lat, lng];
   const spacing    = markerSize() * 3;   // espacio mínimo entre nodos = 3× el radio del icono
   const baseRadius = Math.max(SPREAD_MINPX, Math.ceil(info.total * spacing / (2 * Math.PI)));
-  const radius     = baseRadius + Math.max(0, z - SPREAD_MIN_ZOOM) * 20;
+  const radius     = baseRadius + Math.max(0, z - SPREAD_MIN_ZOOM) * 40;
   const center = map.project([info.centerLat, info.centerLng], z);
   const angle  = (2 * Math.PI * info.idx) / info.total - Math.PI / 2;
   const ll     = map.unproject(

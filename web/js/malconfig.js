@@ -195,24 +195,22 @@ function renderMalConfigModal() {
   const channels = ['Todos', ...[...new Set(all.map(n => n.channel))].sort()];
   const ccaas    = [...new Set(all.map(n => n.ccaa).filter(Boolean))].sort();
 
-  const tabsHtml = channels.map((ch, i) =>
-    `<button class="malconfig-tab${i === 0 ? ' active' : ''}" onclick="switchMalConfigTab('${escHtml(ch)}', this)">${escHtml(ch)}</button>`
-  ).join('');
+  const channelHtml = `<select class="malconfig-filter-select" onchange="switchChannelFilter(this.value)">
+    ${channels.map(ch => `<option value="${escHtml(ch)}">Preset: ${escHtml(ch)}</option>`).join('')}
+  </select>`;
 
   const ccaaHtml = ccaas.length
-    ? `<select class="malconfig-ccaa-select" onchange="switchCCAAFilter(this.value)">
+    ? `<select class="malconfig-filter-select" onchange="switchCCAAFilter(this.value)">
         <option value="">CCAA: Todas</option>
         ${ccaas.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('')}
        </select>`
     : '';
 
-  document.getElementById('malconfig-tabs').innerHTML = tabsHtml + ccaaHtml;
+  document.getElementById('malconfig-tabs').innerHTML = channelHtml + ccaaHtml;
   renderMalConfigTable(_filteredMalNodes());
 }
 
-function switchMalConfigTab(channel, btn) {
-  document.querySelectorAll('.malconfig-tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
+function switchChannelFilter(channel) {
   _malChannelFilter = channel;
   renderMalConfigTable(_filteredMalNodes());
 }

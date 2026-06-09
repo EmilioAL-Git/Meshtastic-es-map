@@ -845,34 +845,16 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 
 .malconfig-tabs {
   display: flex;
-  gap: 4px;
+  gap: 8px;
   padding: 10px 18px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
-  flex-wrap: wrap;
+  align-items: center;
 }
 
-.malconfig-tab {
-  padding: 4px 12px;
-  background: var(--panel2);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 11px;
-  cursor: pointer;
-  transition: all .15s;
-}
-.malconfig-tab.active,
-.malconfig-tab:hover {
-  background: rgba(249,115,22,.15);
-  border-color: rgba(249,115,22,.4);
-  color: #f97316;
-}
-
-.malconfig-ccaa-select {
-  margin-left: auto;
+.malconfig-filter-select {
   padding: 4px 10px;
+  padding-right: 24px;
   background: var(--panel2);
   border: 1px solid var(--border);
   border-radius: 20px;
@@ -883,14 +865,13 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   outline: none;
   appearance: none;
   -webkit-appearance: none;
-  padding-right: 22px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2364748b'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 8px center;
   transition: all .15s;
 }
-.malconfig-ccaa-select:hover,
-.malconfig-ccaa-select:focus {
+.malconfig-filter-select:hover,
+.malconfig-filter-select:focus {
   background-color: rgba(249,115,22,.1);
   border-color: rgba(249,115,22,.4);
   color: #f97316;

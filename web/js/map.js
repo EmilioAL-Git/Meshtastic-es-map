@@ -360,6 +360,7 @@ function renderNodes(nodes) {
   });
 
   renderClusters();
+  renderSpiderLegs();
 }
 
 // ─── Edges ────────────────────────────────────────────────────────────────────

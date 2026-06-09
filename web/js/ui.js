@@ -104,6 +104,15 @@ function selectNode(nodeId, fly = false) {
     ['Latitud',  node.latitude  != null ? node.latitude.toFixed(5)  : '—'],
     ['Longitud', node.longitude != null ? node.longitude.toFixed(5) : '—'],
     ...(node.altitude != null ? [['Altitud', node.altitude + ' m']] : []),
+    ...(() => {
+      const r = (node.precision_bits != null && node.latitude != null)
+        ? precisionRadiusMeters(node.precision_bits, node.latitude) : 0;
+      if (r <= 10) return [];
+      const label = r >= 1000
+        ? (r / 1000).toFixed(1) + ' km'
+        : Math.round(r) + ' m';
+      return [['Precisión ubicación', label + ' (círculo)']];
+    })(),
     ['Último visto', ago],
   ];
 

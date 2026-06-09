@@ -202,12 +202,31 @@ function getSpreadLatLng(nodeId, lat, lng, zoom) {
 function renderSpreadLegs() {
   spreadLegsGroup.clearLayers();
   if (map.getZoom() < SPREAD_MIN_ZOOM) return;
+
+  // Un dot central por grupo (se dibuja una vez por centroide único)
+  const centersDrawn = new Set();
   spreadGroups.forEach((info, nodeId) => {
     const [dLat, dLng] = getSpreadLatLng(nodeId, info.centerLat, info.centerLng);
+    // Pata de la estrella
     spreadLegsGroup.addLayer(L.polyline(
       [[info.centerLat, info.centerLng], [dLat, dLng]],
-      { color: '#94a3b8', weight: 1, opacity: 0.45, interactive: false, renderer: canvasRenderer }
+      { color: '#94a3b8', weight: 1.2, opacity: 0.55, interactive: false, renderer: canvasRenderer }
     ));
+    // Punto central (solo una vez por grupo)
+    const centerKey = `${info.centerLat},${info.centerLng}`;
+    if (!centersDrawn.has(centerKey)) {
+      centersDrawn.add(centerKey);
+      spreadLegsGroup.addLayer(L.circleMarker([info.centerLat, info.centerLng], {
+        radius:      4,
+        fillColor:   '#94a3b8',
+        color:       '#1e293b',
+        weight:      1,
+        fillOpacity: 0.8,
+        opacity:     0.8,
+        interactive: false,
+        renderer:    canvasRenderer,
+      }));
+    }
   });
 }
 

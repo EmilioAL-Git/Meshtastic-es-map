@@ -264,42 +264,9 @@ function makeClusterIcon(count, color) {
 
 function renderClusters() {
   clearSpiderLegs();
-  // Fade-out de clusters anteriores antes de eliminarlos
-  const removing = { ...clusterMarkers };
-  clusterMarkers = {};
+  // No hay badges de cluster — los nodos se superponen a zoom bajo
+  // y se separan en estrella solo a zoom >= SPREAD_MIN_ZOOM
   spreadHidden.clear();
-
-  Object.values(removing).forEach(m => {
-    const el = m.getElement()?.querySelector('.spread-cluster');
-    if (el) el.classList.add('sc-out');
-  });
-  setTimeout(() => Object.values(removing).forEach(m => map.removeLayer(m)), 180);
-
-  if (map.getZoom() >= SPREAD_MIN_ZOOM) return;
-
-  // Agrupar por centroide
-  const groups = new Map();
-  spreadGroups.forEach((info, nodeId) => {
-    const key = `${info.centerLat},${info.centerLng}`;
-    if (!groups.has(key)) groups.set(key, { ...info, nodeIds: [] });
-    groups.get(key).nodeIds.push(nodeId);
-  });
-
-  groups.forEach((group, key) => {
-    group.nodeIds.forEach(id => spreadHidden.add(id));
-    const color  = clusterDominantColor(group.nodeIds);
-    const marker = L.marker([group.centerLat, group.centerLng], {
-      icon:         makeClusterIcon(group.nodeIds.length, color),
-      pane:         'markersPane',
-      zIndexOffset: 200,
-    });
-    marker.on('click', () => {
-      markerClicked = true;
-      map.flyTo([group.centerLat, group.centerLng], Math.min(map.getZoom() + 3, SPREAD_MIN_ZOOM), { animate: true, duration: 0.5 });
-    });
-    marker.addTo(map);
-    clusterMarkers[key] = marker;
-  });
 }
 
 // ─── Renderizar nodos ─────────────────────────────────────────────────────────

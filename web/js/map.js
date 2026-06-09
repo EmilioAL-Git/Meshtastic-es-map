@@ -233,16 +233,18 @@ function getSpreadLatLng(nodeId, lat, lng, zoom) {
   if (!info) return [lat, lng];
   const clusterKey = `${info.centerLat},${info.centerLng}`;
   const z = zoom != null ? zoom : map.getZoom();
-  // Cluster abierto por click → forzar spread aunque el zoom sea bajo
-  const effectiveZ = openedClusters.has(clusterKey) ? Math.max(z, SPREAD_MIN_ZOOM) : z;
-  if (effectiveZ < SPREAD_MIN_ZOOM) return [lat, lng];
-  const spacing    = markerSize() * 3;
+  const isForced = openedClusters.has(clusterKey);
+  // Para clusters abiertos: posición siempre calculada al zoom de referencia fijo
+  const refZ = isForced ? SPREAD_MIN_ZOOM : z;
+  if (refZ < SPREAD_MIN_ZOOM) return [lat, lng];
+  // Tamaño fijo para clusters abiertos → radio estable independientemente del zoom actual
+  const spacing    = (isForced ? 6 : markerSize()) * 3;
   const baseRadius = Math.max(SPREAD_MINPX, Math.ceil(info.total * spacing / (2 * Math.PI)));
-  const radius     = baseRadius + Math.max(0, effectiveZ - SPREAD_MIN_ZOOM) * 80;
-  const center = map.project([info.centerLat, info.centerLng], z);
+  const radius     = baseRadius + Math.max(0, refZ - SPREAD_MIN_ZOOM) * 80;
+  const center = map.project([info.centerLat, info.centerLng], refZ);
   const angle  = (2 * Math.PI * info.idx) / info.total - Math.PI / 2;
   const ll     = map.unproject(
-    [center.x + radius * Math.cos(angle), center.y + radius * Math.sin(angle)], z
+    [center.x + radius * Math.cos(angle), center.y + radius * Math.sin(angle)], refZ
   );
   return [ll.lat, ll.lng];
 }

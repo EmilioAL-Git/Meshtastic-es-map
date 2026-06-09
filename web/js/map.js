@@ -231,11 +231,14 @@ function computeSpreadGroups(nodes) {
 function getSpreadLatLng(nodeId, lat, lng, zoom) {
   const info = spreadGroups.get(nodeId);
   if (!info) return [lat, lng];
+  const clusterKey = `${info.centerLat},${info.centerLng}`;
   const z = zoom != null ? zoom : map.getZoom();
-  if (z < SPREAD_MIN_ZOOM) return [lat, lng];
-  const spacing    = markerSize() * 3;   // espacio mínimo entre nodos = 3× el radio del icono
+  // Cluster abierto por click → forzar spread aunque el zoom sea bajo
+  const effectiveZ = openedClusters.has(clusterKey) ? Math.max(z, SPREAD_MIN_ZOOM) : z;
+  if (effectiveZ < SPREAD_MIN_ZOOM) return [lat, lng];
+  const spacing    = markerSize() * 3;
   const baseRadius = Math.max(SPREAD_MINPX, Math.ceil(info.total * spacing / (2 * Math.PI)));
-  const radius     = baseRadius + Math.max(0, z - SPREAD_MIN_ZOOM) * 80;
+  const radius     = baseRadius + Math.max(0, effectiveZ - SPREAD_MIN_ZOOM) * 80;
   const center = map.project([info.centerLat, info.centerLng], z);
   const angle  = (2 * Math.PI * info.idx) / info.total - Math.PI / 2;
   const ll     = map.unproject(
@@ -289,6 +292,9 @@ function renderClusters() {
   });
 
   groups.forEach((group, key) => {
+    // Si este cluster fue abierto por click, mostrar nodos individuales
+    if (openedClusters.has(key)) return;
+
     group.nodeIds.forEach(id => spreadHidden.add(id));
     const color  = clusterDominantColor(group.nodeIds);
     const marker = L.marker([group.centerLat, group.centerLng], {
@@ -298,7 +304,9 @@ function renderClusters() {
     });
     marker.on('click', () => {
       markerClicked = true;
-      map.flyTo([group.centerLat, group.centerLng], Math.min(map.getZoom() + 3, SPREAD_MIN_ZOOM), { animate: true, duration: 0.5 });
+      openedClusters.add(key);
+      try { sessionStorage.setItem('openedClusters', JSON.stringify([...openedClusters])); } catch {}
+      updateMarkerSizes();
     });
     marker.addTo(map);
     clusterMarkers[key] = marker;

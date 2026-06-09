@@ -24,6 +24,10 @@ let markerClicked  = false;  // evita que map.click cierre el panel tras selecci
 let spreadGroups   = new Map(); // node_id → { centerLat, centerLng, idx, total }
 let clusterMarkers = {};        // groupKey → L.marker (badge de cluster)
 let spreadHidden   = new Set(); // node_ids ocultos porque están en cluster
+// Clusters abiertos por click del usuario — persisten toda la sesión
+const openedClusters = new Set(
+  JSON.parse(sessionStorage.getItem('openedClusters') || '[]')
+);
 
 const ALL_CATS      = ['gateway', 'router', 'recent', 'active', 'old'];
 const FILTER_KEY    = 'mesh_active_filters';

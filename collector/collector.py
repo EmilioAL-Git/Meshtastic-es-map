@@ -93,6 +93,11 @@ CREATE TABLE IF NOT EXISTS snapshots (
 );
 
 
+CREATE TABLE IF NOT EXISTS meta (
+    key     TEXT PRIMARY KEY,
+    value   TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_nodes_last_seen  ON nodes(last_seen);
 CREATE INDEX IF NOT EXISTS idx_edges_from       ON edges(from_node);
 CREATE INDEX IF NOT EXISTS idx_edges_to         ON edges(to_node);
@@ -318,16 +323,27 @@ def parse_edges(raw: list | dict) -> list[dict]:
     return edges
 
 
-def fetch_precision_bits(base_url: str) -> dict[str, int]:
+def fetch_precision_bits(base_url: str, conn: sqlite3.Connection) -> dict[str, int]:
     """
-    Consulta /api/packets?portnum=3 y devuelve {node_id: precision_bits}
-    con el valor del paquete de posición más reciente de cada nodo.
+    Consulta /api/packets?portnum=3 y devuelve {node_id: precision_bits}.
+    Usa polling incremental con el parámetro 'since' para no refetchear
+    paquetes ya procesados. El timestamp se persiste en la tabla meta.
     """
+    since = conn.execute(
+        "SELECT value FROM meta WHERE key = 'position_latest_import_time'"
+    ).fetchone()
+    since_us = int(since[0]) if since else None
+
     url = f"{base_url}/api/packets?portnum=3&limit=1000"
+    if since_us:
+        url += f"&since={since_us}"
+
     raw = fetch_json(url)
     if not raw:
         return {}
     packets = raw.get("packets", []) if isinstance(raw, dict) else raw
+    latest  = raw.get("latest_import_time") if isinstance(raw, dict) else None
+
     result: dict[str, int] = {}
     for pkt in packets:
         node_id_int = pkt.get("from_node_id")
@@ -340,6 +356,15 @@ def fetch_precision_bits(base_url: str) -> dict[str, int]:
         m = re.search(r'precision_bits:\s*(\d+)', payload)
         if m:
             result[node_id] = int(m.group(1))
+
+    if latest:
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES ('position_latest_import_time', ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (str(latest),),
+        )
+        conn.commit()
+
     return result
 
 
@@ -675,7 +700,7 @@ def collect_once(conn: sqlite3.Connection):
     # 3. Precision bits de paquetes de posición
     packets_url = f"{MESHVIEW_BASE}/api/packets?portnum=3&limit=1000"
     log.info(f"Pidiendo paquetes de posición a {packets_url} …")
-    precision_map = fetch_precision_bits(MESHVIEW_BASE)
+    precision_map = fetch_precision_bits(MESHVIEW_BASE, conn)
     if precision_map:
         pb_updated = update_precision_bits(conn, precision_map)
         log.info(f"  → precision_bits actualizado en {pb_updated} nodos ({len(precision_map)} en paquetes)")

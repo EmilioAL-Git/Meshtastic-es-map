@@ -167,6 +167,17 @@ function closeNodeReport() {
 }
 
 // ─── Modal: Nodos mal configurados ────────────────────────────────────────────
+let _malChannelFilter = 'Todos';
+let _malCCAAFilter    = '';
+
+function _filteredMalNodes() {
+  return [...malConfigurados.values()]
+    .filter(n => detectIssues(n).length > 0)
+    .filter(n => _malChannelFilter === 'Todos' || n.channel === _malChannelFilter)
+    .filter(n => !_malCCAAFilter || n.ccaa === _malCCAAFilter)
+    .sort((a, b) => (b.sent || 0) - (a.sent || 0));
+}
+
 function openMalConfigModal() {
   document.getElementById('malconfig-modal').classList.add('open');
   renderMalConfigModal();
@@ -177,26 +188,38 @@ function closeMalConfigModal() {
 }
 
 function renderMalConfigModal() {
-  const all      = [...malConfigurados.values()]
-    .filter(n => detectIssues(n).length > 0)
-    .sort((a, b) => (b.sent || 0) - (a.sent || 0));
-  const channels = ['Todos', ...[...new Set(all.map(n => n.channel))].sort()];
+  _malChannelFilter = 'Todos';
+  _malCCAAFilter    = '';
 
-  document.getElementById('malconfig-tabs').innerHTML = channels.map((ch, i) =>
+  const all      = [...malConfigurados.values()].filter(n => detectIssues(n).length > 0);
+  const channels = ['Todos', ...[...new Set(all.map(n => n.channel))].sort()];
+  const ccaas    = [...new Set(all.map(n => n.ccaa).filter(Boolean))].sort();
+
+  const tabsHtml = channels.map((ch, i) =>
     `<button class="malconfig-tab${i === 0 ? ' active' : ''}" onclick="switchMalConfigTab('${escHtml(ch)}', this)">${escHtml(ch)}</button>`
   ).join('');
 
-  renderMalConfigTable(all);
+  const ccaaHtml = ccaas.length
+    ? `<select class="malconfig-ccaa-select" onchange="switchCCAAFilter(this.value)">
+        <option value="">CCAA: Todas</option>
+        ${ccaas.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('')}
+       </select>`
+    : '';
+
+  document.getElementById('malconfig-tabs').innerHTML = tabsHtml + ccaaHtml;
+  renderMalConfigTable(_filteredMalNodes());
 }
 
 function switchMalConfigTab(channel, btn) {
   document.querySelectorAll('.malconfig-tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
-  const all      = [...malConfigurados.values()]
-    .filter(n => detectIssues(n).length > 0)
-    .sort((a, b) => (b.sent || 0) - (a.sent || 0));
-  const filtered = channel === 'Todos' ? all : all.filter(n => n.channel === channel);
-  renderMalConfigTable(filtered);
+  _malChannelFilter = channel;
+  renderMalConfigTable(_filteredMalNodes());
+}
+
+function switchCCAAFilter(ccaa) {
+  _malCCAAFilter = ccaa;
+  renderMalConfigTable(_filteredMalNodes());
 }
 
 function renderMalConfigTable(nodes) {

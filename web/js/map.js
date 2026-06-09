@@ -117,9 +117,9 @@ function makeSelectedIcon(color) {
 function markerSize() {
   const z = map.getZoom();
   const mobile = window.innerWidth <= 768;
-  if (z <= 7) return mobile ? 5  : 3;
-  if (z <= 9) return mobile ? 7  : 4;
-  return mobile ? 10 : 6;
+  if (z <= 7) return mobile ? 4  : 3;
+  if (z <= 9) return mobile ? 5  : 4;
+  return mobile ? 8 : 6;
 }
 
 function updateMarkerSizes() {

@@ -140,6 +140,8 @@ function updateMarkerSizes() {
     else if (m.setRadius) m.setRadius(sz);
     else if (isRouter(n) && !n.is_mqtt_gateway) m.setIcon(makeRouterIcon(nodeColor(n), sz));
   });
+  renderSpiderLegs();
+
   if (selectedNodeId && selOverlay) {
     const selNode = allNodes.find(n => n.node_id === selectedNodeId);
     if (selNode && spreadGroups.has(selectedNodeId)) {
@@ -153,7 +155,48 @@ function updateMarkerSizes() {
 // ─── Desagrupación / clustering de nodos superpuestos ─────────────────────────
 const SPREAD_GEO      = 0.0001; // ~10 m en grados (umbral geográfico fijo)
 const SPREAD_MINPX    = 18;     // radio mínimo del círculo de separación
-const SPREAD_MIN_ZOOM = 15;     // zoom a partir del cual se separan individualmente
+const SPREAD_MIN_ZOOM = 17;     // zoom a partir del cual se separan individualmente
+
+let spiderLegs = [];  // polylines del patrón estrella
+
+function clearSpiderLegs() {
+  spiderLegs.forEach(l => map.removeLayer(l));
+  spiderLegs = [];
+}
+
+function renderSpiderLegs() {
+  clearSpiderLegs();
+  if (map.getZoom() < SPREAD_MIN_ZOOM) return;
+
+  const groups = new Map();
+  spreadGroups.forEach((info, nodeId) => {
+    const key = `${info.centerLat},${info.centerLng}`;
+    if (!groups.has(key)) groups.set(key, { ...info, nodeIds: [] });
+    groups.get(key).nodeIds.push(nodeId);
+  });
+
+  groups.forEach(group => {
+    const color = clusterDominantColor(group.nodeIds);
+    // Punto central visible
+    const dot = L.circleMarker([group.centerLat, group.centerLng], {
+      radius: 3, color, fillColor: color, fillOpacity: 1, weight: 1.5,
+      opacity: 0.85, interactive: false, pane: 'overlayPane',
+    }).addTo(map);
+    spiderLegs.push(dot);
+
+    group.nodeIds.forEach(nodeId => {
+      if (spreadHidden.has(nodeId)) return;
+      const node = allNodes.find(n => n.node_id === nodeId);
+      if (!node) return;
+      const [sLat, sLng] = getSpreadLatLng(nodeId, node.latitude, node.longitude);
+      const leg = L.polyline(
+        [[group.centerLat, group.centerLng], [sLat, sLng]],
+        { color, weight: 1.5, opacity: 0.55, interactive: false, pane: 'overlayPane' }
+      ).addTo(map);
+      spiderLegs.push(leg);
+    });
+  });
+}
 
 function computeSpreadGroups(nodes) {
   spreadGroups.clear();
@@ -220,6 +263,7 @@ function makeClusterIcon(count, color) {
 }
 
 function renderClusters() {
+  clearSpiderLegs();
   // Fade-out de clusters anteriores antes de eliminarlos
   const removing = { ...clusterMarkers };
   clusterMarkers = {};
@@ -260,6 +304,7 @@ function renderClusters() {
 
 // ─── Renderizar nodos ─────────────────────────────────────────────────────────
 function renderNodes(nodes) {
+  clearSpiderLegs();
   Object.values(markers).forEach(m => map.removeLayer(m));
   markers = {};
 

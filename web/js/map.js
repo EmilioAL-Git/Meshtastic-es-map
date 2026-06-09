@@ -227,7 +227,7 @@ function clusterDominantColor(nodeIds) {
 }
 
 function makeClusterIcon(count, color) {
-  const sz = markerSize() * 2 + 10;
+  const sz = Math.max(28, markerSize() * 2 + 6 + String(count).length * 6);
   return L.divIcon({
     html: `<div class="spread-cluster" style="width:${sz}px;height:${sz}px;background:${color}"><span>${count}</span></div>`,
     iconSize:   [sz, sz],

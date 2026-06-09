@@ -280,25 +280,45 @@ function renderClusters() {
   if (map.getZoom() < CLUSTER_MIN_ZOOM) return;
   if (map.getZoom() >= SPREAD_MIN_ZOOM) return;
 
-  // Agrupar por centroide
-  const groups = new Map();
-  spreadGroups.forEach((info, nodeId) => {
-    const key = `${info.centerLat},${info.centerLng}`;
-    if (!groups.has(key)) groups.set(key, { ...info, nodeIds: [] });
-    groups.get(key).nodeIds.push(nodeId);
-  });
+  // Agrupar por proximidad en píxeles al zoom actual (se adapta a cualquier zoom)
+  const z          = map.getZoom();
+  const CLUSTER_PX = 24;
+  const assigned   = new Set();
+  const valid      = allNodes.filter(n => n.latitude != null && n.longitude != null);
+  let   groupIdx   = 0;
 
-  groups.forEach((group, key) => {
-    group.nodeIds.forEach(id => spreadHidden.add(id));
-    const color  = clusterDominantColor(group.nodeIds);
-    const marker = L.marker([group.centerLat, group.centerLng], {
-      icon:         makeClusterIcon(group.nodeIds.length, color),
+  valid.forEach(node => {
+    if (assigned.has(node.node_id)) return;
+    const pA    = map.project([node.latitude, node.longitude], z);
+    const group = [node];
+    assigned.add(node.node_id);
+
+    valid.forEach(other => {
+      if (assigned.has(other.node_id)) return;
+      const pB = map.project([other.latitude, other.longitude], z);
+      const dx = pA.x - pB.x, dy = pA.y - pB.y;
+      if (Math.sqrt(dx * dx + dy * dy) <= CLUSTER_PX) {
+        group.push(other);
+        assigned.add(other.node_id);
+      }
+    });
+
+    if (group.length < 2) return;
+
+    const centerLat = group.reduce((s, n) => s + n.latitude,  0) / group.length;
+    const centerLng = group.reduce((s, n) => s + n.longitude, 0) / group.length;
+    const key       = `cg_${groupIdx++}`;
+
+    group.forEach(n => spreadHidden.add(n.node_id));
+    const color  = clusterDominantColor(group.map(n => n.node_id));
+    const marker = L.marker([centerLat, centerLng], {
+      icon:         makeClusterIcon(group.length, color),
       pane:         'markersPane',
       zIndexOffset: 200,
     });
     marker.on('click', () => {
       markerClicked = true;
-      map.flyTo([group.centerLat, group.centerLng], Math.min(map.getZoom() + 3, SPREAD_MIN_ZOOM), { animate: true, duration: 0.5 });
+      map.flyTo([centerLat, centerLng], Math.min(map.getZoom() + 3, SPREAD_MIN_ZOOM), { animate: true, duration: 0.5 });
     });
     marker.addTo(map);
     clusterMarkers[key] = marker;

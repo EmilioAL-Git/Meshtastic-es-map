@@ -270,7 +270,7 @@ function renderClusters() {
     });
     marker.on('click', () => {
       markerClicked = true;
-      map.flyTo([group.centerLat, group.centerLng], SPREAD_MIN_ZOOM, { animate: true, duration: 0.5 });
+      map.flyTo([group.centerLat, group.centerLng], Math.min(map.getZoom() + 3, SPREAD_MIN_ZOOM), { animate: true, duration: 0.5 });
     });
     marker.addTo(map);
     clusterMarkers[key] = marker;

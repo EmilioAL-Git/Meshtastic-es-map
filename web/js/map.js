@@ -87,8 +87,9 @@ function makeRouterIcon(color, radius) {
 }
 
 function makeMalConfiguradoIcon(color, size = 6) {
-  const w = Math.round(size * 3.5);
-  const h = Math.round(size * 3.2);
+  const s = window.innerWidth <= 768 ? Math.min(size, 6) : size;
+  const w = Math.round(s * 3.5);
+  const h = Math.round(s * 3.2);
   return L.divIcon({
     html: `<svg width="${w}" height="${h}" viewBox="0 0 22 20" xmlns="http://www.w3.org/2000/svg">
       <polygon points="11,1 21,19 1,19" fill="${color}" stroke="#1e293b" stroke-width="1.5" stroke-linejoin="round"/>

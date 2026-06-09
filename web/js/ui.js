@@ -5,6 +5,20 @@ function precisionRadiusMeters(precisionBits, lat) {
   return stepDeg * 111320 * Math.cos(lat * Math.PI / 180);
 }
 
+function _flyToCircle(nodeId, lat, lng, circle, duration) {
+  const bounds = circle.getBounds();
+  // Si el nodo está en un grupo (cluster posible), calcular el zoom destino
+  if (spreadGroups.has(nodeId)) {
+    const targetZoom = map.getBoundsZoom(bounds, false);
+    if (targetZoom >= CLUSTER_MIN_ZOOM && targetZoom < SPREAD_MIN_ZOOM) {
+      // flyToBounds aterrizaría en rango de cluster — abrir el cluster primero
+      map.flyTo([lat, lng], SPREAD_MIN_ZOOM, { animate: true, duration });
+      return;
+    }
+  }
+  map.flyToBounds(bounds, { animate: true, duration, padding: [40, 40] });
+}
+
 // ─── Selección de nodo ────────────────────────────────────────────────────────
 function selectNode(nodeId, fly = false) {
   const node = allNodes.find(n => n.node_id === nodeId);
@@ -59,8 +73,7 @@ function selectNode(nodeId, fly = false) {
     if (fly) {
       map.stop();
       if (precisionCircle) {
-        // Volar para que el círculo de precisión sea visible
-        map.flyToBounds(precisionCircle.getBounds(), { animate: true, duration: 0.7, padding: [40, 40] });
+        _flyToCircle(nodeId, node.latitude, node.longitude, precisionCircle, 0.7);
       } else {
         const zoom     = Math.max(map.getZoom(), 16);
         const isMobile = window.innerWidth <= 768;
@@ -74,8 +87,7 @@ function selectNode(nodeId, fly = false) {
         }
       }
     } else if (precisionCircle) {
-      // Click directo: ajustar zoom para mostrar el círculo
-      map.flyToBounds(precisionCircle.getBounds(), { animate: true, duration: 0.5, padding: [40, 40] });
+      _flyToCircle(nodeId, node.latitude, node.longitude, precisionCircle, 0.5);
     }
 
     showNodeEdges(nodeId);

@@ -167,7 +167,6 @@ function clearSpiderLegs() {
 
 function renderSpiderLegs() {
   clearSpiderLegs();
-  if (map.getZoom() < SPREAD_MIN_ZOOM) return;
 
   const groups = new Map();
   spreadGroups.forEach((info, nodeId) => {
@@ -176,9 +175,13 @@ function renderSpiderLegs() {
     groups.get(key).nodeIds.push(nodeId);
   });
 
-  groups.forEach(group => {
+  const z = map.getZoom();
+  groups.forEach((group, key) => {
+    // Dibujar patas si: zoom alto (spread normal) O cluster abierto por click
+    const isForced = openedClusters.has(key);
+    if (z < SPREAD_MIN_ZOOM && !isForced) return;
+
     const color = clusterDominantColor(group.nodeIds);
-    // Punto central visible
     const dot = L.circleMarker([group.centerLat, group.centerLng], {
       radius: 3, color, fillColor: color, fillOpacity: 1, weight: 1.5,
       opacity: 0.85, interactive: false, pane: 'overlayPane',

@@ -17,11 +17,12 @@ let selectedNodeId = null;
 let selOverlay     = null;   // L.marker con animación de pulso
 let map;
 let edgeGroup;
-let spreadLegsGroup;
 let markerRenderer;
 let searchIndex    = -1;
 let markerClicked  = false;  // evita que map.click cierre el panel tras seleccionar un nodo
 let spreadGroups   = new Map(); // node_id → { centerLat, centerLng, idx, total }
+let clusterMarkers = {};        // groupKey → L.marker (badge de cluster)
+let spreadHidden   = new Set(); // node_ids ocultos porque están en cluster
 
 const ALL_CATS      = ['gateway', 'router', 'recent', 'active', 'old'];
 const FILTER_KEY    = 'mesh_active_filters';

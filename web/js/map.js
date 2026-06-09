@@ -37,7 +37,6 @@ function initMap() {
   map.getPane('markersPane').style.zIndex = 450;
   markerRenderer = L.svg({ pane: 'markersPane', padding: 0.5 });
 
-  spreadLegsGroup = L.layerGroup().addTo(map);
   edgeGroup = L.layerGroup().addTo(map);
   map.on('zoomend', updateMarkerSizes);
 
@@ -124,10 +123,13 @@ function markerSize() {
 }
 
 function updateMarkerSizes() {
+  renderClusters();
+  applyFilters();
+
   const sz = markerSize();
   allNodes.forEach(n => {
     const m = markers[n.node_id];
-    if (!m) return;
+    if (!m || spreadHidden.has(n.node_id)) return;
     if (spreadGroups.has(n.node_id)) {
       const [dLat, dLng] = getSpreadLatLng(n.node_id, n.latitude, n.longitude);
       m.setLatLng([dLat, dLng]);
@@ -137,8 +139,6 @@ function updateMarkerSizes() {
     else if (m.setRadius) m.setRadius(sz);
     else if (isRouter(n) && !n.is_mqtt_gateway) m.setIcon(makeRouterIcon(nodeColor(n), sz));
   });
-  renderSpreadLegs();
-  // Reposicionar overlay de selección si el nodo está en un grupo spread
   if (selectedNodeId && selOverlay) {
     const selNode = allNodes.find(n => n.node_id === selectedNodeId);
     if (selNode && spreadGroups.has(selectedNodeId)) {
@@ -199,17 +199,54 @@ function getSpreadLatLng(nodeId, lat, lng, zoom) {
   return [ll.lat, ll.lng];
 }
 
-function renderSpreadLegs() {
-  spreadLegsGroup.clearLayers();
-  if (map.getZoom() < SPREAD_MIN_ZOOM) return;
+function clusterDominantColor(nodeIds) {
+  const nodes = nodeIds.map(id => allNodes.find(n => n.node_id === id)).filter(Boolean);
+  if (nodes.some(n => n.is_mqtt_gateway))                                           return C_GATEWAY;
+  if (nodes.some(n => isRouter(n)))                                                 return C_ROUTER;
+  if (nodes.some(n => n.is_recent))                                                 return C_RECENT;
+  if (nodes.some(n => n.last_seen_ago_min != null && n.last_seen_ago_min < 1440))   return C_ACTIVE;
+  return C_OLD;
+}
 
+function makeClusterIcon(count, color) {
+  const sz = markerSize() * 2 + 10;
+  return L.divIcon({
+    html: `<div class="spread-cluster" style="width:${sz}px;height:${sz}px;background:${color}"><span>${count}</span></div>`,
+    iconSize:   [sz, sz],
+    iconAnchor: [sz / 2, sz / 2],
+    className:  '',
+  });
+}
+
+function renderClusters() {
+  Object.values(clusterMarkers).forEach(m => map.removeLayer(m));
+  clusterMarkers = {};
+  spreadHidden.clear();
+
+  if (map.getZoom() >= SPREAD_MIN_ZOOM) return;
+
+  // Agrupar por centroide
+  const groups = new Map();
   spreadGroups.forEach((info, nodeId) => {
-    const [dLat, dLng] = getSpreadLatLng(nodeId, info.centerLat, info.centerLng);
-    // Pata de la estrella
-    spreadLegsGroup.addLayer(L.polyline(
-      [[info.centerLat, info.centerLng], [dLat, dLng]],
-      { color: '#94a3b8', weight: 1.2, opacity: 0.55, interactive: false, renderer: canvasRenderer }
-    ));
+    const key = `${info.centerLat},${info.centerLng}`;
+    if (!groups.has(key)) groups.set(key, { ...info, nodeIds: [] });
+    groups.get(key).nodeIds.push(nodeId);
+  });
+
+  groups.forEach((group, key) => {
+    group.nodeIds.forEach(id => spreadHidden.add(id));
+    const color  = clusterDominantColor(group.nodeIds);
+    const marker = L.marker([group.centerLat, group.centerLng], {
+      icon:         makeClusterIcon(group.nodeIds.length, color),
+      pane:         'markersPane',
+      zIndexOffset: 200,
+    });
+    marker.on('click', () => {
+      markerClicked = true;
+      map.flyTo([group.centerLat, group.centerLng], SPREAD_MIN_ZOOM, { animate: true, duration: 0.5 });
+    });
+    marker.addTo(map);
+    clusterMarkers[key] = marker;
   });
 }
 
@@ -269,7 +306,7 @@ function renderNodes(nodes) {
     markers[node.node_id] = marker;
   });
 
-  renderSpreadLegs();
+  renderClusters();
 }
 
 // ─── Edges ────────────────────────────────────────────────────────────────────

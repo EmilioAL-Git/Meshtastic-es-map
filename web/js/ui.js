@@ -19,8 +19,8 @@ function selectNode(nodeId, fly = false) {
   }
 
   if (node.latitude != null && node.longitude != null) {
-    const targetZoom  = fly ? Math.max(map.getZoom(), 16) : map.getZoom();
-    const [sLat, sLng] = getSpreadLatLng(nodeId, node.latitude, node.longitude, targetZoom);
+    // Overlay: usar posición spread del zoom actual (se reposiciona en zoomend si cambia)
+    const [sLat, sLng] = getSpreadLatLng(nodeId, node.latitude, node.longitude);
 
     if (markers[nodeId]) {
       if (markers[nodeId].setStyle) markers[nodeId].setStyle({ fillOpacity: 0, opacity: 0 });
@@ -33,16 +33,17 @@ function selectNode(nodeId, fly = false) {
     }
 
     if (fly) {
+      // flyTo siempre a las coordenadas reales — el spread se reposiciona al llegar (zoomend)
       map.stop();
-      const zoom     = targetZoom;
+      const zoom     = Math.max(map.getZoom(), 16);
       const isMobile = window.innerWidth <= 768;
       const offsetPx = isMobile ? Math.round(window.innerHeight * 0.22) : 0;
       if (offsetPx > 0) {
-        const targetPx  = map.project([sLat, sLng], zoom);
+        const targetPx  = map.project([node.latitude, node.longitude], zoom);
         const shiftedPx = targetPx.add([0, offsetPx]);
         map.flyTo(map.unproject(shiftedPx, zoom), zoom, { animate: true, duration: 0.6 });
       } else {
-        map.flyTo([sLat, sLng], zoom, { animate: true, duration: 0.6 });
+        map.flyTo([node.latitude, node.longitude], zoom, { animate: true, duration: 0.6 });
       }
     }
 

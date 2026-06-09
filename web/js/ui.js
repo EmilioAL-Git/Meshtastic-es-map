@@ -1,3 +1,10 @@
+// ─── Círculo de precisión de posición ────────────────────────────────────────
+function precisionRadiusMeters(precisionBits, lat) {
+  if (precisionBits == null || precisionBits >= 32) return 0;
+  const stepDeg = Math.pow(2, 32 - precisionBits) / 1e7;
+  return stepDeg * 111320 * Math.cos(lat * Math.PI / 180);
+}
+
 // ─── Selección de nodo ────────────────────────────────────────────────────────
 function selectNode(nodeId, fly = false) {
   const node = allNodes.find(n => n.node_id === nodeId);
@@ -7,7 +14,8 @@ function selectNode(nodeId, fly = false) {
   selectedNodeId   = nodeId;
 
   // Restaurar marker anterior y colocar overlay animado en el nuevo
-  if (selOverlay) { map.removeLayer(selOverlay); selOverlay = null; }
+  if (selOverlay)      { map.removeLayer(selOverlay);      selOverlay      = null; }
+  if (precisionCircle) { map.removeLayer(precisionCircle); precisionCircle = null; }
   if (prevNodeId && markers[prevNodeId]) {
     const prev = allNodes.find(n => n.node_id === prevNodeId);
     if (prev) {
@@ -29,6 +37,22 @@ function selectNode(nodeId, fly = false) {
         icon: makeSelectedIcon(nodeColor(node)),
         interactive: false,
         zIndexOffset: 1000,
+      }).addTo(map);
+    }
+
+    // Círculo de incertidumbre de posición
+    const radius = precisionRadiusMeters(node.precision_bits, node.latitude);
+    if (radius > 10) {
+      const color = nodeColor(node);
+      precisionCircle = L.circle([node.latitude, node.longitude], {
+        radius,
+        color,
+        weight: 1.5,
+        opacity: 0.55,
+        fillColor: color,
+        fillOpacity: 0.08,
+        interactive: false,
+        pane: 'overlayPane',
       }).addTo(map);
     }
 
@@ -157,7 +181,8 @@ function closeDetail() {
     legend.style.right    = '';
     legend.style.top      = '';
   }
-  if (selOverlay) { map.removeLayer(selOverlay); selOverlay = null; }
+  if (selOverlay)      { map.removeLayer(selOverlay);      selOverlay      = null; }
+  if (precisionCircle) { map.removeLayer(precisionCircle); precisionCircle = null; }
   if (selectedNodeId && markers[selectedNodeId]) {
     const n = allNodes.find(n => n.node_id === selectedNodeId);
     if (n) {

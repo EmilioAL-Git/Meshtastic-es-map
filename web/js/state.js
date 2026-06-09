@@ -13,8 +13,9 @@ let markers        = {};     // node_id → Leaflet marker
 let firstLoad      = true;
 let autoFitDone    = false;
 let loadRunning    = false;
-let selectedNodeId = null;
-let selOverlay     = null;   // L.marker con animación de pulso
+let selectedNodeId  = null;
+let selOverlay      = null;   // L.marker con animación de pulso
+let precisionCircle = null;   // L.circle de incertidumbre de posición
 let map;
 let edgeGroup;
 let markerRenderer;

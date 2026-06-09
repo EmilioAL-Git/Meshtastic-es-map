@@ -15,6 +15,7 @@ import argparse
 import json
 import logging
 import os
+import re
 import sqlite3
 import time
 from datetime import datetime, timezone
@@ -66,6 +67,7 @@ CREATE TABLE IF NOT EXISTS nodes (
     channel         TEXT,
     is_mqtt_gateway INTEGER DEFAULT 0,
     hops_away       INTEGER,
+    precision_bits  INTEGER,   -- bits de precisión del paquete de posición (1-32)
     last_seen       INTEGER,   -- unix timestamp (segundos)
     first_seen      INTEGER,   -- unix timestamp primera vez que lo vimos
     updated_at      INTEGER    -- unix timestamp última actualización en nuestra BD
@@ -108,6 +110,7 @@ def get_db(db_path: Path) -> sqlite3.Connection:
     for migration in [
         "ALTER TABLE nodes ADD COLUMN channel TEXT",
         "ALTER TABLE snapshots ADD COLUMN active_nodes INTEGER",
+        "ALTER TABLE nodes ADD COLUMN precision_bits INTEGER",
     ]:
         try:
             conn.execute(migration)
@@ -315,6 +318,43 @@ def parse_edges(raw: list | dict) -> list[dict]:
     return edges
 
 
+def fetch_precision_bits(base_url: str) -> dict[str, int]:
+    """
+    Consulta /api/packets?portnum=3 y devuelve {node_id: precision_bits}
+    con el valor del paquete de posición más reciente de cada nodo.
+    """
+    url = f"{base_url}/api/packets?portnum=3&limit=1000"
+    raw = fetch_json(url)
+    if not raw:
+        return {}
+    packets = raw.get("packets", []) if isinstance(raw, dict) else raw
+    result: dict[str, int] = {}
+    for pkt in packets:
+        node_id_int = pkt.get("from_node_id")
+        if node_id_int is None:
+            continue
+        node_id = _int_to_node_id(node_id_int)
+        if node_id in result:
+            continue  # la API devuelve desc; nos quedamos con el más reciente
+        payload = pkt.get("payload") or ""
+        m = re.search(r'precision_bits:\s*(\d+)', payload)
+        if m:
+            result[node_id] = int(m.group(1))
+    return result
+
+
+def update_precision_bits(conn: sqlite3.Connection, precision_map: dict[str, int]) -> int:
+    updated = 0
+    for node_id, pb in precision_map.items():
+        rows = conn.execute(
+            "UPDATE nodes SET precision_bits = ? WHERE node_id = ?",
+            (pb, node_id),
+        ).rowcount
+        updated += rows
+    conn.commit()
+    return updated
+
+
 def _to_unix_seconds(v) -> int | None:
     if v is None:
         return None
@@ -488,7 +528,7 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
                latitude, longitude, altitude,
                battery_level, voltage, snr, rssi,
                channel_util, air_util_tx, firmware, channel,
-               is_mqtt_gateway, hops_away,
+               is_mqtt_gateway, hops_away, precision_bits,
                last_seen, first_seen, updated_at
         FROM nodes
         WHERE last_seen >= ?
@@ -631,6 +671,16 @@ def collect_once(conn: sqlite3.Connection):
     if all_edges:
         edges_saved = upsert_edges(conn, all_edges)
         log.info(f"  → {edges_saved} edges guardados/actualizados")
+
+    # 3. Precision bits de paquetes de posición
+    packets_url = f"{MESHVIEW_BASE}/api/packets?portnum=3&limit=1000"
+    log.info(f"Pidiendo paquetes de posición a {packets_url} …")
+    precision_map = fetch_precision_bits(MESHVIEW_BASE)
+    if precision_map:
+        pb_updated = update_precision_bits(conn, precision_map)
+        log.info(f"  → precision_bits actualizado en {pb_updated} nodos ({len(precision_map)} en paquetes)")
+    else:
+        log.warning("  No se obtuvieron paquetes de posición")
 
     active_nodes = conn.execute(
         "SELECT COUNT(*) FROM nodes WHERE last_seen >= ?", (collected_at - 3600,)

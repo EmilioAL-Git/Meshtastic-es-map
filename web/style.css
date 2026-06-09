@@ -1103,6 +1103,11 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   border: 2px solid #1e293b;
   cursor: pointer;
   box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  transform-origin: center;
+  animation: sc-in 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+.spread-cluster.sc-out {
+  animation: sc-out 0.18s ease-in forwards;
 }
 .spread-cluster span {
   font-family: 'Space Mono', monospace;
@@ -1110,6 +1115,14 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   font-weight: 700;
   color: #1e293b;
   line-height: 1;
+}
+@keyframes sc-in {
+  from { transform: scale(0.3); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+@keyframes sc-out {
+  from { transform: scale(1);   opacity: 1; }
+  to   { transform: scale(0.3); opacity: 0; }
 }
 
 .sel-marker {

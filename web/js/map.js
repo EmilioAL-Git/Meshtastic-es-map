@@ -237,9 +237,16 @@ function makeClusterIcon(count, color) {
 }
 
 function renderClusters() {
-  Object.values(clusterMarkers).forEach(m => map.removeLayer(m));
+  // Fade-out de clusters anteriores antes de eliminarlos
+  const removing = { ...clusterMarkers };
   clusterMarkers = {};
   spreadHidden.clear();
+
+  Object.values(removing).forEach(m => {
+    const el = m.getElement()?.querySelector('.spread-cluster');
+    if (el) el.classList.add('sc-out');
+  });
+  setTimeout(() => Object.values(removing).forEach(m => map.removeLayer(m)), 180);
 
   if (map.getZoom() >= SPREAD_MIN_ZOOM) return;
 

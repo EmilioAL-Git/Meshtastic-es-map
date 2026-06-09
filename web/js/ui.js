@@ -6,17 +6,7 @@ function precisionRadiusMeters(precisionBits, lat) {
 }
 
 function _flyToCircle(nodeId, lat, lng, circle, duration) {
-  const bounds = circle.getBounds();
-  // Si el nodo está en un grupo (cluster posible), calcular el zoom destino
-  if (spreadGroups.has(nodeId)) {
-    const targetZoom = map.getBoundsZoom(bounds, false);
-    if (targetZoom >= CLUSTER_MIN_ZOOM && targetZoom < SPREAD_MIN_ZOOM) {
-      // flyToBounds aterrizaría en rango de cluster — abrir el cluster primero
-      map.flyTo([lat, lng], SPREAD_MIN_ZOOM, { animate: true, duration });
-      return;
-    }
-  }
-  map.flyToBounds(bounds, { animate: true, duration, padding: [40, 40] });
+  map.flyToBounds(circle.getBounds(), { animate: true, duration, padding: [40, 40] });
 }
 
 // ─── Selección de nodo ────────────────────────────────────────────────────────

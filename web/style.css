@@ -1399,4 +1399,6 @@ body.embed-mode .app-footer { display: none; }
   }
 
   .filter-toggle-btn svg { width: 18px; height: 18px; }
+
+  .mal-config-row span { display: none; }
 }

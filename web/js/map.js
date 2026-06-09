@@ -123,6 +123,7 @@ function markerSize() {
 }
 
 function updateMarkerSizes() {
+  computeSpreadGroups(allNodes);
   renderClusters();
   applyFilters();
 
@@ -148,15 +149,17 @@ function updateMarkerSizes() {
   }
 }
 
-// ─── Desagrupación de nodos superpuestos ──────────────────────────────────────
-const SPREAD_PREC     = 14000; // agrupa nodos dentro de ~8 m
-const SPREAD_MINPX    = 18;   // radio mínimo del círculo en píxeles
-const SPREAD_MIN_ZOOM = 15;   // solo desagrupar a partir de este nivel de zoom
+// ─── Desagrupación / clustering de nodos superpuestos ─────────────────────────
+const CLUSTER_PX      = 40;  // px — umbral de agrupación a zoom bajo
+const SPREAD_GEO_M    = 8;   // m  — umbral de separación a zoom alto (≥ SPREAD_MIN_ZOOM)
+const SPREAD_PREC     = Math.round(111000 / SPREAD_GEO_M); // grados equiv.
+const SPREAD_MINPX    = 18;  // radio mínimo del círculo de separación
+const SPREAD_MIN_ZOOM = 15;  // zoom a partir del cual se separan individualmente
 
 function computeSpreadGroups(nodes) {
   spreadGroups.clear();
-  const THRESHOLD = 1 / SPREAD_PREC; // grados — equivale a ~8 m
-  const valid    = nodes.filter(n => n.latitude != null && n.longitude != null);
+  const z     = map.getZoom();
+  const valid = nodes.filter(n => n.latitude != null && n.longitude != null);
   const assigned = new Set();
 
   valid.forEach(node => {
@@ -164,14 +167,29 @@ function computeSpreadGroups(nodes) {
     const group = [node];
     assigned.add(node.node_id);
 
-    valid.forEach(other => {
-      if (assigned.has(other.node_id)) return;
-      if (Math.abs(node.latitude  - other.latitude)  <= THRESHOLD &&
-          Math.abs(node.longitude - other.longitude) <= THRESHOLD) {
-        group.push(other);
-        assigned.add(other.node_id);
-      }
-    });
+    if (z >= SPREAD_MIN_ZOOM) {
+      // Threshold geográfico (~8 m) para la separación en estrella
+      const GEO = 1 / SPREAD_PREC;
+      valid.forEach(other => {
+        if (assigned.has(other.node_id)) return;
+        if (Math.abs(node.latitude  - other.latitude)  <= GEO &&
+            Math.abs(node.longitude - other.longitude) <= GEO) {
+          group.push(other);
+          assigned.add(other.node_id);
+        }
+      });
+    } else {
+      // Threshold en píxeles para clustering — se adapta al zoom
+      const nodePx = map.project([node.latitude, node.longitude], z);
+      valid.forEach(other => {
+        if (assigned.has(other.node_id)) return;
+        const oPx = map.project([other.latitude, other.longitude], z);
+        if (Math.hypot(nodePx.x - oPx.x, nodePx.y - oPx.y) <= CLUSTER_PX) {
+          group.push(other);
+          assigned.add(other.node_id);
+        }
+      });
+    }
 
     if (group.length < 2) return;
     const centerLat = group.reduce((s, n) => s + n.latitude,  0) / group.length;

@@ -1289,6 +1289,9 @@ body.embed-mode .app-footer { display: none; }
   .malconfig-table th:nth-child(3),
   .malconfig-table td:nth-child(3) { display: none; }
 
+  /* Ocultar columna Ver en móvil: la fila completa es clicable */
+  .malconfig-table th:nth-child(6),
+  .malconfig-table td.mc-action { display: none; }
 }
 
 @media (max-width: 768px) {

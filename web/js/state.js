@@ -13,13 +13,21 @@ let markers        = {};     // node_id → Leaflet marker
 let firstLoad      = true;
 let autoFitDone    = false;
 let loadRunning    = false;
-let selectedNodeId = null;
-let selOverlay     = null;   // L.marker con animación de pulso
+let selectedNodeId  = null;
+let selOverlay      = null;   // L.marker con animación de pulso
+let precisionCircle = null;   // L.circle de incertidumbre de posición
 let map;
 let edgeGroup;
 let markerRenderer;
 let searchIndex    = -1;
 let markerClicked  = false;  // evita que map.click cierre el panel tras seleccionar un nodo
+let spreadGroups   = new Map(); // node_id → { centerLat, centerLng, idx, total }
+let clusterMarkers = {};        // groupKey → L.marker (badge de cluster)
+let spreadHidden   = new Set(); // node_ids ocultos porque están en cluster
+// Clusters abiertos por click del usuario — persisten toda la sesión
+const openedClusters = new Set(
+  JSON.parse(sessionStorage.getItem('openedClusters') || '[]')
+);
 
 const ALL_CATS      = ['gateway', 'router', 'recent', 'active', 'old'];
 const FILTER_KEY    = 'mesh_active_filters';
@@ -45,10 +53,6 @@ const ROUTER_ROLES = new Set(['ROUTER', 'ROUTER_CLIENT', 'REPEATER']);
 function isRouter(n) { return n.role && ROUTER_ROLES.has(n.role.toUpperCase()); }
 
 // ─── Estilos de edge ─────────────────────────────────────────────────────────
-const EDGE_STYLE = {
-  neighbor:   { color: '#1d4ed8', weight: 2,   opacity: 0,    dashArray: null  },
-  traceroute: { color: '#dc2626', weight: 1.5, opacity: 0,    dashArray: '6 5' },
-};
 const EDGE_STYLE_HI = {
   neighbor:   { color: '#1d4ed8', weight: 2,   opacity: 0.85, dashArray: null  },
   traceroute: { color: '#dc2626', weight: 1.5, opacity: 0.75, dashArray: '6 5' },
@@ -58,17 +62,6 @@ const EDGE_STYLE_HI = {
 const MAL_CONFIG_URL = 'https://datos.meshtastic.es/top-mal-configurados';
 const malConfigurados = new Map();      // !hexvalue → { avg, sent, seen, packets, ... }
 
-const MAL_CONFIG_THRESHOLDS = {
-  range_test:            { critical: 1 },
-  position_fixed:        { critical: 48, high: 12  },
-  position_mobile:       { critical: 96, high: 48  },
-  nodeinfo:              { critical: 24, high: 8   },
-  telemetry_device:      { critical: 10, high: 4   },
-  telemetry_environment: { high: 6,      medium: 6 },
-  telemetry_power:       { high: 10,     medium: 6 },
-  routing:               { critical: 150, high: 30 },
-  traceroute_auto:       { critical: 50, high: 20  },
-};
 
 // ─── Renderer SVG compartido ──────────────────────────────────────────────────
 const canvasRenderer = L.svg({ padding: 0.5 });

@@ -87,8 +87,9 @@ function makeRouterIcon(color, radius) {
 }
 
 function makeMalConfiguradoIcon(color, size = 6) {
-  const w = Math.round(size * 3.5);
-  const h = Math.round(size * 3.2);
+  const s = window.innerWidth <= 768 ? Math.min(size, 6) : size;
+  const w = Math.round(s * 3.5);
+  const h = Math.round(s * 3.2);
   return L.divIcon({
     html: `<svg width="${w}" height="${h}" viewBox="0 0 22 20" xmlns="http://www.w3.org/2000/svg">
       <polygon points="11,1 21,19 1,19" fill="${color}" stroke="#1e293b" stroke-width="1.5" stroke-linejoin="round"/>
@@ -116,27 +117,214 @@ function makeSelectedIcon(color) {
 
 function markerSize() {
   const z = map.getZoom();
-  if (z <= 7) return 3;
-  if (z <= 9) return 4;
-  return 6;
+  const mobile = window.innerWidth <= 768;
+  if (z <= 7) return mobile ? 4  : 3;
+  if (z <= 9) return mobile ? 5  : 4;
+  return mobile ? 8 : 6;
 }
 
 function updateMarkerSizes() {
+  renderClusters();
+  applyFilters();
+
   const sz = markerSize();
   allNodes.forEach(n => {
     const m = markers[n.node_id];
-    if (!m) return;
+    if (!m || spreadHidden.has(n.node_id)) return;
+    if (spreadGroups.has(n.node_id)) {
+      const [dLat, dLng] = getSpreadLatLng(n.node_id, n.latitude, n.longitude);
+      m.setLatLng([dLat, dLng]);
+    }
     const md = malConfigurados.get(n.node_id);
     if (md && detectIssues(md).length > 0) m.setIcon(makeMalConfiguradoIcon(nodeColor(n), sz));
     else if (m.setRadius) m.setRadius(sz);
     else if (isRouter(n) && !n.is_mqtt_gateway) m.setIcon(makeRouterIcon(nodeColor(n), sz));
   });
+  renderSpiderLegs();
+
+  if (selectedNodeId && selOverlay) {
+    const selNode = allNodes.find(n => n.node_id === selectedNodeId);
+    if (selNode && spreadGroups.has(selectedNodeId)) {
+      const [dLat, dLng] = getSpreadLatLng(selectedNodeId, selNode.latitude, selNode.longitude);
+      selOverlay.setLatLng([dLat, dLng]);
+    }
+    showNodeEdges(selectedNodeId);
+  }
+}
+
+// ─── Desagrupación / clustering de nodos superpuestos ─────────────────────────
+const SPREAD_GEO       = 0.0001; // ~10 m en grados (umbral geográfico fijo)
+const SPREAD_MINPX     = 72;     // radio mínimo del círculo de separación
+const CLUSTER_MIN_ZOOM = 12;     // zoom a partir del cual aparecen los badges de cluster
+const SPREAD_MIN_ZOOM  = 19;     // zoom a partir del cual se separan en estrella
+
+let spiderLegs = [];  // polylines del patrón estrella
+
+function clearSpiderLegs() {
+  spiderLegs.forEach(l => map.removeLayer(l));
+  spiderLegs = [];
+}
+
+function renderSpiderLegs() {
+  clearSpiderLegs();
+
+  const groups = new Map();
+  spreadGroups.forEach((info, nodeId) => {
+    const key = `${info.centerLat},${info.centerLng}`;
+    if (!groups.has(key)) groups.set(key, { ...info, nodeIds: [] });
+    groups.get(key).nodeIds.push(nodeId);
+  });
+
+  const z = map.getZoom();
+  groups.forEach((group, key) => {
+    // Dibujar patas si: zoom alto (spread normal) O cluster abierto por click
+    const isForced = openedClusters.has(key);
+    if (z < SPREAD_MIN_ZOOM && !isForced) return;
+
+    const color = clusterDominantColor(group.nodeIds);
+    const dot = L.circleMarker([group.centerLat, group.centerLng], {
+      radius: 3, color, fillColor: color, fillOpacity: 1, weight: 1.5,
+      opacity: 0.85, interactive: false, pane: 'overlayPane',
+    }).addTo(map);
+    spiderLegs.push(dot);
+
+    group.nodeIds.forEach(nodeId => {
+      if (spreadHidden.has(nodeId)) return;
+      const node = allNodes.find(n => n.node_id === nodeId);
+      if (!node) return;
+      const [sLat, sLng] = getSpreadLatLng(nodeId, node.latitude, node.longitude);
+      const leg = L.polyline(
+        [[group.centerLat, group.centerLng], [sLat, sLng]],
+        { color, weight: 1.5, opacity: 0.55, interactive: false, pane: 'overlayPane' }
+      ).addTo(map);
+      spiderLegs.push(leg);
+    });
+  });
+}
+
+function computeSpreadGroups(nodes) {
+  spreadGroups.clear();
+  const valid    = nodes.filter(n => n.latitude != null && n.longitude != null);
+  const assigned = new Set();
+
+  valid.forEach(node => {
+    if (assigned.has(node.node_id)) return;
+    const group = [node];
+    assigned.add(node.node_id);
+
+    valid.forEach(other => {
+      if (assigned.has(other.node_id)) return;
+      if (Math.abs(node.latitude  - other.latitude)  <= SPREAD_GEO &&
+          Math.abs(node.longitude - other.longitude) <= SPREAD_GEO) {
+        group.push(other);
+        assigned.add(other.node_id);
+      }
+    });
+
+    if (group.length < 2) return;
+    const centerLat = group.reduce((s, n) => s + n.latitude,  0) / group.length;
+    const centerLng = group.reduce((s, n) => s + n.longitude, 0) / group.length;
+    group.forEach((n, idx) => {
+      spreadGroups.set(n.node_id, { centerLat, centerLng, idx, total: group.length });
+    });
+  });
+}
+
+// zoom es opcional; si se omite usa el zoom actual del mapa
+function getSpreadLatLng(nodeId, lat, lng, zoom) {
+  const info = spreadGroups.get(nodeId);
+  if (!info) return [lat, lng];
+  const clusterKey = `${info.centerLat},${info.centerLng}`;
+  const z = zoom != null ? zoom : map.getZoom();
+  const isForced = openedClusters.has(clusterKey);
+  // Para clusters abiertos: posición siempre calculada al zoom de referencia fijo
+  const refZ = isForced ? SPREAD_MIN_ZOOM : z;
+  if (refZ < SPREAD_MIN_ZOOM) return [lat, lng];
+  // Tamaño fijo para clusters abiertos → radio estable independientemente del zoom actual
+  const spacing    = (isForced ? 6 : markerSize()) * 3;
+  const baseRadius = Math.max(SPREAD_MINPX, Math.ceil(info.total * spacing / (2 * Math.PI)));
+  const radius     = baseRadius + Math.max(0, refZ - SPREAD_MIN_ZOOM) * 80;
+  const center = map.project([info.centerLat, info.centerLng], refZ);
+  const angle  = (2 * Math.PI * info.idx) / info.total - Math.PI / 2;
+  const ll     = map.unproject(
+    [center.x + radius * Math.cos(angle), center.y + radius * Math.sin(angle)], refZ
+  );
+  return [ll.lat, ll.lng];
+}
+
+function clusterDominantColor(nodeIds) {
+  const nodes = nodeIds.map(id => allNodes.find(n => n.node_id === id)).filter(Boolean);
+  if (nodes.some(n => n.is_mqtt_gateway))                                           return C_GATEWAY;
+  if (nodes.some(n => isRouter(n)))                                                 return C_ROUTER;
+  if (nodes.some(n => n.is_recent))                                                 return C_RECENT;
+  if (nodes.some(n => n.last_seen_ago_min != null && n.last_seen_ago_min < 1440))   return C_ACTIVE;
+  return C_OLD;
+}
+
+function makeClusterIcon(count, color) {
+  const sz = Math.max(28, markerSize() * 2 + 6 + String(count).length * 6);
+  return L.divIcon({
+    html: `<div class="spread-cluster" style="width:${sz}px;height:${sz}px;background:${color}"><span>${count}</span></div>`,
+    iconSize:   [sz, sz],
+    iconAnchor: [sz / 2, sz / 2],
+    className:  '',
+  });
+}
+
+function renderClusters() {
+  clearSpiderLegs();
+  // Fade-out de clusters anteriores antes de eliminarlos
+  const removing = { ...clusterMarkers };
+  clusterMarkers = {};
+  spreadHidden.clear();
+
+  Object.values(removing).forEach(m => {
+    const el = m.getElement()?.querySelector('.spread-cluster');
+    if (el) el.classList.add('sc-out');
+  });
+  setTimeout(() => Object.values(removing).forEach(m => map.removeLayer(m)), 180);
+
+  // Badges solo visibles entre CLUSTER_MIN_ZOOM y SPREAD_MIN_ZOOM
+  if (map.getZoom() < CLUSTER_MIN_ZOOM) return;
+  if (map.getZoom() >= SPREAD_MIN_ZOOM) return;
+
+  // Agrupar por centroide geográfico (mismo threshold ~10m que spreadGroups)
+  const groups = new Map();
+  spreadGroups.forEach((info, nodeId) => {
+    const key = `${info.centerLat},${info.centerLng}`;
+    if (!groups.has(key)) groups.set(key, { ...info, nodeIds: [] });
+    groups.get(key).nodeIds.push(nodeId);
+  });
+
+  groups.forEach((group, key) => {
+    // Si este cluster fue abierto por click, mostrar nodos individuales
+    if (openedClusters.has(key)) return;
+
+    group.nodeIds.forEach(id => spreadHidden.add(id));
+    const color  = clusterDominantColor(group.nodeIds);
+    const marker = L.marker([group.centerLat, group.centerLng], {
+      icon:         makeClusterIcon(group.nodeIds.length, color),
+      pane:         'markersPane',
+      zIndexOffset: 200,
+    });
+    marker.on('click', () => {
+      markerClicked = true;
+      openedClusters.add(key);
+      try { sessionStorage.setItem('openedClusters', JSON.stringify([...openedClusters])); } catch {}
+      updateMarkerSizes();
+    });
+    marker.addTo(map);
+    clusterMarkers[key] = marker;
+  });
 }
 
 // ─── Renderizar nodos ─────────────────────────────────────────────────────────
 function renderNodes(nodes) {
+  clearSpiderLegs();
   Object.values(markers).forEach(m => map.removeLayer(m));
   markers = {};
+
+  computeSpreadGroups(nodes);
 
   const isMobile = window.innerWidth <= 768;
   const isEmbed  = document.body.classList.contains('embed-mode');
@@ -145,14 +333,15 @@ function renderNodes(nodes) {
   nodes.forEach(node => {
     if (node.latitude == null || node.longitude == null) return;
 
-    const color       = nodeColor(node);
-    const malData     = malConfigurados.get(node.node_id);
-    const isMalConfig = !!malData && detectIssues(malData).length > 0;
+    const [dLat, dLng] = getSpreadLatLng(node.node_id, node.latitude, node.longitude);
+    const color        = nodeColor(node);
+    const malData      = malConfigurados.get(node.node_id);
+    const isMalConfig  = !!malData && detectIssues(malData).length > 0;
     const marker = isMalConfig
-      ? L.marker([node.latitude, node.longitude], { icon: makeMalConfiguradoIcon(color, sz), pane: 'markersPane' })
+      ? L.marker([dLat, dLng], { icon: makeMalConfiguradoIcon(color, sz), pane: 'markersPane' })
       : (isRouter(node) && !node.is_mqtt_gateway)
-        ? L.marker([node.latitude, node.longitude], { icon: makeRouterIcon(color, sz), pane: 'markersPane' })
-        : L.circleMarker([node.latitude, node.longitude], { ...circleMarkerOptions(color, sz), renderer: markerRenderer });
+        ? L.marker([dLat, dLng], { icon: makeRouterIcon(color, sz), pane: 'markersPane' })
+        : L.circleMarker([dLat, dLng], { ...circleMarkerOptions(color, sz), renderer: markerRenderer });
 
     if (!isMobile && !isEmbed) {
       const name = node.long_name || node.short_name || node.node_id;
@@ -185,6 +374,9 @@ function renderNodes(nodes) {
     marker.addTo(map);
     markers[node.node_id] = marker;
   });
+
+  renderClusters();
+  renderSpiderLegs();
 }
 
 // ─── Edges ────────────────────────────────────────────────────────────────────
@@ -197,7 +389,9 @@ function showNodeEdges(nodeId) {
     if (Math.abs(e.from_lat) < 0.5 && Math.abs(e.from_lon) < 0.5) return;
     if (Math.abs(e.to_lat)   < 0.5 && Math.abs(e.to_lon)   < 0.5) return;
 
-    const coords = [[e.from_lat, e.from_lon], [e.to_lat, e.to_lon]];
+    const [fromLat, fromLng] = getSpreadLatLng(e.from_node, e.from_lat, e.from_lon);
+    const [toLat,   toLng]   = getSpreadLatLng(e.to_node,   e.to_lat,   e.to_lon);
+    const coords = [[fromLat, fromLng], [toLat, toLng]];
     const type   = e.edge_type === 'neighbor' ? 'neighbor' : 'traceroute';
     if (!activeEdgeFilters.has(type)) return;
 

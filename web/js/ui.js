@@ -1,3 +1,14 @@
+// ─── Círculo de precisión de posición ────────────────────────────────────────
+function precisionRadiusMeters(precisionBits, lat) {
+  if (precisionBits == null || precisionBits >= 32) return 0;
+  const stepDeg = Math.pow(2, 32 - precisionBits) / 1e7;
+  return stepDeg * 111320 * Math.cos(lat * Math.PI / 180);
+}
+
+function _flyToCircle(nodeId, lat, lng, circle, duration) {
+  map.flyToBounds(circle.getBounds(), { animate: true, duration, padding: [40, 40] });
+}
+
 // ─── Selección de nodo ────────────────────────────────────────────────────────
 function selectNode(nodeId, fly = false) {
   const node = allNodes.find(n => n.node_id === nodeId);
@@ -7,7 +18,8 @@ function selectNode(nodeId, fly = false) {
   selectedNodeId   = nodeId;
 
   // Restaurar marker anterior y colocar overlay animado en el nuevo
-  if (selOverlay) { map.removeLayer(selOverlay); selOverlay = null; }
+  if (selOverlay)      { map.removeLayer(selOverlay);      selOverlay      = null; }
+  if (precisionCircle) { map.removeLayer(precisionCircle); precisionCircle = null; }
   if (prevNodeId && markers[prevNodeId]) {
     const prev = allNodes.find(n => n.node_id === prevNodeId);
     if (prev) {
@@ -19,28 +31,53 @@ function selectNode(nodeId, fly = false) {
   }
 
   if (node.latitude != null && node.longitude != null) {
+    // Overlay: usar posición spread del zoom actual (se reposiciona en zoomend si cambia)
+    const [sLat, sLng] = getSpreadLatLng(nodeId, node.latitude, node.longitude);
+
     if (markers[nodeId]) {
       if (markers[nodeId].setStyle) markers[nodeId].setStyle({ fillOpacity: 0, opacity: 0 });
       else if (markers[nodeId].setOpacity) markers[nodeId].setOpacity(0);
-      selOverlay = L.marker([node.latitude, node.longitude], {
+      selOverlay = L.marker([sLat, sLng], {
         icon: makeSelectedIcon(nodeColor(node)),
         interactive: false,
         zIndexOffset: 1000,
       }).addTo(map);
     }
 
+    // Círculo de incertidumbre de posición
+    const radius = precisionRadiusMeters(node.precision_bits, node.latitude);
+    if (radius > 10) {
+      const color = nodeColor(node);
+      precisionCircle = L.circle([node.latitude, node.longitude], {
+        radius,
+        color,
+        weight: 1.5,
+        opacity: 0.55,
+        fillColor: color,
+        fillOpacity: 0.08,
+        interactive: false,
+        pane: 'overlayPane',
+      }).addTo(map);
+    }
+
     if (fly) {
       map.stop();
-      const zoom     = Math.max(map.getZoom(), 16);
-      const isMobile = window.innerWidth <= 768;
-      const offsetPx = isMobile ? Math.round(window.innerHeight * 0.22) : 0;
-      if (offsetPx > 0) {
-        const targetPx  = map.project([node.latitude, node.longitude], zoom);
-        const shiftedPx = targetPx.add([0, offsetPx]);
-        map.flyTo(map.unproject(shiftedPx, zoom), zoom, { animate: true, duration: 0.6 });
+      if (precisionCircle) {
+        _flyToCircle(nodeId, node.latitude, node.longitude, precisionCircle, 0.7);
       } else {
-        map.flyTo([node.latitude, node.longitude], zoom, { animate: true, duration: 0.6 });
+        const zoom     = Math.max(map.getZoom(), 16);
+        const isMobile = window.innerWidth <= 768;
+        const offsetPx = isMobile ? Math.round(window.innerHeight * 0.22) : 0;
+        if (offsetPx > 0) {
+          const targetPx  = map.project([node.latitude, node.longitude], zoom);
+          const shiftedPx = targetPx.add([0, offsetPx]);
+          map.flyTo(map.unproject(shiftedPx, zoom), zoom, { animate: true, duration: 0.6 });
+        } else {
+          map.flyTo([node.latitude, node.longitude], zoom, { animate: true, duration: 0.6 });
+        }
       }
+    } else if (precisionCircle) {
+      _flyToCircle(nodeId, node.latitude, node.longitude, precisionCircle, 0.5);
     }
 
     showNodeEdges(nodeId);
@@ -76,6 +113,15 @@ function selectNode(nodeId, fly = false) {
     ['Latitud',  node.latitude  != null ? node.latitude.toFixed(5)  : '—'],
     ['Longitud', node.longitude != null ? node.longitude.toFixed(5) : '—'],
     ...(node.altitude != null ? [['Altitud', node.altitude + ' m']] : []),
+    ...(() => {
+      const r = (node.precision_bits != null && node.latitude != null)
+        ? precisionRadiusMeters(node.precision_bits, node.latitude) : 0;
+      if (r <= 10) return [];
+      const label = r >= 1000
+        ? (r / 1000).toFixed(1) + ' km'
+        : Math.round(r) + ' m';
+      return [['Precisión ubicación', label + ' (círculo)']];
+    })(),
     ['Último visto', ago],
   ];
 
@@ -106,12 +152,12 @@ function selectNode(nodeId, fly = false) {
   let   malBanner = '';
   if (malData && malIssues.length > 0) {
     const issuesHtml = malIssues.slice(0, 3).map(i =>
-      `<div class="mal-config-issue issue-${i.severity}">${escHtml(i.label)}</div>`
+      `<div class="mal-config-issue issue-${i.severity}">${escHtml(shortIssueLabel(i.label))}</div>`
     ).join('');
     malBanner = `<div class="mal-config-banner">
       <div class="mal-config-row">
         <svg width="14" height="13" viewBox="0 0 22 20" aria-hidden="true"><polygon points="11,1 21,19 1,19" fill="#f97316" stroke="#ef4444" stroke-width="2" stroke-linejoin="round"/><text x="11" y="15.5" text-anchor="middle" font-size="10" font-weight="bold" font-family="monospace" fill="#1e293b">!</text></svg>
-        <span>Este nodo puede estar <strong>mal configurado</strong>.</span>
+        <span>Este nodo puede estar <strong>no optimizado</strong>.</span>
       </div>
       ${issuesHtml}
       <button class="mal-config-link" onclick="openNodeReport('${node.node_id}')">Ver recomendaciones →</button>
@@ -153,7 +199,8 @@ function closeDetail() {
     legend.style.right    = '';
     legend.style.top      = '';
   }
-  if (selOverlay) { map.removeLayer(selOverlay); selOverlay = null; }
+  if (selOverlay)      { map.removeLayer(selOverlay);      selOverlay      = null; }
+  if (precisionCircle) { map.removeLayer(precisionCircle); precisionCircle = null; }
   if (selectedNodeId && markers[selectedNodeId]) {
     const n = allNodes.find(n => n.node_id === selectedNodeId);
     if (n) {

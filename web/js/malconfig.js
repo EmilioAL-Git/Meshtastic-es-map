@@ -36,95 +36,30 @@ const ISSUE_DEFS = {
     desc: 'Un alto número de paquetes de routing (ACKs de protocolo) puede indicar que el módulo Store & Forward está mal configurado, o tráfico de control excesivo.',
     fix:  'Módulos → Store & Forward → desactivar si no es necesario',
   },
+  position_flags: {
+    desc: 'Este nodo fijo está enviando campos GPS innecesarios en sus paquetes de posición. Según meshtastic.es, para nodos fijos solo debe activarse el flag DOP. SPEED y HEADING son exclusivos de nodos móviles; NVSS_SATS, SEQ_NO, TIMESTAMP y ALT_HAE añaden datos sin valor en un nodo estático.',
+    fix:  'Config → Posición → Position Flags → activar solo DOP, desactivar el resto',
+  },
   traceroute_auto: {
-    desc: 'Se están generando traceroutes periódicos, consumiendo ancho de banda de la red. Comprueba si tienes el traceroute periódico activo.',
-    fix:  'Config → Dispositivo → desactivar traceroute periódico',
+    desc: 'Este nodo está generando traceroutes de forma sistemática (posiblemente una herramienta de monitorización de red). Genera tráfico considerable en la red.',
+    fix:  'Configura la herramienta de monitorización (MeshSense, MeshMonitor...) para reducir la frecuencia de traceroutes o el número de nodos destino',
   },
 };
 
-// ─── Diagnóstico de problemas ─────────────────────────────────────────────────
+// ─── Diagnóstico de problemas (calculado en el servidor, leído aquí) ──────────
 function detectIssues(malData) {
-  const p   = malData?.packets;
-  if (!p) return [];
+  return malData?.issues || [];
+}
 
-  const issues = [];
-  const t   = MAL_CONFIG_THRESHOLDS;
-  const mob = malData?.mobility;
-  const tel = malData?.telemetry_detail || {};
-  const tr  = malData?.traceroute_detail;
-  const ni  = malData?.nodeinfo_detail;
-  const ro  = malData?.routing_detail;
-
-  // Range Test
-  if ((p.range_test || 0) >= t.range_test.critical)
-    issues.push({ key: 'range_test', label: `Range Test activo (${p.range_test}/día)`, severity: 'critical' });
-
-  // Posición — umbrales distintos según movilidad
-  if ((p.position || 0) > 0) {
-    if (mob !== null && mob !== undefined) {
-      const pt    = mob.is_fixed ? t.position_fixed : t.position_mobile;
-      const key   = mob.is_fixed ? 'position_fixed' : 'position_mobile';
-      const label = mob.is_fixed ? 'Posición muy frecuente para nodo fijo' : 'Posición muy frecuente para nodo móvil';
-      if (p.position >= pt.critical)
-        issues.push({ key, label: `${label} (${p.position}/día)`, severity: 'critical' });
-      else if (p.position >= pt.high)
-        issues.push({ key, label: `${label.replace('muy ', '')} (${p.position}/día)`, severity: 'high' });
-    } else if (p.position >= t.position_fixed.critical) {
-      issues.push({ key: 'position_unknown', label: `Posición frecuente (${p.position}/día)`, severity: 'high' });
-    }
-  }
-
-  // NodeInfo — solo avisar si es automático (o sin datos de uniformidad y conteo muy alto)
-  const nodeinfoCount = p.nodeinfo || 0;
-  const nodeinfoAuto  = ni ? ni.is_automatic : nodeinfoCount >= t.nodeinfo.critical;
-  if (nodeinfoAuto) {
-    if (nodeinfoCount >= t.nodeinfo.critical)
-      issues.push({ key: 'nodeinfo', label: `NodeInfo automático muy frecuente (${p.nodeinfo}/día)`, severity: 'critical' });
-    else if (nodeinfoCount >= t.nodeinfo.high)
-      issues.push({ key: 'nodeinfo', label: `NodeInfo automático frecuente (${p.nodeinfo}/día)`, severity: 'high' });
-  }
-
-  // Telemetría — por sub-tipo si disponible
-  if (tel.device !== undefined) {
-    if ((tel.device || 0) >= t.telemetry_device.critical)
-      issues.push({ key: 'telemetry_device', label: `Telemetría dispositivo muy frecuente (${tel.device}/día)`, severity: 'critical' });
-    else if ((tel.device || 0) >= t.telemetry_device.high)
-      issues.push({ key: 'telemetry_device', label: `Telemetría dispositivo frecuente (${tel.device}/día)`, severity: 'medium' });
-
-    if ((tel.environment || 0) >= t.telemetry_environment.high)
-      issues.push({ key: 'telemetry_environment', label: `Telemetría entorno frecuente (${tel.environment}/día)`, severity: 'medium' });
-
-    if ((tel.power || 0) >= t.telemetry_power.high)
-      issues.push({ key: 'telemetry_power', label: `Telemetría eléctrica frecuente (${tel.power}/día)`, severity: 'medium' });
-  } else if ((p.telemetry || 0) >= t.telemetry_device.critical) {
-    issues.push({ key: 'telemetry_device', label: `Telemetría muy frecuente (${p.telemetry}/día)`, severity: 'critical' });
-  }
-
-  // Routing: solo avisar si es automático (uniforme en el tiempo)
-  // Privados, admin remota, etc. generan ACKs irregulares → no se avisa
-  // Fallback si no hay datos de uniformidad: umbral muy alto (150/día)
-  const routingCount      = p.routing || 0;
-  const routingAuto       = ro?.is_automatic ?? (routingCount >= t.routing.critical);
-  const routingShortCycle = ro && !ro.is_automatic && ro.avg_interval_min < 10 && routingCount > 50;
-
-  if ((routingAuto || routingShortCycle) && routingCount >= t.routing.high)
-    issues.push({ key: 'routing', label: `Routing excesivo (${p.routing}/día)`, severity: routingCount >= t.routing.critical ? 'critical' : 'high' });
-
-  // Traceroute — solo avisar si es automático
-  if (tr?.is_automatic) {
-    if ((p.traceroute || 0) >= t.traceroute_auto.critical)
-      issues.push({ key: 'traceroute_auto', label: `Traceroute automático excesivo (${p.traceroute}/día)`, severity: 'critical' });
-    else if ((p.traceroute || 0) >= t.traceroute_auto.high)
-      issues.push({ key: 'traceroute_auto', label: `Traceroute automático (${p.traceroute}/día)`, severity: 'high' });
-  }
-
-  return issues;
+// Recorta el detalle tras ":" (ej. listas de flags) para evitar etiquetas demasiado largas
+function shortIssueLabel(label) {
+  return label.split(':')[0];
 }
 
 function renderIssueChips(issues) {
   if (!issues.length) return '<span class="issue-none">—</span>';
   return issues.map(i =>
-    `<span class="issue-chip ${i.severity}">${escHtml(i.label)}</span>`
+    `<span class="issue-chip ${i.severity}">${escHtml(shortIssueLabel(i.label))}</span>`
   ).join('');
 }
 
@@ -182,7 +117,7 @@ function openNodeReport(nodeId) {
 
   const breakdownHtml = Object.entries(PACKET_LABELS)
     .filter(([k]) => p[k] != null)
-    .sort(([, a], [, b]) => (p[b] || 0) - (p[a] || 0))
+    .sort(([ka], [kb]) => (p[kb] || 0) - (p[ka] || 0))
     .map(([k, label]) => {
       const count    = p[k] || 0;
       const pct      = Math.round((count / total) * 100);
@@ -237,6 +172,17 @@ function closeNodeReport() {
 }
 
 // ─── Modal: Nodos mal configurados ────────────────────────────────────────────
+let _malChannelFilter = 'Todos';
+let _malCCAAFilter    = '';
+
+function _filteredMalNodes() {
+  return [...malConfigurados.values()]
+    .filter(n => detectIssues(n).length > 0)
+    .filter(n => _malChannelFilter === 'Todos' || n.channel === _malChannelFilter)
+    .filter(n => !_malCCAAFilter || n.ccaa === _malCCAAFilter)
+    .sort((a, b) => (b.sent || 0) - (a.sent || 0));
+}
+
 function openMalConfigModal() {
   document.getElementById('malconfig-modal').classList.add('open');
   renderMalConfigModal();
@@ -247,26 +193,36 @@ function closeMalConfigModal() {
 }
 
 function renderMalConfigModal() {
-  const all      = [...malConfigurados.values()]
-    .filter(n => detectIssues(n).length > 0)
-    .sort((a, b) => b.sent - a.sent);
+  _malChannelFilter = 'Todos';
+  _malCCAAFilter    = '';
+
+  const all      = [...malConfigurados.values()].filter(n => detectIssues(n).length > 0);
   const channels = ['Todos', ...[...new Set(all.map(n => n.channel))].sort()];
+  const ccaas    = [...new Set(all.map(n => n.ccaa).filter(Boolean))].sort();
 
-  document.getElementById('malconfig-tabs').innerHTML = channels.map((ch, i) =>
-    `<button class="malconfig-tab${i === 0 ? ' active' : ''}" onclick="switchMalConfigTab('${escHtml(ch)}', this)">${escHtml(ch)}</button>`
-  ).join('');
+  const channelHtml = `<select class="malconfig-filter-select" onchange="switchChannelFilter(this.value)">
+    ${channels.map(ch => `<option value="${escHtml(ch)}">Preset: ${escHtml(ch)}</option>`).join('')}
+  </select>`;
 
-  renderMalConfigTable(all);
+  const ccaaHtml = ccaas.length
+    ? `<select class="malconfig-filter-select" onchange="switchCCAAFilter(this.value)">
+        <option value="">CCAA: Todas</option>
+        ${ccaas.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('')}
+       </select>`
+    : '';
+
+  document.getElementById('malconfig-tabs').innerHTML = channelHtml + ccaaHtml;
+  renderMalConfigTable(_filteredMalNodes());
 }
 
-function switchMalConfigTab(channel, btn) {
-  document.querySelectorAll('.malconfig-tab').forEach(t => t.classList.remove('active'));
-  btn.classList.add('active');
-  const all      = [...malConfigurados.values()]
-    .filter(n => detectIssues(n).length > 0)
-    .sort((a, b) => b.sent - a.sent);
-  const filtered = channel === 'Todos' ? all : all.filter(n => n.channel === channel);
-  renderMalConfigTable(filtered);
+function switchChannelFilter(channel) {
+  _malChannelFilter = channel;
+  renderMalConfigTable(_filteredMalNodes());
+}
+
+function switchCCAAFilter(ccaa) {
+  _malCCAAFilter = ccaa;
+  renderMalConfigTable(_filteredMalNodes());
 }
 
 function renderMalConfigTable(nodes) {
@@ -298,7 +254,7 @@ function renderMalConfigTable(nodes) {
           const mobChip = mob != null
             ? `<span class="mob-chip ${mob.is_fixed ? 'mob-fixed' : 'mob-mobile'}">${mob.is_fixed ? '📍 Fijo' : '🚶 Móvil'}</span>`
             : '';
-          return `<tr>
+          return `<tr class="mc-row" onclick="openNodeReport(${n.node_id})">
             <td class="mc-rank">${i + 1}</td>
             <td class="mc-name">
               <div class="mc-longname">${escHtml(n.long_name || n.short_name || hex)} ${mobChip}</div>
@@ -307,7 +263,7 @@ function renderMalConfigTable(nodes) {
             <td><span class="mc-preset">${escHtml(n.channel)}</span></td>
             <td class="mc-num">${n.sent.toLocaleString('es-ES')}</td>
             <td class="mc-issues">${renderIssueChips(issues)}</td>
-            <td><button class="mc-link" onclick="openNodeReport(${n.node_id})">Ver →</button></td>
+            <td class="mc-action"><button class="mc-link" onclick="event.stopPropagation(); openNodeReport(${n.node_id})">Ver →</button></td>
           </tr>`;
         }).join('')}
       </tbody>

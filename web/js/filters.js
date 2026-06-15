@@ -49,11 +49,16 @@ function syncEdgeFilterChips() {
 
 function applyFilters() {
   allNodes.forEach(n => {
+    const m = markers[n.node_id];
+    if (!m) return;
+    if (spreadHidden.has(n.node_id)) {
+      map.removeLayer(m);
+      return;
+    }
     const show = activeFilters.has(nodeCategory(n));
-    if (!markers[n.node_id]) return;
-    if (show) markers[n.node_id].addTo(map);
+    if (show) m.addTo(map);
     else {
-      map.removeLayer(markers[n.node_id]);
+      map.removeLayer(m);
       if (n.node_id === selectedNodeId) closeDetail();
     }
   });

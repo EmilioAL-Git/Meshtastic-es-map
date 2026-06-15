@@ -562,7 +562,7 @@ header {
   font-family: var(--sans);
   line-height: 1.55;
   max-width: 200px;
-  z-index: 900;
+  z-index: 490;
   box-shadow: 0 4px 20px rgba(0,0,0,.5);
 }
 
@@ -767,7 +767,7 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 }
 
 /* ── Botón mal configurados ── */
-.malconfig-btn {
+.noopt-btn {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -783,7 +783,7 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   transition: background .15s;
   flex-shrink: 0;
 }
-.malconfig-btn:hover { background: rgba(249,115,22,.22); }
+.noopt-btn:hover { background: rgba(249,115,22,.22); }
 
 /* ── Modal mal configurados ── */
 .malconfig-modal {
@@ -820,6 +820,8 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   flex-shrink: 0;
 }
 
+.malconfig-subtitle { font-weight: 400; color: var(--muted); font-size: 11px; }
+
 .malconfig-title {
   display: flex;
   align-items: center;
@@ -843,15 +845,16 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 
 .malconfig-tabs {
   display: flex;
-  gap: 4px;
+  gap: 8px;
   padding: 10px 18px;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
-  flex-wrap: wrap;
+  align-items: center;
 }
 
-.malconfig-tab {
-  padding: 4px 12px;
+.malconfig-filter-select {
+  padding: 4px 10px;
+  padding-right: 24px;
   background: var(--panel2);
   border: 1px solid var(--border);
   border-radius: 20px;
@@ -859,11 +862,17 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   font-family: var(--mono);
   font-size: 11px;
   cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2364748b'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
   transition: all .15s;
 }
-.malconfig-tab.active,
-.malconfig-tab:hover {
-  background: rgba(249,115,22,.15);
+.malconfig-filter-select:hover,
+.malconfig-filter-select:focus {
+  background-color: rgba(249,115,22,.1);
   border-color: rgba(249,115,22,.4);
   color: #f97316;
 }
@@ -915,6 +924,18 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 
 .malconfig-table tr:last-child td { border-bottom: none; }
 .malconfig-table tr:hover td { background: rgba(255,255,255,.02); }
+
+.mc-row { cursor: pointer; }
+
+/* Col 6 (Ver) fija a la derecha para que sea visible sin hacer scroll */
+.malconfig-table th:nth-child(6),
+.malconfig-table td.mc-action {
+  position: sticky;
+  right: 0;
+  background: var(--panel);
+  box-shadow: -8px 0 8px -8px rgba(0,0,0,.35);
+}
+.malconfig-table tr:hover td.mc-action { background: var(--panel2); }
 
 .mc-rank {
   color: var(--muted);
@@ -1093,6 +1114,36 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 }
 
 /* ── Nodo seleccionado ── */
+.spread-cluster {
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #1e293b;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  transform-origin: center;
+  animation: sc-in 0.22s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+.spread-cluster.sc-out {
+  animation: sc-out 0.18s ease-in forwards;
+}
+.spread-cluster span {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1;
+}
+@keyframes sc-in {
+  from { transform: scale(0.3); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+@keyframes sc-out {
+  from { transform: scale(1);   opacity: 1; }
+  to   { transform: scale(0.3); opacity: 0; }
+}
+
 .sel-marker {
   position: relative;
   width: 32px;
@@ -1238,6 +1289,9 @@ body.embed-mode .app-footer { display: none; }
   .malconfig-table th:nth-child(3),
   .malconfig-table td:nth-child(3) { display: none; }
 
+  /* Ocultar columna Ver en móvil: la fila completa es clicable */
+  .malconfig-table th:nth-child(6),
+  .malconfig-table td.mc-action { display: none; }
 }
 
 @media (max-width: 768px) {
@@ -1367,4 +1421,6 @@ body.embed-mode .app-footer { display: none; }
   }
 
   .filter-toggle-btn svg { width: 18px; height: 18px; }
+
+  .noopt-label { display: none; }
 }

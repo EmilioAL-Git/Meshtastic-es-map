@@ -822,6 +822,18 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 
 .malconfig-subtitle { font-weight: 400; color: var(--muted); font-size: 11px; }
 
+.malconfig-header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.malconfig-updated {
+  font-size: 11px;
+  color: var(--muted);
+}
+
 .malconfig-title {
   display: flex;
   align-items: center;
@@ -1292,6 +1304,8 @@ body.embed-mode .app-footer { display: none; }
   /* Ocultar columna Ver en móvil: la fila completa es clicable */
   .malconfig-table th:nth-child(6),
   .malconfig-table td.mc-action { display: none; }
+
+  .malconfig-updated { display: none; }
 }
 
 @media (max-width: 768px) {

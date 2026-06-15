@@ -9,4 +9,3 @@ __pycache__/
 .env
 web/data/*.json
 *.md
-update-top.py

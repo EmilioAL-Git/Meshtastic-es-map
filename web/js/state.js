@@ -59,7 +59,7 @@ const EDGE_STYLE_HI = {
 };
 
 // ─── Nodos mal configurados ───────────────────────────────────────────────────
-const MAL_CONFIG_URL = 'https://datos.meshtastic.es/top-mal-configurados';
+let MAL_CONFIG_URL = 'https://datos.meshtastic.es/top-mal-configurados';
 const malConfigurados = new Map();      // !hexvalue → { avg, sent, seen, packets, ... }
 
 

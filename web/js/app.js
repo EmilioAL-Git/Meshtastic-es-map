@@ -142,10 +142,11 @@ fetch(API_BASE + '/data/config.json')
   .then(r => r.ok ? r.json() : {})
   .catch(() => ({}))
   .then(cfg => {
-    if (cfg.map_auto_fit != null) MAP_AUTO_FIT = cfg.map_auto_fit;
-    if (cfg.map_lat      != null) MAP_LAT      = cfg.map_lat;
-    if (cfg.map_lng      != null) MAP_LNG      = cfg.map_lng;
-    if (cfg.map_zoom     != null) MAP_ZOOM     = cfg.map_zoom;
+    if (cfg.map_auto_fit   != null) MAP_AUTO_FIT   = cfg.map_auto_fit;
+    if (cfg.map_lat        != null) MAP_LAT        = cfg.map_lat;
+    if (cfg.map_lng        != null) MAP_LNG        = cfg.map_lng;
+    if (cfg.map_zoom       != null) MAP_ZOOM       = cfg.map_zoom;
+    if (cfg.mal_config_url != null) MAL_CONFIG_URL = cfg.mal_config_url;
     initMap();
     syncFilterChips();
     syncEdgeFilterChips();

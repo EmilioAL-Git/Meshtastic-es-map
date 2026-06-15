@@ -152,7 +152,7 @@ function selectNode(nodeId, fly = false) {
   let   malBanner = '';
   if (malData && malIssues.length > 0) {
     const issuesHtml = malIssues.slice(0, 3).map(i =>
-      `<div class="mal-config-issue issue-${i.severity}">${escHtml(i.label)}</div>`
+      `<div class="mal-config-issue issue-${i.severity}">${escHtml(shortIssueLabel(i.label))}</div>`
     ).join('');
     malBanner = `<div class="mal-config-banner">
       <div class="mal-config-row">

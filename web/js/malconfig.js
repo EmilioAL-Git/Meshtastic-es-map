@@ -51,10 +51,15 @@ function detectIssues(malData) {
   return malData?.issues || [];
 }
 
+// Recorta el detalle tras ":" (ej. listas de flags) para evitar etiquetas demasiado largas
+function shortIssueLabel(label) {
+  return label.split(':')[0];
+}
+
 function renderIssueChips(issues) {
   if (!issues.length) return '<span class="issue-none">—</span>';
   return issues.map(i =>
-    `<span class="issue-chip ${i.severity}">${escHtml(i.label)}</span>`
+    `<span class="issue-chip ${i.severity}">${escHtml(shortIssueLabel(i.label))}</span>`
   ).join('');
 }
 

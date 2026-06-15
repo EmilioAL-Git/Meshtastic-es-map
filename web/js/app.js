@@ -13,7 +13,9 @@ async function loadAll() {
       fetchJSON('/data/nodes.json'),
       fetchJSON('/data/edges.json'),
       fetchJSON('/data/stats.json'),
-      fetch(MAL_CONFIG_URL + '?t=' + Date.now()).then(r => r.ok ? r.json() : null).catch(() => null),
+      MAL_CONFIG_URL
+        ? fetch(MAL_CONFIG_URL + '?t=' + Date.now()).then(r => r.ok ? r.json() : null).catch(() => null)
+        : Promise.resolve(null),
     ]);
 
     malConfigurados.clear();

@@ -11,7 +11,7 @@ El payload de la API viene en formato proto-text, no bytes.
 import json, math, os, re, statistics, time, urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-OUT      = os.path.join(os.path.dirname(os.path.abspath(__file__)), "top-nodos.json")
+OUT      = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "top-nodos.json")
 BASE     = os.environ.get("MESHVIEW_URL", "http://localhost:18085")
 
 PORTNUMS = {

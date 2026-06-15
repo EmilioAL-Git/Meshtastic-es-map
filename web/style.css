@@ -925,6 +925,18 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 .malconfig-table tr:last-child td { border-bottom: none; }
 .malconfig-table tr:hover td { background: rgba(255,255,255,.02); }
 
+.mc-row { cursor: pointer; }
+
+/* Col 6 (Ver) fija a la derecha para que sea visible sin hacer scroll */
+.malconfig-table th:nth-child(6),
+.malconfig-table td.mc-action {
+  position: sticky;
+  right: 0;
+  background: var(--panel);
+  box-shadow: -8px 0 8px -8px rgba(0,0,0,.35);
+}
+.malconfig-table tr:hover td.mc-action { background: var(--panel2); }
+
 .mc-rank {
   color: var(--muted);
   font-family: var(--mono);

@@ -249,7 +249,7 @@ function renderMalConfigTable(nodes) {
           const mobChip = mob != null
             ? `<span class="mob-chip ${mob.is_fixed ? 'mob-fixed' : 'mob-mobile'}">${mob.is_fixed ? '📍 Fijo' : '🚶 Móvil'}</span>`
             : '';
-          return `<tr>
+          return `<tr class="mc-row" onclick="openNodeReport(${n.node_id})">
             <td class="mc-rank">${i + 1}</td>
             <td class="mc-name">
               <div class="mc-longname">${escHtml(n.long_name || n.short_name || hex)} ${mobChip}</div>
@@ -258,7 +258,7 @@ function renderMalConfigTable(nodes) {
             <td><span class="mc-preset">${escHtml(n.channel)}</span></td>
             <td class="mc-num">${n.sent.toLocaleString('es-ES')}</td>
             <td class="mc-issues">${renderIssueChips(issues)}</td>
-            <td><button class="mc-link" onclick="openNodeReport(${n.node_id})">Ver →</button></td>
+            <td class="mc-action"><button class="mc-link" onclick="event.stopPropagation(); openNodeReport(${n.node_id})">Ver →</button></td>
           </tr>`;
         }).join('')}
       </tbody>

@@ -822,6 +822,13 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 
 .malconfig-subtitle { font-weight: 400; color: var(--muted); font-size: 11px; }
 
+.malconfig-updated {
+  padding: 6px 18px 0;
+  font-size: 11px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
 .malconfig-title {
   display: flex;
   align-items: center;

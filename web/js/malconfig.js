@@ -45,8 +45,8 @@ const ISSUE_DEFS = {
     fix:  'Configura la herramienta de monitorización (MeshSense, MeshMonitor...) para reducir la frecuencia de traceroutes o el número de nodos destino',
   },
   hop_limit_high: {
-    desc: 'El nodo tiene configurado un hop_limit superior a 5. El valor recomendado por meshtastic.es es 3. Un hop_limit alto provoca que cada paquete se reemita en cascada muchas más veces de lo necesario, saturando el canal y perjudicando a toda la red.',
-    fix:  'Config → LoRa → Hop Limit → 3 (recomendado) o máximo 5',
+    desc: 'El nodo tiene configurado un hop_limit superior al recomendado. Valores aceptables: 1-4. Valor 5: aviso (límite tolerable). Valores 6-7: problemático — cada paquete se reemite en cascada muchas más veces de lo necesario, saturando el canal y perjudicando a toda la red.',
+    fix:  'Config → LoRa → Hop Limit → 3 (recomendado por meshtastic.es)',
   },
 };
 

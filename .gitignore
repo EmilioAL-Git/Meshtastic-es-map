@@ -8,5 +8,5 @@ __pycache__/
 *.log
 .env
 web/data/*.json
+web/top-nodos.json
 *.md
-update-top.py

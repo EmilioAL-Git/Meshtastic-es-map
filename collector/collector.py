@@ -35,6 +35,7 @@ MAP_AUTO_FIT    = os.environ.get("MAP_AUTO_FIT", "true").lower() == "true"
 MAP_LAT         = float(os.environ.get("MAP_LAT", 40.2))
 MAP_LNG         = float(os.environ.get("MAP_LNG", -3.7))
 MAP_ZOOM        = int(os.environ.get("MAP_ZOOM", 8))
+MAL_CONFIG_URL  = os.environ.get("MAL_CONFIG_URL", "https://datos.meshtastic.es/top-mal-configurados")
 REQUEST_TIMEOUT = 20       # segundos
 
 logging.basicConfig(
@@ -644,10 +645,11 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
 
     # ── config.json ──
     _write_atomic(out_dir / "config.json", {
-        "map_auto_fit": MAP_AUTO_FIT,
-        "map_lat":      MAP_LAT,
-        "map_lng":      MAP_LNG,
-        "map_zoom":     MAP_ZOOM,
+        "map_auto_fit":   MAP_AUTO_FIT,
+        "map_lat":        MAP_LAT,
+        "map_lng":        MAP_LNG,
+        "map_zoom":       MAP_ZOOM,
+        "mal_config_url": MAL_CONFIG_URL,
     })
 
     log.info(f"JSON exportado → {out_dir}  ({len(nodes)} nodos, {len(edges)} edges)")

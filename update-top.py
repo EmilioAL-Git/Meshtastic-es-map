@@ -309,7 +309,7 @@ THRESHOLDS = {
     'telemetry_power':       {'critical': 25,  'high': 15,  'medium': 6},
     'routing':               {'critical': 150, 'high': 30,  'medium': 15},
     'traceroute_auto':       {'critical': 50,  'high': 20,  'medium': 10},
-    'hop_limit_high':        {'critical': 7,   'high': 6},
+    'hop_limit_high':        {'critical': 7},
 }
 
 def _issue(key, label, severity):
@@ -435,9 +435,8 @@ def detect_issues(node):
 
     # Hop limit excesivo (valor discreto 1-7, usa >= no >)
     hop_start = node.get("hop_start")
-    if hop_start is not None and hop_start >= t['hop_limit_high']['high']:
-        sev = 'critical' if hop_start >= t['hop_limit_high']['critical'] else 'high'
-        issues.append(_issue('hop_limit_high', f"Hop limit excesivo ({hop_start})", sev))
+    if hop_start is not None and hop_start >= t['hop_limit_high']['critical']:
+        issues.append(_issue('hop_limit_high', f"Hop limit excesivo ({hop_start})", 'critical'))
 
     return issues
 
@@ -477,10 +476,9 @@ def collect_hop_limit_nodes(known_ids):
         if not packet_id:
             return None
         hs = fetch_hop_start(packet_id)
-        hl = THRESHOLDS['hop_limit_high']
-        if hs is None or hs < hl['high']:
+        if hs is None or hs < THRESHOLDS['hop_limit_high']['critical']:
             return None
-        sev = 'critical' if hs >= hl['critical'] else 'high'
+        sev = 'critical'
         return {
             "node_id":           node_id,
             "long_name":         node.get("long_name") or "",

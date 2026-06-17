@@ -301,14 +301,14 @@ def analyze_node(node_id):
 
 THRESHOLDS = {
     'range_test':            {'critical': 1},
-    'position_fixed':        {'critical': 48,  'high': 12,  'medium': 2},
+    'position_fixed':        {'critical': 24,  'high': 6,   'medium': 2},
     'position_mobile':       {'critical': 96,  'high': 48,  'medium': 30},
-    'nodeinfo':              {'critical': 24,  'high': 8,   'medium': 2},
-    'telemetry_device':      {'critical': 20,  'high': 10,  'medium': 4},
-    'telemetry_environment': {'critical': 25,  'high': 15,  'medium': 6},
+    'nodeinfo':              {'critical': 24,  'high': 6,   'medium': 2},
+    'telemetry_device':      {'critical': 24,  'high': 8,   'medium': 4},
+    'telemetry_environment': {'critical': 25,  'high': 15,  'medium': 8},
     'telemetry_power':       {'critical': 25,  'high': 15,  'medium': 6},
     'routing':               {'critical': 150, 'high': 30,  'medium': 15},
-    'traceroute_auto':       {'critical': 50,  'high': 20,  'medium': 10},
+    'traceroute_auto':       {'critical': 24,  'high': 12,  'medium': 10},
     'hop_limit_high':        {'critical': 7},
 }
 

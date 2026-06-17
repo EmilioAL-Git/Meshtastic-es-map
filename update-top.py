@@ -5,7 +5,8 @@ Genera top-nodos.json con el top 100 de nodos por canal (300 en total) más aná
   - Sub-tipos de telemetría (device / environment / power)
   - Uniformidad de traceroutes (automáticos vs manuales)
   - Detección de movilidad por coordenadas históricas (no por location_source)
-Todo a partir de una sola llamada /api/packets por nodo.
+  - Detección de hop_limit excesivo (> 5) en todos los nodos activos del mapa
+Todo a partir de /api/packets por nodo y /api/packets_seen/{id} para hop_start.
 El payload de la API viene en formato proto-text, no bytes.
 """
 import json, math, os, re, statistics, time, urllib.request
@@ -139,6 +140,28 @@ def fetch_json_retry(url, retries=3, wait_s=30):
             print(f"  [warn] {url}: {e} — reintentando en {wait_s}s ({attempt}/{retries})")
             time.sleep(wait_s)
 
+def fetch_hop_start(packet_id):
+    """
+    Consulta /api/packets_seen/{packet_id} y devuelve el hop_start configurado
+    por el emisor original. hop_start es el valor máximo de hop_limit que se puede
+    observar en los receptores (antes de que disminuya con cada rebroadcast).
+    """
+    url = f"{BASE}/api/packets_seen/{packet_id}"
+    try:
+        data = fetch_json(url)
+        seen = data.get("seen", [])
+        if not seen:
+            return None
+        # hop_start explícito (firmware reciente): todos los entries lo comparten
+        hop_starts = [e["hop_start"] for e in seen if e.get("hop_start", 0) > 0]
+        if hop_starts:
+            return max(hop_starts)
+        # Fallback (firmware antiguo sin hop_start): max(hop_limit) = valor original
+        hop_limits = [e["hop_limit"] for e in seen if e.get("hop_limit") is not None]
+        return max(hop_limits) if hop_limits else None
+    except Exception:
+        return None
+
 # ── Análisis completo de un nodo ──────────────────────────────────────────────
 
 def analyze_node(node_id):
@@ -253,6 +276,14 @@ def analyze_node(node_id):
             "is_fixed":          max_dist < 100,
         }
 
+    # ── 5. hop_start del último paquete ──────────────────────────────────────
+    hop_start = None
+    if packets:
+        recent    = max(packets, key=lambda p: p.get("import_time_us") or 0)
+        packet_id = recent.get("id")
+        if packet_id:
+            hop_start = fetch_hop_start(packet_id)
+
     return {
         "packets":           counts,
         "telemetry_detail":  tel_detail,
@@ -261,6 +292,7 @@ def analyze_node(node_id):
         "routing_detail":    ro_detail,
         "position_detail":   position_detail if pos_total > 0 else None,
         "mobility":          mobility,
+        "hop_start":         hop_start,
         "_lat":              coords[-1][0] if coords else None,
         "_lon":              coords[-1][1] if coords else None,
     }
@@ -367,7 +399,84 @@ def detect_issues(node):
             issues.append(_issue('position_flags',
                 f"Flags GPS innecesarios en nodo fijo: {', '.join(unwanted)}", 'medium'))
 
+    # Hop limit excesivo
+    hop_start = node.get("hop_start")
+    if hop_start is not None and hop_start > 5:
+        sev = 'critical' if hop_start >= 7 else 'high'
+        issues.append(_issue('hop_limit_high', f"Hop limit excesivo ({hop_start})", sev))
+
     return issues
+
+# ── Comprobación de hop_limit en todos los nodos activos ─────────────────────
+
+def collect_hop_limit_nodes(known_ids):
+    """
+    Obtiene el hop_start del último paquete de cada nodo activo en las últimas 24 h
+    y devuelve los nodos con hop_start > 5 que no estén ya en known_ids.
+    """
+    since = (int(time.time()) - 86400) * 1_000_000
+    try:
+        data    = fetch_json_retry(f"{BASE}/api/packets?since={since}&limit=10000")
+        packets = data.get("packets", []) if isinstance(data, dict) else []
+    except Exception as e:
+        print(f"  [warn] collect_hop_limit_nodes: {e}")
+        return []
+
+    # Último paquete por nodo
+    latest = {}
+    for pkt in packets:
+        nid = pkt.get("from_node_id")
+        if nid is None:
+            continue
+        if nid not in latest or (pkt.get("import_time_us") or 0) > (latest[nid].get("import_time_us") or 0):
+            latest[nid] = pkt
+
+    results = []
+
+    def check_hop(node_id, pkt):
+        packet_id = pkt.get("id")
+        if not packet_id:
+            return None
+        hs = fetch_hop_start(packet_id)
+        if hs is None or hs <= 5:
+            return None
+        sev = 'critical' if hs >= 7 else 'high'
+        return {
+            "node_id":           node_id,
+            "long_name":         pkt.get("long_name") or "",
+            "short_name":        "",
+            "channel":           pkt.get("channel") or "",
+            "sent":              0,
+            "hop_start":         hs,
+            "packets":           {k: None for k in PORTNUMS},
+            "issues":            [_issue('hop_limit_high', f"Hop limit excesivo ({hs})", sev)],
+            "telemetry_detail":  None,
+            "traceroute_detail": None,
+            "nodeinfo_detail":   None,
+            "routing_detail":    None,
+            "position_detail":   None,
+            "mobility":          None,
+            "lat":               None,
+            "lon":               None,
+            "ccaa":              None,
+        }
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {
+            executor.submit(check_hop, nid, pkt): nid
+            for nid, pkt in latest.items()
+            if nid not in known_ids
+        }
+        for future in as_completed(futures):
+            result = future.result()
+            if result:
+                name = result['long_name'] or str(result['node_id'])
+                hs   = result['hop_start']
+                sev  = result['issues'][0]['severity'].upper()
+                print(f"  [{sev}] {name}: hop_start={hs}")
+                results.append(result)
+
+    return results
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
@@ -416,6 +525,17 @@ with ThreadPoolExecutor(max_workers=5) as executor:
             node["packets"] = {k: None for k in PORTNUMS}
             node["issues"]  = []
             print(f"  {name}: sin datos")
+
+# ── hop_limit en todos los nodos activos (no solo top) ───────────────────────
+
+known_ids = {n["node_id"] for n in all_nodes}
+print(f"\nComprobando hop_limit en todos los nodos activos...")
+hop_nodes = collect_hop_limit_nodes(known_ids)
+if hop_nodes:
+    print(f"  → {len(hop_nodes)} nodos adicionales con hop_limit excesivo")
+    all_nodes += hop_nodes
+else:
+    print("  → ningún nodo adicional con hop_limit excesivo")
 
 # ── Comunidad autónoma (solo nodos con problemas) ─────────────────────────────
 

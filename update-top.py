@@ -434,8 +434,8 @@ def detect_issues(node):
 
     # Hop limit excesivo
     hop_start = node.get("hop_start")
-    if hop_start is not None and hop_start > 4:
-        sev = 'critical' if hop_start > 6 else 'high' if hop_start > 5 else 'medium'
+    if hop_start is not None and hop_start > 5:
+        sev = 'critical' if hop_start > 6 else 'high'
         issues.append(_issue('hop_limit_high', f"Hop limit excesivo ({hop_start})", sev))
 
     return issues
@@ -476,9 +476,9 @@ def collect_hop_limit_nodes(known_ids):
         if not packet_id:
             return None
         hs = fetch_hop_start(packet_id)
-        if hs is None or hs < 5:
+        if hs is None or hs <= 5:
             return None
-        sev = 'critical' if hs >= 7 else 'high' if hs >= 6 else 'medium'
+        sev = 'critical' if hs > 6 else 'high'
         return {
             "node_id":           node_id,
             "long_name":         node.get("long_name") or "",

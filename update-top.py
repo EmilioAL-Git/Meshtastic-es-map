@@ -411,30 +411,35 @@ def detect_issues(node):
 
 def collect_hop_limit_nodes(known_ids):
     """
-    Obtiene el hop_start del último paquete de cada nodo activo en las últimas 24 h
-    y devuelve los nodos con hop_start > 5 que no estén ya en known_ids.
+    Comprueba el hop_start de TODOS los nodos de la red (no solo el top).
+    Para cada nodo de /api/nodes que no esté en known_ids, pide su último
+    paquete y consulta /api/packets_seen/{id} para obtener el hop_start.
     """
-    since = (int(time.time()) - 86400) * 1_000_000
     try:
-        data    = fetch_json_retry(f"{BASE}/api/packets?since={since}&limit=10000")
-        packets = data.get("packets", []) if isinstance(data, dict) else []
+        data  = fetch_json_retry(f"{BASE}/api/nodes")
+        nodes = data if isinstance(data, list) else data.get("nodes", [])
     except Exception as e:
-        print(f"  [warn] collect_hop_limit_nodes: {e}")
+        print(f"  [warn] collect_hop_limit_nodes (nodes): {e}")
         return []
 
-    # Último paquete por nodo
-    latest = {}
-    for pkt in packets:
-        nid = pkt.get("from_node_id")
-        if nid is None:
-            continue
-        if nid not in latest or (pkt.get("import_time_us") or 0) > (latest[nid].get("import_time_us") or 0):
-            latest[nid] = pkt
+    # Solo nodos no analizados ya en el top
+    candidates = [n for n in nodes if n.get("node_id") not in known_ids]
+    print(f"  {len(candidates)} nodos fuera del top a comprobar...")
 
     results = []
 
-    def check_hop(node_id, pkt):
-        packet_id = pkt.get("id")
+    def check_hop(node):
+        node_id = node.get("node_id")
+        if node_id is None:
+            return None
+        try:
+            data    = fetch_json(f"{BASE}/api/packets?from_node_id={node_id}&limit=1")
+            packets = data.get("packets", []) if isinstance(data, dict) else []
+        except Exception:
+            return None
+        if not packets:
+            return None
+        packet_id = packets[0].get("id")
         if not packet_id:
             return None
         hs = fetch_hop_start(packet_id)
@@ -443,9 +448,9 @@ def collect_hop_limit_nodes(known_ids):
         sev = 'critical' if hs >= 7 else 'high'
         return {
             "node_id":           node_id,
-            "long_name":         pkt.get("long_name") or "",
-            "short_name":        "",
-            "channel":           pkt.get("channel") or "",
+            "long_name":         node.get("long_name") or "",
+            "short_name":        node.get("short_name") or "",
+            "channel":           node.get("channel") or packets[0].get("channel") or "",
             "sent":              0,
             "hop_start":         hs,
             "packets":           {k: None for k in PORTNUMS},
@@ -462,15 +467,11 @@ def collect_hop_limit_nodes(known_ids):
         }
 
     with ThreadPoolExecutor(max_workers=10) as executor:
-        futures = {
-            executor.submit(check_hop, nid, pkt): nid
-            for nid, pkt in latest.items()
-            if nid not in known_ids
-        }
+        futures = {executor.submit(check_hop, n): n for n in candidates}
         for future in as_completed(futures):
             result = future.result()
             if result:
-                name = result['long_name'] or str(result['node_id'])
+                name = result['long_name'] or result['short_name'] or str(result['node_id'])
                 hs   = result['hop_start']
                 sev  = result['issues'][0]['severity'].upper()
                 print(f"  [{sev}] {name}: hop_start={hs}")

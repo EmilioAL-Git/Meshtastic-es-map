@@ -101,14 +101,13 @@ function openNodeReport(nodeId) {
     </div>`;
   }
 
-  // Indicador de hop_start
+  // Indicador de hop_start (solo si no está ya en la sección de problemas)
+  const hopFlagged = issues.some(i => i.key === 'hop_limit_high');
   let hopHtml = '';
-  if (hopStart !== null) {
-    const hopClass = hopStart >= 7 ? 'hop-critical' : hopStart >= 6 ? 'hop-high' : 'hop-ok';
-    hopHtml = `<div class="nr-hop nr-hop-${hopClass}">
+  if (hopStart !== null && !hopFlagged) {
+    hopHtml = `<div class="nr-hop nr-hop-ok">
       <span class="nr-hop-icon">🔁</span>
-      <span>Hop Limit configurado: <strong>${hopStart}</strong>
-        ${hopStart > 5 ? ' — <span class="nr-hop-warn">superior al máximo recomendado (5)</span>' : ' — dentro del rango recomendado'}</span>
+      <span>Hop Limit configurado: <strong>${hopStart}</strong> — dentro del rango recomendado</span>
     </div>`;
   }
 

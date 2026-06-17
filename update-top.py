@@ -301,14 +301,14 @@ def analyze_node(node_id):
 
 THRESHOLDS = {
     'range_test':            {'critical': 1},
-    'position_fixed':        {'critical': 48,  'high': 12},
-    'position_mobile':       {'critical': 96,  'high': 48},
-    'nodeinfo':              {'critical': 24,  'high': 8},
-    'telemetry_device':      {'critical': 10,  'high': 4},
-    'telemetry_environment': {'high': 6},
-    'telemetry_power':       {'high': 10},
-    'routing':               {'critical': 150, 'high': 30},
-    'traceroute_auto':       {'critical': 50,  'high': 20},
+    'position_fixed':        {'critical': 48,  'high': 12,  'medium': 2},
+    'position_mobile':       {'critical': 96,  'high': 48,  'medium': 30},
+    'nodeinfo':              {'critical': 24,  'high': 8,   'medium': 2},
+    'telemetry_device':      {'critical': 20,  'high': 10,  'medium': 4},
+    'telemetry_environment': {'critical': 25,  'high': 15,  'medium': 6},
+    'telemetry_power':       {'critical': 25,  'high': 15,  'medium': 6},
+    'routing':               {'critical': 150, 'high': 30,  'medium': 15},
+    'traceroute_auto':       {'critical': 50,  'high': 20,  'medium': 10},
 }
 
 def _issue(key, label, severity):
@@ -325,7 +325,7 @@ def detect_issues(node):
     issues = []
 
     # Range Test
-    if (p.get("range_test") or 0) >= t['range_test']['critical']:
+    if (p.get("range_test") or 0) > t['range_test']['critical'] - 1:
         issues.append(_issue('range_test', f"Range Test activo ({p['range_test']}/día)", 'critical'))
 
     # Posición
@@ -335,52 +335,85 @@ def detect_issues(node):
             pt  = t['position_fixed'] if mob['is_fixed'] else t['position_mobile']
             key = 'position_fixed' if mob['is_fixed'] else 'position_mobile'
             tag = 'nodo fijo' if mob['is_fixed'] else 'nodo móvil'
-            if pos >= pt['critical']:
+            if pos > pt['critical']:
                 issues.append(_issue(key, f"Posición muy frecuente para {tag} ({pos}/día)", 'critical'))
-            elif pos >= pt['high']:
+            elif pos > pt['high']:
                 issues.append(_issue(key, f"Posición frecuente para {tag} ({pos}/día)", 'high'))
-        elif pos >= t['position_fixed']['critical']:
-            issues.append(_issue('position_unknown', f"Posición frecuente ({pos}/día)", 'high'))
+            elif pos > pt['medium']:
+                issues.append(_issue(key, f"Posición algo frecuente para {tag} ({pos}/día)", 'medium'))
+        else:
+            if pos > t['position_fixed']['critical']:
+                issues.append(_issue('position_unknown', f"Posición muy frecuente ({pos}/día)", 'critical'))
+            elif pos > t['position_fixed']['high']:
+                issues.append(_issue('position_unknown', f"Posición frecuente ({pos}/día)", 'high'))
+            elif pos > t['position_fixed']['medium']:
+                issues.append(_issue('position_unknown', f"Posición frecuente ({pos}/día)", 'medium'))
 
     # NodeInfo
     ni_count = p.get("nodeinfo") or 0
-    ni_auto  = ni.get("is_automatic") if ni else (ni_count >= t['nodeinfo']['critical'])
+    ni_auto  = ni.get("is_automatic") if ni else (ni_count > t['nodeinfo']['critical'])
     if ni_auto:
-        if ni_count >= t['nodeinfo']['critical']:
+        if ni_count > t['nodeinfo']['critical']:
             issues.append(_issue('nodeinfo', f"NodeInfo automático muy frecuente ({ni_count}/día)", 'critical'))
-        elif ni_count >= t['nodeinfo']['high']:
+        elif ni_count > t['nodeinfo']['high']:
             issues.append(_issue('nodeinfo', f"NodeInfo automático frecuente ({ni_count}/día)", 'high'))
+        elif ni_count > t['nodeinfo']['medium']:
+            issues.append(_issue('nodeinfo', f"NodeInfo automático frecuente ({ni_count}/día)", 'medium'))
 
     # Telemetría por sub-tipo
     if tel:
         dev = tel.get("device") or 0
         env = tel.get("environment") or 0
         pwr = tel.get("power") or 0
-        if dev >= t['telemetry_device']['critical']:
+        if dev > t['telemetry_device']['critical']:
             issues.append(_issue('telemetry_device', f"Telemetría dispositivo muy frecuente ({dev}/día)", 'critical'))
-        elif dev >= t['telemetry_device']['high']:
+        elif dev > t['telemetry_device']['high']:
+            issues.append(_issue('telemetry_device', f"Telemetría dispositivo frecuente ({dev}/día)", 'high'))
+        elif dev > t['telemetry_device']['medium']:
             issues.append(_issue('telemetry_device', f"Telemetría dispositivo frecuente ({dev}/día)", 'medium'))
-        if env >= t['telemetry_environment']['high']:
+        if env > t['telemetry_environment']['critical']:
+            issues.append(_issue('telemetry_environment', f"Telemetría entorno muy frecuente ({env}/día)", 'critical'))
+        elif env > t['telemetry_environment']['high']:
+            issues.append(_issue('telemetry_environment', f"Telemetría entorno frecuente ({env}/día)", 'high'))
+        elif env > t['telemetry_environment']['medium']:
             issues.append(_issue('telemetry_environment', f"Telemetría entorno frecuente ({env}/día)", 'medium'))
-        if pwr >= t['telemetry_power']['high']:
+        if pwr > t['telemetry_power']['critical']:
+            issues.append(_issue('telemetry_power', f"Telemetría eléctrica muy frecuente ({pwr}/día)", 'critical'))
+        elif pwr > t['telemetry_power']['high']:
+            issues.append(_issue('telemetry_power', f"Telemetría eléctrica frecuente ({pwr}/día)", 'high'))
+        elif pwr > t['telemetry_power']['medium']:
             issues.append(_issue('telemetry_power', f"Telemetría eléctrica frecuente ({pwr}/día)", 'medium'))
     else:
         total_tel = p.get("telemetry") or 0
-        if total_tel >= t['telemetry_device']['critical']:
+        if total_tel > t['telemetry_device']['critical']:
             issues.append(_issue('telemetry_device', f"Telemetría muy frecuente ({total_tel}/día)", 'critical'))
+        elif total_tel > t['telemetry_device']['high']:
+            issues.append(_issue('telemetry_device', f"Telemetría frecuente ({total_tel}/día)", 'high'))
+        elif total_tel > t['telemetry_device']['medium']:
+            issues.append(_issue('telemetry_device', f"Telemetría frecuente ({total_tel}/día)", 'medium'))
 
     # Routing
     ro_count = p.get("routing") or 0
-    ro_auto  = ro.get("is_automatic") if ro else (ro_count >= t['routing']['critical'])
-    if ro_auto and ro_count >= t['routing']['high']:
-        sev = 'critical' if ro_count >= t['routing']['critical'] else 'high'
+    ro_auto  = ro.get("is_automatic") if ro else (ro_count > t['routing']['critical'])
+    if ro_auto and ro_count > t['routing']['medium']:
+        if ro_count > t['routing']['critical']:
+            sev = 'critical'
+        elif ro_count > t['routing']['high']:
+            sev = 'high'
+        else:
+            sev = 'medium'
         issues.append(_issue('routing', f"Routing excesivo ({ro_count}/día)", sev))
 
     # Traceroute
     tr_count = p.get("traceroute") or 0
     tr_auto  = tr.get("is_automatic") if tr else False
-    if tr_auto and tr_count >= t['traceroute_auto']['high']:
-        sev = 'critical' if tr_count >= t['traceroute_auto']['critical'] else 'high'
+    if tr_auto and tr_count > t['traceroute_auto']['medium']:
+        if tr_count > t['traceroute_auto']['critical']:
+            sev = 'critical'
+        elif tr_count > t['traceroute_auto']['high']:
+            sev = 'high'
+        else:
+            sev = 'medium'
         issues.append(_issue('traceroute_auto', f"Traceroute sistemático ({tr_count}/día)", sev))
 
     # Flags de posición innecesarios en nodo fijo
@@ -401,8 +434,8 @@ def detect_issues(node):
 
     # Hop limit excesivo
     hop_start = node.get("hop_start")
-    if hop_start is not None and hop_start >= 5:
-        sev = 'critical' if hop_start >= 7 else 'high' if hop_start >= 6 else 'medium'
+    if hop_start is not None and hop_start > 4:
+        sev = 'critical' if hop_start > 6 else 'high' if hop_start > 5 else 'medium'
         issues.append(_issue('hop_limit_high', f"Hop limit excesivo ({hop_start})", sev))
 
     return issues

@@ -574,6 +574,7 @@ if not all_nodes:
     print("\nNo se obtuvo ningún nodo (timeout o error de red). JSON anterior conservado.")
 else:
     result_data = {"updated": int(time.time()), "nodes": all_nodes}
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w") as f:
         json.dump(result_data, f)
     print(f"\nGuardado: {len(all_nodes)} nodos en {OUT}")

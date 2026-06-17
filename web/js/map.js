@@ -136,7 +136,7 @@ function updateMarkerSizes() {
       m.setLatLng([dLat, dLng]);
     }
     const md = malConfigurados.get(n.node_id);
-    if (md && detectIssues(md).length > 0) m.setIcon(makeMalConfiguradoIcon(nodeColor(n), sz));
+    if (md && detectIssues(md).some(i => i.severity !== 'medium')) m.setIcon(makeMalConfiguradoIcon(nodeColor(n), sz));
     else if (m.setRadius) m.setRadius(sz);
     else if (isRouter(n) && !n.is_mqtt_gateway) m.setIcon(makeRouterIcon(nodeColor(n), sz));
   });
@@ -336,7 +336,7 @@ function renderNodes(nodes) {
     const [dLat, dLng] = getSpreadLatLng(node.node_id, node.latitude, node.longitude);
     const color        = nodeColor(node);
     const malData      = malConfigurados.get(node.node_id);
-    const isMalConfig  = !!malData && detectIssues(malData).length > 0;
+    const isMalConfig  = !!malData && detectIssues(malData).some(i => i.severity !== 'medium');
     const marker = isMalConfig
       ? L.marker([dLat, dLng], { icon: makeMalConfiguradoIcon(color, sz), pane: 'markersPane' })
       : (isRouter(node) && !node.is_mqtt_gateway)

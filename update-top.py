@@ -175,10 +175,14 @@ def analyze_node(node_id):
         return None
 
     # ── 1. Conteo por portnum ─────────────────────────────────────────────────
+    # Para traceroute (portnum=70) solo contamos los requests (los que el nodo
+    # inició). Las responses se identifican por tener "route_back" en el payload.
     counts = {name: 0 for name in PORTNUMS}
     for p in packets:
         for name, portnum in PORTNUMS.items():
             if p.get("portnum") == portnum:
+                if name == "traceroute" and "route_back" in (p.get("payload") or ""):
+                    continue  # response a un traceroute ajeno, no contar
                 counts[name] += 1
 
     # ── 2. Sub-tipos de telemetría ────────────────────────────────────────────
@@ -189,10 +193,11 @@ def analyze_node(node_id):
             tel_detail[stype] += 1
 
     # ── 3. Uniformidad de traceroutes y nodeinfo ──────────────────────────────
-    def uniformity(portnum, short_cycle_min=None, short_cycle_count=None):
+    def uniformity(portnum, short_cycle_min=None, short_cycle_count=None, payload_exclude=None):
         ts = sorted(
             p["import_time_us"] for p in packets
             if p.get("portnum") == portnum and p.get("import_time_us")
+            and (payload_exclude is None or payload_exclude not in (p.get("payload") or ""))
         )
         count = len(ts)
         if count < 3:
@@ -214,7 +219,8 @@ def analyze_node(node_id):
             "is_automatic":     uniform or short_cycle,
         }
 
-    tr_u  = uniformity(70, short_cycle_min=20, short_cycle_count=50)
+    tr_u  = uniformity(70, short_cycle_min=20, short_cycle_count=50,
+                       payload_exclude="route_back")
     ni_u  = uniformity(4)
     ro_u  = uniformity(5,  short_cycle_min=10, short_cycle_count=50)
     tr_detail = None

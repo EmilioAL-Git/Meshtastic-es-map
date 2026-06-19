@@ -76,6 +76,14 @@ async function loadAll() {
         if (found) selectNode(nodeParam, true);
         else showToast(`Nodo ${nodeParam} no encontrado en la red`);
       }
+
+      // Enlace directo a un informe de recomendaciones: ?report=!abcd1234
+      const reportParam = new URLSearchParams(location.search).get('report');
+      if (reportParam) {
+        if (malConfigurados.has(reportParam)) openNodeReport(reportParam);
+        else showToast(`Informe de ${reportParam} no encontrado`);
+      }
+
       firstLoad = false;
     }
 

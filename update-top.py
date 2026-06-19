@@ -5,7 +5,8 @@ Genera top-nodos.json con el top 100 de nodos por canal (300 en total) más aná
   - Sub-tipos de telemetría (device / environment / power)
   - Uniformidad de traceroutes (automáticos vs manuales)
   - Detección de movilidad por coordenadas históricas (no por location_source)
-Todo a partir de una sola llamada /api/packets por nodo.
+  - Detección de hop_limit excesivo (> 5) en todos los nodos activos del mapa
+Todo a partir de /api/packets por nodo y /api/packets_seen/{id} para hop_start.
 El payload de la API viene en formato proto-text, no bytes.
 """
 import json, math, os, re, statistics, time, urllib.request
@@ -13,6 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 OUT      = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "top-nodos.json")
 BASE     = os.environ.get("MESHVIEW_URL", "http://localhost:18085")
+BROADCAST_ID = 4294967295  # to_node_id de los paquetes broadcast (^all)
 
 PORTNUMS = {
     "text":         1,
@@ -139,6 +141,28 @@ def fetch_json_retry(url, retries=3, wait_s=30):
             print(f"  [warn] {url}: {e} — reintentando en {wait_s}s ({attempt}/{retries})")
             time.sleep(wait_s)
 
+def fetch_hop_start(packet_id):
+    """
+    Consulta /api/packets_seen/{packet_id} y devuelve el hop_start configurado
+    por el emisor original. hop_start es el valor máximo de hop_limit que se puede
+    observar en los receptores (antes de que disminuya con cada rebroadcast).
+    """
+    url = f"{BASE}/api/packets_seen/{packet_id}"
+    try:
+        data = fetch_json(url)
+        seen = data.get("seen", [])
+        if not seen:
+            return None
+        # hop_start explícito (firmware reciente): todos los entries lo comparten
+        hop_starts = [e["hop_start"] for e in seen if e.get("hop_start", 0) > 0]
+        if hop_starts:
+            return max(hop_starts)
+        # Fallback (firmware antiguo sin hop_start): max(hop_limit) = valor original
+        hop_limits = [e["hop_limit"] for e in seen if e.get("hop_limit") is not None]
+        return max(hop_limits) if hop_limits else None
+    except Exception:
+        return None
+
 # ── Análisis completo de un nodo ──────────────────────────────────────────────
 
 def analyze_node(node_id):
@@ -152,24 +176,37 @@ def analyze_node(node_id):
         return None
 
     # ── 1. Conteo por portnum ─────────────────────────────────────────────────
+    # Para traceroute (portnum=70) solo contamos los requests (los que el nodo
+    # inició). Las responses se identifican por tener "route_back" en el payload.
+    # Para position (3), nodeinfo (4) y telemetry (67) solo contamos los
+    # broadcast (to_node_id=^all). Las peticiones/respuestas van como unicast
+    # y no reflejan la configuración propia del nodo (Broadcast Interval),
+    # sino que alguien las pidió.
+    BROADCAST_ONLY = {"position", "nodeinfo", "telemetry"}
     counts = {name: 0 for name in PORTNUMS}
     for p in packets:
         for name, portnum in PORTNUMS.items():
             if p.get("portnum") == portnum:
+                if name == "traceroute" and "route_back" in (p.get("payload") or ""):
+                    continue  # response a un traceroute ajeno, no contar
+                if name in BROADCAST_ONLY and p.get("to_node_id") != BROADCAST_ID:
+                    continue  # petición/respuesta unicast, no contar
                 counts[name] += 1
 
     # ── 2. Sub-tipos de telemetría ────────────────────────────────────────────
     tel_detail = {"device": 0, "environment": 0, "power": 0, "other": 0}
     for p in packets:
-        if p.get("portnum") == 67:
+        if p.get("portnum") == 67 and p.get("to_node_id") == BROADCAST_ID:
             stype = telemetry_subtype(p.get("payload"))
             tel_detail[stype] += 1
 
     # ── 3. Uniformidad de traceroutes y nodeinfo ──────────────────────────────
-    def uniformity(portnum, short_cycle_min=None, short_cycle_count=None):
+    def uniformity(portnum, short_cycle_min=None, short_cycle_count=None, payload_exclude=None, broadcast_only=False):
         ts = sorted(
             p["import_time_us"] for p in packets
             if p.get("portnum") == portnum and p.get("import_time_us")
+            and (payload_exclude is None or payload_exclude not in (p.get("payload") or ""))
+            and (not broadcast_only or p.get("to_node_id") == BROADCAST_ID)
         )
         count = len(ts)
         if count < 3:
@@ -191,14 +228,31 @@ def analyze_node(node_id):
             "is_automatic":     uniform or short_cycle,
         }
 
-    tr_u  = uniformity(70, short_cycle_min=20, short_cycle_count=50)
-    ni_u  = uniformity(4)
+    tr_u  = uniformity(70, short_cycle_min=20, short_cycle_count=50,
+                       payload_exclude="route_back")
+    ni_u  = uniformity(4, broadcast_only=True)
     ro_u  = uniformity(5,  short_cycle_min=10, short_cycle_count=50)
+
+    # Comprobar si los traceroutes usan hop_start=7 (señal de herramienta automática)
+    tr_max_hops = False
+    tr_requests = [p for p in packets
+                   if p.get("portnum") == 70
+                   and "route_back" not in (p.get("payload") or "")]
+    if tr_requests:
+        recent_tr = max(tr_requests, key=lambda p: p.get("import_time_us") or 0)
+        tr_hop = fetch_hop_start(recent_tr.get("id"))
+        tr_max_hops = (tr_hop == 7)
+
     tr_detail = None
-    if tr_u:
-        tr_detail = {**tr_u,
-            "auto_count":   counts["traceroute"] if tr_u["is_automatic"] else 0,
-            "manual_count": 0 if tr_u["is_automatic"] else counts["traceroute"],
+    if tr_u or tr_max_hops:
+        is_auto = (tr_u["is_automatic"] if tr_u else False) or tr_max_hops
+        tr_detail = {
+            "avg_interval_min": tr_u["avg_interval_min"] if tr_u else None,
+            "cv":               tr_u["cv"]               if tr_u else None,
+            "is_automatic":     is_auto,
+            "uses_max_hops":    tr_max_hops,
+            "auto_count":       counts["traceroute"] if is_auto else 0,
+            "manual_count":     0 if is_auto else counts["traceroute"],
         }
     ni_detail = None
     if ni_u:
@@ -225,6 +279,8 @@ def analyze_node(node_id):
 
     for p in packets:
         if p.get("portnum") == 3:
+            if p.get("to_node_id") != BROADCAST_ID:
+                continue  # petición/respuesta de posición unicast, no contar
             payload = p.get("payload") or ""
             lat, lon = parse_position(payload)
             if lat is not None:
@@ -253,6 +309,14 @@ def analyze_node(node_id):
             "is_fixed":          max_dist < 100,
         }
 
+    # ── 5. hop_start del último paquete ──────────────────────────────────────
+    hop_start = None
+    if packets:
+        recent    = max(packets, key=lambda p: p.get("import_time_us") or 0)
+        packet_id = recent.get("id")
+        if packet_id:
+            hop_start = fetch_hop_start(packet_id)
+
     return {
         "packets":           counts,
         "telemetry_detail":  tel_detail,
@@ -261,6 +325,7 @@ def analyze_node(node_id):
         "routing_detail":    ro_detail,
         "position_detail":   position_detail if pos_total > 0 else None,
         "mobility":          mobility,
+        "hop_start":         hop_start,
         "_lat":              coords[-1][0] if coords else None,
         "_lon":              coords[-1][1] if coords else None,
     }
@@ -269,14 +334,15 @@ def analyze_node(node_id):
 
 THRESHOLDS = {
     'range_test':            {'critical': 1},
-    'position_fixed':        {'critical': 48,  'high': 12},
-    'position_mobile':       {'critical': 96,  'high': 48},
-    'nodeinfo':              {'critical': 24,  'high': 8},
-    'telemetry_device':      {'critical': 10,  'high': 4},
-    'telemetry_environment': {'high': 6},
-    'telemetry_power':       {'high': 10},
-    'routing':               {'critical': 150, 'high': 30},
-    'traceroute_auto':       {'critical': 50,  'high': 20},
+    'position_fixed':        {'critical': 24,  'high': 6,   'medium': 2},
+    'position_mobile':       {'critical': 96,  'high': 48,  'medium': 30},
+    'nodeinfo':              {'critical': 24,  'high': 6,   'medium': 2},
+    'telemetry_device':      {'critical': 24,  'high': 8,   'medium': 4},
+    'telemetry_environment': {'critical': 25,  'high': 15,  'medium': 8},
+    'telemetry_power':       {'critical': 25,  'high': 15,  'medium': 6},
+    'routing':               {'critical': 150, 'high': 30,  'medium': 15},
+    'traceroute_auto':       {'critical': 24,  'high': 12,  'medium': 10},
+    'hop_limit_high':        {'critical': 7},
 }
 
 def _issue(key, label, severity):
@@ -293,7 +359,7 @@ def detect_issues(node):
     issues = []
 
     # Range Test
-    if (p.get("range_test") or 0) >= t['range_test']['critical']:
+    if (p.get("range_test") or 0) > t['range_test']['critical'] - 1:
         issues.append(_issue('range_test', f"Range Test activo ({p['range_test']}/día)", 'critical'))
 
     # Posición
@@ -303,52 +369,89 @@ def detect_issues(node):
             pt  = t['position_fixed'] if mob['is_fixed'] else t['position_mobile']
             key = 'position_fixed' if mob['is_fixed'] else 'position_mobile'
             tag = 'nodo fijo' if mob['is_fixed'] else 'nodo móvil'
-            if pos >= pt['critical']:
+            if pos > pt['critical']:
                 issues.append(_issue(key, f"Posición muy frecuente para {tag} ({pos}/día)", 'critical'))
-            elif pos >= pt['high']:
+            elif pos > pt['high']:
                 issues.append(_issue(key, f"Posición frecuente para {tag} ({pos}/día)", 'high'))
-        elif pos >= t['position_fixed']['critical']:
-            issues.append(_issue('position_unknown', f"Posición frecuente ({pos}/día)", 'high'))
+            elif pos > pt['medium']:
+                issues.append(_issue(key, f"Posición algo frecuente para {tag} ({pos}/día)", 'medium'))
+        else:
+            if pos > t['position_fixed']['critical']:
+                issues.append(_issue('position_unknown', f"Posición muy frecuente ({pos}/día)", 'critical'))
+            elif pos > t['position_fixed']['high']:
+                issues.append(_issue('position_unknown', f"Posición frecuente ({pos}/día)", 'high'))
+            elif pos > t['position_fixed']['medium']:
+                issues.append(_issue('position_unknown', f"Posición frecuente ({pos}/día)", 'medium'))
 
     # NodeInfo
     ni_count = p.get("nodeinfo") or 0
-    ni_auto  = ni.get("is_automatic") if ni else (ni_count >= t['nodeinfo']['critical'])
+    ni_auto  = ni.get("is_automatic") if ni else (ni_count > t['nodeinfo']['critical'])
     if ni_auto:
-        if ni_count >= t['nodeinfo']['critical']:
+        if ni_count > t['nodeinfo']['critical']:
             issues.append(_issue('nodeinfo', f"NodeInfo automático muy frecuente ({ni_count}/día)", 'critical'))
-        elif ni_count >= t['nodeinfo']['high']:
+        elif ni_count > t['nodeinfo']['high']:
             issues.append(_issue('nodeinfo', f"NodeInfo automático frecuente ({ni_count}/día)", 'high'))
+        elif ni_count > t['nodeinfo']['medium']:
+            issues.append(_issue('nodeinfo', f"NodeInfo automático frecuente ({ni_count}/día)", 'medium'))
 
     # Telemetría por sub-tipo
     if tel:
         dev = tel.get("device") or 0
         env = tel.get("environment") or 0
         pwr = tel.get("power") or 0
-        if dev >= t['telemetry_device']['critical']:
+        if dev > t['telemetry_device']['critical']:
             issues.append(_issue('telemetry_device', f"Telemetría dispositivo muy frecuente ({dev}/día)", 'critical'))
-        elif dev >= t['telemetry_device']['high']:
+        elif dev > t['telemetry_device']['high']:
+            issues.append(_issue('telemetry_device', f"Telemetría dispositivo frecuente ({dev}/día)", 'high'))
+        elif dev > t['telemetry_device']['medium']:
             issues.append(_issue('telemetry_device', f"Telemetría dispositivo frecuente ({dev}/día)", 'medium'))
-        if env >= t['telemetry_environment']['high']:
+        if env > t['telemetry_environment']['critical']:
+            issues.append(_issue('telemetry_environment', f"Telemetría entorno muy frecuente ({env}/día)", 'critical'))
+        elif env > t['telemetry_environment']['high']:
+            issues.append(_issue('telemetry_environment', f"Telemetría entorno frecuente ({env}/día)", 'high'))
+        elif env > t['telemetry_environment']['medium']:
             issues.append(_issue('telemetry_environment', f"Telemetría entorno frecuente ({env}/día)", 'medium'))
-        if pwr >= t['telemetry_power']['high']:
+        if pwr > t['telemetry_power']['critical']:
+            issues.append(_issue('telemetry_power', f"Telemetría eléctrica muy frecuente ({pwr}/día)", 'critical'))
+        elif pwr > t['telemetry_power']['high']:
+            issues.append(_issue('telemetry_power', f"Telemetría eléctrica frecuente ({pwr}/día)", 'high'))
+        elif pwr > t['telemetry_power']['medium']:
             issues.append(_issue('telemetry_power', f"Telemetría eléctrica frecuente ({pwr}/día)", 'medium'))
     else:
         total_tel = p.get("telemetry") or 0
-        if total_tel >= t['telemetry_device']['critical']:
+        if total_tel > t['telemetry_device']['critical']:
             issues.append(_issue('telemetry_device', f"Telemetría muy frecuente ({total_tel}/día)", 'critical'))
+        elif total_tel > t['telemetry_device']['high']:
+            issues.append(_issue('telemetry_device', f"Telemetría frecuente ({total_tel}/día)", 'high'))
+        elif total_tel > t['telemetry_device']['medium']:
+            issues.append(_issue('telemetry_device', f"Telemetría frecuente ({total_tel}/día)", 'medium'))
 
     # Routing
     ro_count = p.get("routing") or 0
-    ro_auto  = ro.get("is_automatic") if ro else (ro_count >= t['routing']['critical'])
-    if ro_auto and ro_count >= t['routing']['high']:
-        sev = 'critical' if ro_count >= t['routing']['critical'] else 'high'
+    ro_auto  = ro.get("is_automatic") if ro else (ro_count > t['routing']['critical'])
+    if ro_auto and ro_count > t['routing']['medium']:
+        if ro_count > t['routing']['critical']:
+            sev = 'critical'
+        elif ro_count > t['routing']['high']:
+            sev = 'high'
+        else:
+            sev = 'medium'
         issues.append(_issue('routing', f"Routing excesivo ({ro_count}/día)", sev))
 
     # Traceroute
-    tr_count = p.get("traceroute") or 0
-    tr_auto  = tr.get("is_automatic") if tr else False
-    if tr_auto and tr_count >= t['traceroute_auto']['high']:
-        sev = 'critical' if tr_count >= t['traceroute_auto']['critical'] else 'high'
+    # is_automatic (CV) = señal fuerte → umbral 'medium'
+    # uses_max_hops solo (hop_start=7 sin CV uniforme) = señal débil → umbral 'high'
+    tr_count      = p.get("traceroute") or 0
+    tr_is_auto    = tr.get("is_automatic")   if tr else False
+    tr_max_hops   = tr.get("uses_max_hops")  if tr else False
+    tr_threshold  = t['traceroute_auto']['medium'] if tr_is_auto else t['traceroute_auto']['high']
+    if (tr_is_auto or tr_max_hops) and tr_count > tr_threshold:
+        if tr_count > t['traceroute_auto']['critical']:
+            sev = 'critical'
+        elif tr_count > t['traceroute_auto']['high']:
+            sev = 'high'
+        else:
+            sev = 'medium'
         issues.append(_issue('traceroute_auto', f"Traceroute sistemático ({tr_count}/día)", sev))
 
     # Flags de posición innecesarios en nodo fijo
@@ -367,7 +470,84 @@ def detect_issues(node):
             issues.append(_issue('position_flags',
                 f"Flags GPS innecesarios en nodo fijo: {', '.join(unwanted)}", 'medium'))
 
+    # Hop limit excesivo (valor discreto 1-7, usa >= no >)
+    hop_start = node.get("hop_start")
+    if hop_start is not None and hop_start >= t['hop_limit_high']['critical']:
+        issues.append(_issue('hop_limit_high', f"Hop limit excesivo ({hop_start})", 'critical'))
+
     return issues
+
+# ── Comprobación de hop_limit en todos los nodos activos ─────────────────────
+
+def collect_hop_limit_nodes(known_ids):
+    """
+    Comprueba el hop_start de TODOS los nodos de la red (no solo el top).
+    Para cada nodo de /api/nodes que no esté en known_ids, pide su último
+    paquete y consulta /api/packets_seen/{id} para obtener el hop_start.
+    """
+    try:
+        data  = fetch_json_retry(f"{BASE}/api/nodes")
+        nodes = data if isinstance(data, list) else data.get("nodes", [])
+    except Exception as e:
+        print(f"  [warn] collect_hop_limit_nodes (nodes): {e}")
+        return []
+
+    # Solo nodos no analizados ya en el top
+    candidates = [n for n in nodes if n.get("node_id") not in known_ids]
+    print(f"  {len(candidates)} nodos fuera del top a comprobar...")
+
+    results = []
+
+    def check_hop(node):
+        node_id = node.get("node_id")
+        if node_id is None:
+            return None
+        try:
+            data    = fetch_json(f"{BASE}/api/packets?from_node_id={node_id}&limit=1")
+            packets = data.get("packets", []) if isinstance(data, dict) else []
+        except Exception:
+            return None
+        if not packets:
+            return None
+        packet_id = packets[0].get("id")
+        if not packet_id:
+            return None
+        hs = fetch_hop_start(packet_id)
+        if hs is None or hs < THRESHOLDS['hop_limit_high']['critical']:
+            return None
+        sev = 'critical'
+        return {
+            "node_id":           node_id,
+            "long_name":         node.get("long_name") or "",
+            "short_name":        node.get("short_name") or "",
+            "channel":           node.get("channel") or packets[0].get("channel") or "",
+            "sent":              0,
+            "hop_start":         hs,
+            "packets":           {k: None for k in PORTNUMS},
+            "issues":            [_issue('hop_limit_high', f"Hop limit excesivo ({hs})", sev)],
+            "telemetry_detail":  None,
+            "traceroute_detail": None,
+            "nodeinfo_detail":   None,
+            "routing_detail":    None,
+            "position_detail":   None,
+            "mobility":          None,
+            "lat":               None,
+            "lon":               None,
+            "ccaa":              None,
+        }
+
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {executor.submit(check_hop, n): n for n in candidates}
+        for future in as_completed(futures):
+            result = future.result()
+            if result:
+                name = result['long_name'] or result['short_name'] or str(result['node_id'])
+                hs   = result['hop_start']
+                sev  = result['issues'][0]['severity'].upper()
+                print(f"  [{sev}] {name}: hop_start={hs}")
+                results.append(result)
+
+    return results
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
@@ -417,6 +597,17 @@ with ThreadPoolExecutor(max_workers=5) as executor:
             node["issues"]  = []
             print(f"  {name}: sin datos")
 
+# ── hop_limit en todos los nodos activos (no solo top) ───────────────────────
+
+known_ids = {n["node_id"] for n in all_nodes}
+print(f"\nComprobando hop_limit en todos los nodos activos...")
+hop_nodes = collect_hop_limit_nodes(known_ids)
+if hop_nodes:
+    print(f"  → {len(hop_nodes)} nodos adicionales con hop_limit excesivo")
+    all_nodes += hop_nodes
+else:
+    print("  → ningún nodo adicional con hop_limit excesivo")
+
 # ── Comunidad autónoma (solo nodos con problemas) ─────────────────────────────
 
 ccaa_cache     = load_ccaa_cache()
@@ -454,6 +645,7 @@ if not all_nodes:
     print("\nNo se obtuvo ningún nodo (timeout o error de red). JSON anterior conservado.")
 else:
     result_data = {"updated": int(time.time()), "nodes": all_nodes}
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w") as f:
         json.dump(result_data, f)
     print(f"\nGuardado: {len(all_nodes)} nodos en {OUT}")

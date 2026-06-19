@@ -44,6 +44,10 @@ const ISSUE_DEFS = {
     desc: 'Este nodo está generando traceroutes de forma sistemática (posiblemente una herramienta de monitorización de red). Genera tráfico considerable en la red.',
     fix:  'Configura la herramienta de monitorización (MeshSense, MeshMonitor...) para reducir la frecuencia de traceroutes o el número de nodos destino',
   },
+  hop_limit_high: {
+    desc: 'El nodo tiene configurado un hop_limit superior al recomendado. Un hop_limit alto provoca que cada paquete se reemita en cascada muchas más veces de lo necesario, saturando el canal y perjudicando a toda la red. Si estás en un extremo de la malla y tienes problemas de cobertura, puedes probar con 5-6, pero usa siempre el mínimo que te permita comunicarte.',
+    fix:  'Config → LoRa → Hop Limit → 3 (recomendado). Si estás en el borde de la malla: prueba 5 o como máximo 6, nunca 7',
+  },
 };
 
 // ─── Diagnóstico de problemas (calculado en el servidor, leído aquí) ──────────
@@ -70,15 +74,16 @@ function openNodeReport(nodeId) {
   const malData = malConfigurados.get(key);
   if (!malData) return;
 
-  const issues = detectIssues(malData);
-  const p      = malData.packets || {};
-  const tel    = malData.telemetry_detail || {};
-  const mob    = malData.mobility;
-  const tr     = malData.traceroute_detail;
-  const ni     = malData.nodeinfo_detail;
-  const hex    = toHex(malData.node_id);
-  const name   = escHtml(malData.long_name || malData.short_name || hex);
-  const total  = malData.sent || 1;
+  const issues   = detectIssues(malData);
+  const p        = malData.packets || {};
+  const tel      = malData.telemetry_detail || {};
+  const mob      = malData.mobility;
+  const tr       = malData.traceroute_detail;
+  const ni       = malData.nodeinfo_detail;
+  const hopStart = malData.hop_start ?? null;
+  const hex      = toHex(malData.node_id);
+  const name     = escHtml(malData.long_name || malData.short_name || hex);
+  const total    = malData.sent || 1;
 
   const severityLabel = { critical: '🔴', high: '🟠', medium: '🟡' };
 
@@ -93,6 +98,16 @@ function openNodeReport(nodeId) {
       <span>Detectado como <strong>${isFixed ? 'nodo fijo' : 'nodo móvil'}</strong>
         — desplazamiento máximo ${dist >= 1000 ? (dist/1000).toFixed(1)+'km' : dist+'m'}
         (${checks} posiciones analizadas)</span>
+    </div>`;
+  }
+
+  // Indicador de hop_start (solo si no está ya en la sección de problemas)
+  const hopFlagged = issues.some(i => i.key === 'hop_limit_high');
+  let hopHtml = '';
+  if (hopStart !== null && !hopFlagged) {
+    hopHtml = `<div class="nr-hop nr-hop-ok">
+      <span class="nr-hop-icon">🔁</span>
+      <span>Hop Limit configurado: <strong>${hopStart}</strong> — dentro del rango recomendado</span>
     </div>`;
   }
 
@@ -153,6 +168,7 @@ function openNodeReport(nodeId) {
       <div class="nr-node-meta">${escHtml(hex)} · ${escHtml(malData.channel)} · ${total.toLocaleString('es-ES')} paquetes/día</div>
     </div>
     ${mobHtml}
+    ${hopHtml}
     <div class="nr-section-title">Problemas detectados</div>
     ${issuesHtml}
     <div class="nr-section-title">Desglose de paquetes (últimas 24h)</div>
@@ -165,10 +181,19 @@ function openNodeReport(nodeId) {
   closeMalConfigModal();
   document.getElementById('node-report-back').style.display = fromList ? '' : 'none';
   document.getElementById('node-report-modal').classList.add('open');
+
+  // Enlace directo al informe: ?report=!abcd1234
+  const url = new URL(location.href);
+  url.searchParams.set('report', hex);
+  history.replaceState(null, '', url);
 }
 
 function closeNodeReport() {
   document.getElementById('node-report-modal').classList.remove('open');
+
+  const url = new URL(location.href);
+  url.searchParams.delete('report');
+  history.replaceState(null, '', url);
 }
 
 // ─── Modal: Nodos mal configurados ────────────────────────────────────────────

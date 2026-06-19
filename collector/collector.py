@@ -219,6 +219,11 @@ def parse_nodes(raw: list | dict) -> list[dict]:
         lon_raw = _first_not_none(n.get("last_long"), n.get("longitude"), n.get("lon"))
         lat = _decode_coord(lat_raw)
         lon = _decode_coord(lon_raw)
+        # Null island (0,0): algunos nodos mandan esta posición por GPS sin fix.
+        # Se descarta para no machacar con COALESCE una posición válida anterior.
+        if lat is not None and lon is not None and abs(lat) < 0.5 and abs(lon) < 0.5:
+            lat = None
+            lon = None
         alt = _safe_float(_first_not_none(n.get("altitude"), n.get("last_alt")))
 
         # Telemetría (puede venir directa o anidada)

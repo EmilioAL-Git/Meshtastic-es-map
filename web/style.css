@@ -382,6 +382,23 @@ header {
 .nr-mobility-fixed  { background: rgba(94,234,212,.08); border: 1px solid rgba(94,234,212,.2); color: var(--muted); }
 .nr-mobility-mobile { background: rgba(125,211,252,.08); border: 1px solid rgba(125,211,252,.2); color: var(--muted); }
 
+.nr-hop {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+.nr-hop strong { color: var(--text); }
+.nr-hop-icon  { font-size: 14px; flex-shrink: 0; }
+.nr-hop-warn  { color: #fb923c; }
+.nr-hop-ok       { background: rgba(94,234,212,.08);  border: 1px solid rgba(94,234,212,.2);  color: var(--muted); }
+.nr-hop-high     { background: rgba(251,146,60,.10);  border: 1px solid rgba(251,146,60,.3);  color: var(--muted); }
+.nr-hop-critical { background: rgba(248,113,113,.10); border: 1px solid rgba(248,113,113,.3); color: var(--muted); }
+
 /* Chip fijo/móvil en tabla */
 .mob-chip {
   display: inline-block;

@@ -181,10 +181,19 @@ function openNodeReport(nodeId) {
   closeMalConfigModal();
   document.getElementById('node-report-back').style.display = fromList ? '' : 'none';
   document.getElementById('node-report-modal').classList.add('open');
+
+  // Enlace directo al informe: ?report=!abcd1234
+  const url = new URL(location.href);
+  url.searchParams.set('report', hex);
+  history.replaceState(null, '', url);
 }
 
 function closeNodeReport() {
   document.getElementById('node-report-modal').classList.remove('open');
+
+  const url = new URL(location.href);
+  url.searchParams.delete('report');
+  history.replaceState(null, '', url);
 }
 
 // ─── Modal: Nodos mal configurados ────────────────────────────────────────────

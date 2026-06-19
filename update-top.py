@@ -14,6 +14,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 OUT      = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "top-nodos.json")
 BASE     = os.environ.get("MESHVIEW_URL", "http://localhost:18085")
+BROADCAST_ID = 4294967295  # to_node_id de los paquetes broadcast (^all)
 
 PORTNUMS = {
     "text":         1,
@@ -177,27 +178,35 @@ def analyze_node(node_id):
     # ── 1. Conteo por portnum ─────────────────────────────────────────────────
     # Para traceroute (portnum=70) solo contamos los requests (los que el nodo
     # inició). Las responses se identifican por tener "route_back" en el payload.
+    # Para position (3), nodeinfo (4) y telemetry (67) solo contamos los
+    # broadcast (to_node_id=^all). Las peticiones/respuestas van como unicast
+    # y no reflejan la configuración propia del nodo (Broadcast Interval),
+    # sino que alguien las pidió.
+    BROADCAST_ONLY = {"position", "nodeinfo", "telemetry"}
     counts = {name: 0 for name in PORTNUMS}
     for p in packets:
         for name, portnum in PORTNUMS.items():
             if p.get("portnum") == portnum:
                 if name == "traceroute" and "route_back" in (p.get("payload") or ""):
                     continue  # response a un traceroute ajeno, no contar
+                if name in BROADCAST_ONLY and p.get("to_node_id") != BROADCAST_ID:
+                    continue  # petición/respuesta unicast, no contar
                 counts[name] += 1
 
     # ── 2. Sub-tipos de telemetría ────────────────────────────────────────────
     tel_detail = {"device": 0, "environment": 0, "power": 0, "other": 0}
     for p in packets:
-        if p.get("portnum") == 67:
+        if p.get("portnum") == 67 and p.get("to_node_id") == BROADCAST_ID:
             stype = telemetry_subtype(p.get("payload"))
             tel_detail[stype] += 1
 
     # ── 3. Uniformidad de traceroutes y nodeinfo ──────────────────────────────
-    def uniformity(portnum, short_cycle_min=None, short_cycle_count=None, payload_exclude=None):
+    def uniformity(portnum, short_cycle_min=None, short_cycle_count=None, payload_exclude=None, broadcast_only=False):
         ts = sorted(
             p["import_time_us"] for p in packets
             if p.get("portnum") == portnum and p.get("import_time_us")
             and (payload_exclude is None or payload_exclude not in (p.get("payload") or ""))
+            and (not broadcast_only or p.get("to_node_id") == BROADCAST_ID)
         )
         count = len(ts)
         if count < 3:
@@ -221,13 +230,29 @@ def analyze_node(node_id):
 
     tr_u  = uniformity(70, short_cycle_min=20, short_cycle_count=50,
                        payload_exclude="route_back")
-    ni_u  = uniformity(4)
+    ni_u  = uniformity(4, broadcast_only=True)
     ro_u  = uniformity(5,  short_cycle_min=10, short_cycle_count=50)
+
+    # Comprobar si los traceroutes usan hop_start=7 (señal de herramienta automática)
+    tr_max_hops = False
+    tr_requests = [p for p in packets
+                   if p.get("portnum") == 70
+                   and "route_back" not in (p.get("payload") or "")]
+    if tr_requests:
+        recent_tr = max(tr_requests, key=lambda p: p.get("import_time_us") or 0)
+        tr_hop = fetch_hop_start(recent_tr.get("id"))
+        tr_max_hops = (tr_hop == 7)
+
     tr_detail = None
-    if tr_u:
-        tr_detail = {**tr_u,
-            "auto_count":   counts["traceroute"] if tr_u["is_automatic"] else 0,
-            "manual_count": 0 if tr_u["is_automatic"] else counts["traceroute"],
+    if tr_u or tr_max_hops:
+        is_auto = (tr_u["is_automatic"] if tr_u else False) or tr_max_hops
+        tr_detail = {
+            "avg_interval_min": tr_u["avg_interval_min"] if tr_u else None,
+            "cv":               tr_u["cv"]               if tr_u else None,
+            "is_automatic":     is_auto,
+            "uses_max_hops":    tr_max_hops,
+            "auto_count":       counts["traceroute"] if is_auto else 0,
+            "manual_count":     0 if is_auto else counts["traceroute"],
         }
     ni_detail = None
     if ni_u:
@@ -254,6 +279,8 @@ def analyze_node(node_id):
 
     for p in packets:
         if p.get("portnum") == 3:
+            if p.get("to_node_id") != BROADCAST_ID:
+                continue  # petición/respuesta de posición unicast, no contar
             payload = p.get("payload") or ""
             lat, lon = parse_position(payload)
             if lat is not None:
@@ -412,9 +439,13 @@ def detect_issues(node):
         issues.append(_issue('routing', f"Routing excesivo ({ro_count}/día)", sev))
 
     # Traceroute
-    tr_count = p.get("traceroute") or 0
-    tr_auto  = tr.get("is_automatic") if tr else False
-    if tr_auto and tr_count > t['traceroute_auto']['medium']:
+    # is_automatic (CV) = señal fuerte → umbral 'medium'
+    # uses_max_hops solo (hop_start=7 sin CV uniforme) = señal débil → umbral 'high'
+    tr_count      = p.get("traceroute") or 0
+    tr_is_auto    = tr.get("is_automatic")   if tr else False
+    tr_max_hops   = tr.get("uses_max_hops")  if tr else False
+    tr_threshold  = t['traceroute_auto']['medium'] if tr_is_auto else t['traceroute_auto']['high']
+    if (tr_is_auto or tr_max_hops) and tr_count > tr_threshold:
         if tr_count > t['traceroute_auto']['critical']:
             sev = 'critical'
         elif tr_count > t['traceroute_auto']['high']:

@@ -8,6 +8,20 @@ Genera top-nodos.json con el top 100 de nodos por canal (300 en total) más aná
   - Detección de hop_limit excesivo (> 5) en todos los nodos activos del mapa
 Todo a partir de /api/packets por nodo y /api/packets_seen/{id} para hop_start.
 El payload de la API viene en formato proto-text, no bytes.
+
+Checks desactivables vía DISABLED_CHECKS (línea ~21), uno o varios:
+  - range_test            Range Test activo
+  - position_fixed        Posición muy/algo frecuente en nodo fijo
+  - position_mobile       Posición muy/algo frecuente en nodo móvil
+  - position_unknown      Posición frecuente sin datos de movilidad
+  - nodeinfo              NodeInfo automático frecuente
+  - telemetry_device      Telemetría de dispositivo frecuente
+  - telemetry_environment Telemetría ambiental frecuente
+  - telemetry_power       Telemetría eléctrica frecuente
+  - routing               Routing excesivo
+  - traceroute_auto       Traceroute sistemático (automático o con hop_start máximo)
+  - position_flags        Flags GPS innecesarios en nodo fijo
+  - hop_limit_high        Hop limit excesivo (hop_start >= 7) — desactivado por defecto
 """
 import json, math, os, re, statistics, time, urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -16,9 +30,9 @@ OUT      = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "top-
 BASE     = os.environ.get("MESHVIEW_URL", "http://localhost:18085")
 BROADCAST_ID = 4294967295  # to_node_id de los paquetes broadcast (^all)
 
-# Checks de detect_issues() desactivables vía .env (DISABLED_CHECKS=clave1,clave2).
-# Las claves válidas son las mismas que las keys de _issue() (ver THRESHOLDS más abajo).
-DISABLED_CHECKS = {c.strip() for c in os.environ.get("DISABLED_CHECKS", "").split(",") if c.strip()}
+# Checks de detect_issues() desactivados. Añade aquí la key (ver THRESHOLDS más abajo)
+# de cualquier detección que quieras quitar, p.ej. {'hop_limit_high', 'range_test'}.
+DISABLED_CHECKS = {'hop_limit_high'}
 
 PORTNUMS = {
     "text":         1,

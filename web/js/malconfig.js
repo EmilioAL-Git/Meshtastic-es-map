@@ -266,7 +266,7 @@ function renderMalConfigTable(nodes) {
           <th>#</th>
           <th>Nombre</th>
           <th>Preset</th>
-          <th>Paquetes enviados</th>
+          <th>Paquetes</th>
           <th>Problemas detectados</th>
           <th></th>
         </tr>

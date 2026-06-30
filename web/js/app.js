@@ -26,6 +26,9 @@ async function loadAll() {
       });
     }
 
+    const noOptCount = [...malConfigurados.values()].filter(n => detectIssues(n).length > 0).length;
+    document.getElementById('noopt-label').textContent = `No optimizados (${noOptCount})`;
+
     if (nodesResp.status === 'fulfilled') {
       allNodes = nodesResp.value.nodes || [];
       renderNodes(allNodes);

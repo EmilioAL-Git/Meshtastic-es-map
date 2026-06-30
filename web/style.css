@@ -943,8 +943,8 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   background: var(--panel);
 }
 
-/* Col 4 (Enviados) y col 6 (Ver) alineadas a la derecha */
-.malconfig-table th:nth-child(4),
+/* Col 4 (Enviados) centrada, col 6 (Ver) alineada a la derecha */
+.malconfig-table th:nth-child(4) { text-align: center; }
 .malconfig-table th:nth-child(6) { text-align: right; }
 
 .malconfig-table td {
@@ -1004,7 +1004,7 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   font-family: var(--mono);
   font-size: 12px;
   color: var(--text);
-  text-align: right;
+  text-align: center;
 }
 .mc-muted { color: var(--muted); }
 

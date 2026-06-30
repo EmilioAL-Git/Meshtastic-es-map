@@ -908,6 +908,7 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 
 .malconfig-content {
   overflow-y: auto;
+  overflow-x: auto;
   flex: 1;
   padding: 0 18px 18px;
 }
@@ -921,6 +922,7 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 
 .malconfig-table {
   width: 100%;
+  min-width: 640px;
   border-collapse: collapse;
   font-size: 12px;
   margin-top: 12px;
@@ -1313,6 +1315,8 @@ body.embed-mode .app-footer { display: none; }
 @media (max-width: 768px) {
   .malconfig-modal { padding: 0; align-items: flex-end; }
   .malconfig-inner { max-height: 92dvh; border-radius: var(--radius) var(--radius) 0 0; }
+
+  .malconfig-table { min-width: 0; }
 
   /* Ocultar columna Preset en móvil (Problemas se mantiene visible) */
   .malconfig-table th:nth-child(3),

@@ -1289,6 +1289,10 @@ body.embed-mode .search-input {
 
 body.embed-mode .app-footer { display: none; }
 
+/* Ocultar columna Preset en modo embed, independientemente del ancho del iframe */
+body.embed-mode .malconfig-table th:nth-child(3),
+body.embed-mode .malconfig-table td:nth-child(3) { display: none; }
+
 /* ── Buscador sin resultados ─────────────────────────────────────────────── */
 .search-no-results {
   padding: 10px 14px;

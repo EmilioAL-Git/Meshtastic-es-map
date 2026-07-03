@@ -20,6 +20,7 @@ async function loadAll() {
 
     malConfigurados.clear();
     if (malResp.status === 'fulfilled' && malResp.value?.nodes) {
+      malHistory = malResp.value.history || [];
       malResp.value.nodes.forEach(n => {
         const hex = '!' + n.node_id.toString(16).padStart(8, '0');
         malConfigurados.set(hex, n);

@@ -697,15 +697,8 @@ if nominatim_calls:
 if not all_nodes:
     print("\nNo se obtuvo ningún nodo (timeout o error de red). JSON anterior conservado.")
 else:
-    result_data = {"updated": int(time.time()), "nodes": all_nodes}
-    os.makedirs(os.path.dirname(OUT), exist_ok=True)
-    with open(OUT, "w") as f:
-        json.dump(result_data, f)
-    print(f"\nGuardado: {len(all_nodes)} nodos en {OUT}")
-
     # ── Historial diario ──────────────────────────────────────────────────────
     import datetime
-    HISTORY_PATH = os.path.join(os.path.dirname(OUT), "history.json")
     today = datetime.date.today().isoformat()
     with_issues = [n for n in all_nodes if n.get("issues")]
 
@@ -723,25 +716,24 @@ else:
             sev = i.get("severity", "medium")
             by_severity[sev] = by_severity.get(sev, 0) + 1
 
-    entry = {
+    try:
+        with open(OUT) as f:
+            prev_history = json.load(f).get("history", [])
+    except Exception:
+        prev_history = []
+
+    prev_history = [h for h in prev_history if h.get("date") != today]
+    prev_history.append({
         "date":           today,
         "with_issues":    len(with_issues),
         "total_analyzed": len(all_nodes),
         "by_type":        issue_by_type,
         "by_severity":    by_severity,
-    }
-    try:
-        with open(HISTORY_PATH) as f:
-            history = json.load(f)
-    except Exception:
-        history = []
-    history = [h for h in history if h.get("date") != today]
-    history.append(entry)
-    history = sorted(history, key=lambda h: h["date"])[-30:]
-    try:
-        os.makedirs(os.path.dirname(HISTORY_PATH), exist_ok=True)
-        with open(HISTORY_PATH, "w") as f:
-            json.dump(history, f)
-        print(f"Historial actualizado: {len(history)} días")
-    except Exception as e:
-        print(f"  [warn] no se pudo guardar history.json: {e}")
+    })
+    history = sorted(prev_history, key=lambda h: h["date"])[-30:]
+
+    result_data = {"updated": int(time.time()), "nodes": all_nodes, "history": history}
+    os.makedirs(os.path.dirname(OUT), exist_ok=True)
+    with open(OUT, "w") as f:
+        json.dump(result_data, f)
+    print(f"\nGuardado: {len(all_nodes)} nodos en {OUT} ({len(history)} días de historial)")

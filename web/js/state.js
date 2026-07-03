@@ -61,6 +61,7 @@ const EDGE_STYLE_HI = {
 // ─── Nodos mal configurados ───────────────────────────────────────────────────
 let MAL_CONFIG_URL = null; // se rellena desde config.json (mal_config_url)
 const malConfigurados = new Map();      // !hexvalue → { avg, sent, seen, packets, ... }
+let malHistory = [];                    // historial diario de top-nodos.json
 
 
 // ─── Renderer SVG compartido ──────────────────────────────────────────────────

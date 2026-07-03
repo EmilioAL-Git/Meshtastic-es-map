@@ -252,21 +252,7 @@ function _doRenderStats(history) {
   const ccaaCounts = {};
   withIss.forEach(n => { if (n.ccaa) ccaaCounts[n.ccaa] = (ccaaCounts[n.ccaa] || 0) + 1; });
 
-  const ISSUE_LABELS = {
-    range_test:            'Range Test activo',
-    position_fixed:        'Posición / nodo fijo',
-    position_mobile:       'Posición / nodo móvil',
-    position_unknown:      'Posición frecuente',
-    nodeinfo:              'NodeInfo frecuente',
-    telemetry_device:      'Telemetría dispositivo',
-    telemetry_environment: 'Telemetría entorno',
-    telemetry_power:       'Telemetría eléctrica',
-    routing:               'Routing excesivo',
-    traceroute_auto:       'Traceroute sistemático',
-    position_flags:        'Flags GPS (fijo)',
-    hop_limit_high:        'Hop limit excesivo',
-    client_base_fw:        'CLIENT_BASE ≥ 2.7.17',
-  };
+  const ISSUE_LABELS = ISSUE_SHORT_LABELS;
 
   const sortedIssues  = Object.entries(issueCounts).sort(([, a], [, b]) => b - a);
   const maxIssueCount = (sortedIssues[0] || [, 1])[1];
@@ -525,15 +511,34 @@ function closeNodeReport() {
   history.replaceState(null, '', url);
 }
 
+// ─── Etiquetas de tipos de problema (compartidas) ────────────────────────────
+const ISSUE_SHORT_LABELS = {
+  range_test:            'Range Test activo',
+  position_fixed:        'Posición / nodo fijo',
+  position_mobile:       'Posición / nodo móvil',
+  position_unknown:      'Posición frecuente',
+  nodeinfo:              'NodeInfo frecuente',
+  telemetry_device:      'Telemetría dispositivo',
+  telemetry_environment: 'Telemetría entorno',
+  telemetry_power:       'Telemetría eléctrica',
+  routing:               'Routing excesivo',
+  traceroute_auto:       'Traceroute sistemático',
+  position_flags:        'Flags GPS (fijo)',
+  hop_limit_high:        'Hop limit excesivo',
+  client_base_fw:        'CLIENT_BASE ≥ 2.7.17',
+};
+
 // ─── Modal: Nodos mal configurados ────────────────────────────────────────────
 let _malChannelFilter = 'Todos';
 let _malCCAAFilter    = '';
+let _malIssueFilter   = '';
 
 function _filteredMalNodes() {
   return [...malConfigurados.values()]
     .filter(n => detectIssues(n).length > 0)
     .filter(n => _malChannelFilter === 'Todos' || n.channel === _malChannelFilter)
     .filter(n => !_malCCAAFilter || n.ccaa === _malCCAAFilter)
+    .filter(n => !_malIssueFilter || detectIssues(n).some(i => i.key === _malIssueFilter))
     .sort((a, b) => (b.sent || 0) - (a.sent || 0));
 }
 
@@ -550,6 +555,7 @@ function renderMalConfigModal() {
   _malCurrentTab    = 'list';
   _malChannelFilter = 'Todos';
   _malCCAAFilter    = '';
+  _malIssueFilter   = '';
   document.querySelectorAll('.mc-tab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === 'list');
   });
@@ -558,6 +564,13 @@ function renderMalConfigModal() {
   const all      = [...malConfigurados.values()].filter(n => detectIssues(n).length > 0);
   const channels = ['Todos', ...[...new Set(all.map(n => n.channel))].sort()];
   const ccaas    = [...new Set(all.map(n => n.ccaa).filter(Boolean))].sort();
+
+  // Conteo de nodos por tipo de problema (ordenado de mayor a menor)
+  const issueCounts = {};
+  all.forEach(n => detectIssues(n).forEach(i => {
+    issueCounts[i.key] = (issueCounts[i.key] || 0) + 1;
+  }));
+  const issueKeys = Object.entries(issueCounts).sort(([,a],[,b]) => b - a).map(([k]) => k);
 
   const channelHtml = `<select class="malconfig-filter-select" onchange="switchChannelFilter(this.value)">
     ${channels.map(ch => `<option value="${escHtml(ch)}">Preset: ${escHtml(ch)}</option>`).join('')}
@@ -570,7 +583,14 @@ function renderMalConfigModal() {
        </select>`
     : '';
 
-  document.getElementById('malconfig-tabs').innerHTML = channelHtml + ccaaHtml;
+  const issueHtml = issueKeys.length
+    ? `<select class="malconfig-filter-select" onchange="switchIssueFilter(this.value)">
+        <option value="">Problema: Todos</option>
+        ${issueKeys.map(k => `<option value="${k}">${escHtml(ISSUE_SHORT_LABELS[k] || k)} (${issueCounts[k]})</option>`).join('')}
+       </select>`
+    : '';
+
+  document.getElementById('malconfig-tabs').innerHTML = channelHtml + ccaaHtml + issueHtml;
   renderMalConfigTable(_filteredMalNodes());
 }
 
@@ -581,6 +601,11 @@ function switchChannelFilter(channel) {
 
 function switchCCAAFilter(ccaa) {
   _malCCAAFilter = ccaa;
+  renderMalConfigTable(_filteredMalNodes());
+}
+
+function switchIssueFilter(key) {
+  _malIssueFilter = key;
   renderMalConfigTable(_filteredMalNodes());
 }
 

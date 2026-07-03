@@ -419,7 +419,7 @@ function openNodeReport(nodeId) {
   // Indicador de hop_start (solo si no está ya en la sección de problemas)
   const hopFlagged = issues.some(i => i.key === 'hop_limit_high');
   let hopHtml = '';
-  if (hopStart !== null && !hopFlagged) {
+  if (hopStart !== null && !hopFlagged && hopStart < 7) {
     hopHtml = `<div class="nr-hop nr-hop-ok">
       <span class="nr-hop-icon">🔁</span>
       <span>Hop Limit configurado: <strong>${hopStart}</strong> — dentro del rango recomendado</span>

@@ -93,19 +93,11 @@ function _showChartTip(evt, el) {
     tip.className = 'mcs-tooltip';
     document.body.appendChild(tip);
   }
-  const d  = el.dataset;
-  const cr = +d.cr, hi = +d.hi, me = +d.me;
-  const sevHtml = (cr || hi || me) ? `
-    <div class="mcs-tip-sev">
-      ${cr ? `<div><span class="mcs-tip-dot" style="background:#ef4444"></span>Crítico: <strong>${cr}</strong></div>` : ''}
-      ${hi ? `<div><span class="mcs-tip-dot" style="background:#f97316"></span>Alto: <strong>${hi}</strong></div>` : ''}
-      ${me ? `<div><span class="mcs-tip-dot" style="background:#eab308"></span>Medio: <strong>${me}</strong></div>` : ''}
-    </div>` : '';
+  const d = el.dataset;
   tip.innerHTML = `
     <div class="mcs-tip-date">${d.date}</div>
     <div class="mcs-tip-main">${d.wi} <span>con problemas</span></div>
-    ${+d.ta ? `<div class="mcs-tip-analyzed">${d.ta} analizados</div>` : ''}
-    ${sevHtml}`;
+    ${+d.ta ? `<div class="mcs-tip-analyzed">${d.ta} analizados</div>` : ''}`;
   const x = evt.clientX, y = evt.clientY;
   tip.style.left = (x + 16) + 'px';
   tip.style.top  = (y - 10) + 'px';

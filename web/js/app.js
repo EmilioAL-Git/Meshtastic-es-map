@@ -29,9 +29,9 @@ async function loadAll() {
     if (nodesResp.status === 'fulfilled') {
       allNodes = nodesResp.value.nodes || [];
 
-      // Inyectar issue client_base_fw para nodos CLIENT_BASE con fw >= 2.7.18
+      // Inyectar issue client_base_fw para nodos CLIENT_BASE con fw >= 2.7.17
       allNodes.forEach(n => {
-        if (n.role !== 'CLIENT_BASE' || !n.firmware || !fwGte(n.firmware, 2, 7, 18)) return;
+        if (n.role !== 'CLIENT_BASE' || !n.firmware || !fwGte(n.firmware, 2, 7, 17)) return;
         let entry = malConfigurados.get(n.node_id);
         if (!entry) {
           entry = { node_id: n.node_id, short_name: n.short_name, long_name: n.long_name,
@@ -40,7 +40,7 @@ async function loadAll() {
         }
         if (!entry.issues) entry.issues = [];
         if (!entry.issues.some(i => i.key === 'client_base_fw')) {
-          entry.issues.push({ key: 'client_base_fw', label: 'CLIENT_BASE ≥ 2.7.18 actúa como ROUTER_LATE', severity: 'medium' });
+          entry.issues.push({ key: 'client_base_fw', label: 'CLIENT_BASE ≥ 2.7.17 actúa como ROUTER_LATE', severity: 'medium' });
         }
       });
 

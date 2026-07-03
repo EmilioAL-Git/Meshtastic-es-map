@@ -61,7 +61,7 @@ const ISSUE_DEFS = {
     fix:  'Config → LoRa → Hop Limit → 3 (recomendado). Si estás en el borde de la malla: prueba 5 o como máximo 6, nunca 7',
   },
   client_base_fw: {
-    desc: 'A partir del firmware 2.7.18, el rol CLIENT_BASE se comporta como ROUTER_LATE: el nodo espera antes de reemitir paquetes, lo que ralentiza la propagación de mensajes en la red. Se recomienda no usar este rol.',
+    desc: 'A partir del firmware 2.7.17, el rol CLIENT_BASE se comporta como ROUTER_LATE: el nodo espera antes de reemitir paquetes, lo que ralentiza la propagación de mensajes en la red. Se recomienda no usar este rol.',
     fix:  'Config → Dispositivo → Rol → cambiar a CLIENT o CLIENT_MUTE si el nodo no necesita enrutar',
   },
 };

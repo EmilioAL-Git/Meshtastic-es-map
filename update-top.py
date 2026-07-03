@@ -702,3 +702,45 @@ else:
     with open(OUT, "w") as f:
         json.dump(result_data, f)
     print(f"\nGuardado: {len(all_nodes)} nodos en {OUT}")
+
+    # ── Historial diario ──────────────────────────────────────────────────────
+    import datetime
+    HISTORY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "data", "history.json")
+    today = datetime.date.today().isoformat()
+    with_issues = [n for n in all_nodes if n.get("issues")]
+
+    issue_by_type = {}
+    for n in with_issues:
+        seen = set()
+        for i in n.get("issues", []):
+            if i["key"] not in seen:
+                seen.add(i["key"])
+                issue_by_type[i["key"]] = issue_by_type.get(i["key"], 0) + 1
+
+    by_severity = {"critical": 0, "high": 0, "medium": 0}
+    for n in with_issues:
+        for i in n.get("issues", []):
+            sev = i.get("severity", "medium")
+            by_severity[sev] = by_severity.get(sev, 0) + 1
+
+    entry = {
+        "date":           today,
+        "with_issues":    len(with_issues),
+        "total_analyzed": len(all_nodes),
+        "by_type":        issue_by_type,
+        "by_severity":    by_severity,
+    }
+    try:
+        with open(HISTORY_PATH) as f:
+            history = json.load(f)
+    except Exception:
+        history = []
+    history = [h for h in history if h.get("date") != today]
+    history.append(entry)
+    history = sorted(history, key=lambda h: h["date"])[-30:]
+    try:
+        with open(HISTORY_PATH, "w") as f:
+            json.dump(history, f)
+        print(f"Historial actualizado: {len(history)} días")
+    except Exception as e:
+        print(f"  [warn] no se pudo guardar history.json: {e}")

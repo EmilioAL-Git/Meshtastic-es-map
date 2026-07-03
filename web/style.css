@@ -1143,6 +1143,14 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 .mcs-pie-pct   { color: var(--muted); }
 .mcs-pie-total { font-size: 10px; color: var(--muted); margin-top: 5px; padding-top: 6px; border-top: 1px solid var(--border); }
 
+/* Line chart */
+.mcs-chart-empty {
+  font-size: 11px;
+  color: var(--muted);
+  padding: 20px 0;
+  text-align: center;
+}
+
 /* ── Filtros ── */
 .filter-toggle-btn {
   display: none; /* solo visible en móvil, posicionado en el mapa */

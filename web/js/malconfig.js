@@ -107,7 +107,69 @@ function _svgPie(slices, size) {
   return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="display:block">${paths.join('')}</svg>`;
 }
 
+function _svgLineChart(history) {
+  const VW = 760, VH = 140;
+  const PAD = { t: 12, r: 12, b: 26, l: 36 };
+  const W = VW - PAD.l - PAD.r, H = VH - PAD.t - PAD.b;
+
+  const vals = history.map(d => d.with_issues);
+  const maxV = Math.max(...vals, 1);
+  const xS   = i => history.length > 1 ? (i / (history.length - 1)) * W : W / 2;
+  const yS   = v => H - (v / maxV) * H;
+  const pts  = history.map((d, i) => [xS(i), yS(d.with_issues)]);
+
+  const line = pts.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)},${y.toFixed(1)}`).join('');
+  const area = `M0,${H}` + pts.map(([x, y]) => `L${x.toFixed(1)},${y.toFixed(1)}`).join('') + `L${W},${H}Z`;
+
+  const yTicks = [0, Math.ceil(maxV / 2), maxV];
+  const grid = yTicks.map(v => {
+    const y = yS(v).toFixed(1);
+    return `<line x1="0" y1="${y}" x2="${W}" y2="${y}" stroke="rgba(255,255,255,.07)" stroke-width="1"/>
+            <text x="-5" y="${(+y + 3.5).toFixed(1)}" text-anchor="end" font-size="9" fill="#64748b">${v}</text>`;
+  }).join('');
+
+  const step = Math.max(1, Math.floor((history.length - 1) / 5));
+  const idxs = [];
+  for (let i = 0; i < history.length; i += step) idxs.push(i);
+  if (idxs[idxs.length - 1] !== history.length - 1) idxs.push(history.length - 1);
+  const xLabels = idxs.map(i => {
+    const label = history[i].date.slice(5);
+    return `<text x="${xS(i).toFixed(1)}" y="${H + 17}" text-anchor="middle" font-size="9" fill="#64748b">${label}</text>`;
+  }).join('');
+
+  const dots = pts.map(([x, y], i) => {
+    const last = i === history.length - 1;
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${last ? 4 : 2.5}" fill="#f97316" stroke="#0f172a" stroke-width="1.5"/>`;
+  }).join('');
+
+  return `<svg width="100%" viewBox="0 0 ${VW} ${VH}" style="display:block;overflow:visible">
+    <defs>
+      <linearGradient id="mcs-lg" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#f97316" stop-opacity=".28"/>
+        <stop offset="100%" stop-color="#f97316" stop-opacity=".02"/>
+      </linearGradient>
+      <clipPath id="mcs-cp"><rect x="0" y="0" width="${W}" height="${H}"/></clipPath>
+    </defs>
+    <g transform="translate(${PAD.l},${PAD.t})">
+      ${grid}
+      <path d="${area}" fill="url(#mcs-lg)" clip-path="url(#mcs-cp)"/>
+      <path d="${line}" fill="none" stroke="#f97316" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      ${dots}
+      ${xLabels}
+    </g>
+  </svg>`;
+}
+
 function renderMalConfigStats() {
+  const el = document.getElementById('malconfig-content');
+  el.innerHTML = '<div class="mcs-wrap"><div class="malconfig-empty">Cargando estadísticas…</div></div>';
+  fetch('data/history.json?t=' + Date.now())
+    .then(r => r.ok ? r.json() : [])
+    .catch(() => [])
+    .then(history => _doRenderStats(history));
+}
+
+function _doRenderStats(history) {
   const all     = [...malConfigurados.values()];
   const withIss = all.filter(n => (n.issues || []).length > 0);
   const el      = document.getElementById('malconfig-content');
@@ -265,9 +327,18 @@ function renderMalConfigStats() {
       </div>
     </div>` : '';
 
+  const chartHtml = `
+    <div>
+      <div class="mcs-section-title">Evolución últimos 30 días <span class="mcs-subtitle">· nodos con problemas detectados</span></div>
+      ${history.length >= 2
+        ? _svgLineChart(history)
+        : `<div class="mcs-chart-empty">${history.length === 1 ? 'Solo hay datos de 1 día — el gráfico aparecerá a partir del segundo día.' : 'Sin historial disponible aún — se acumula con cada ejecución diaria.'}</div>`}
+    </div>`;
+
   el.innerHTML = `
     <div class="mcs-wrap">
       ${summaryHtml}
+      ${chartHtml}
       ${issuesBarHtml}
       <div class="mcs-pies">${sevPieHtml}${catPieHtml}</div>
       ${ccaaHtml}

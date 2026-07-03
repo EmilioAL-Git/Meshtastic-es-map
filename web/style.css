@@ -1082,9 +1082,19 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 .mcs-card-lbl  { font-size: 10px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: .04em; }
 .mcs-card-pct  { font-family: var(--mono); font-size: 12px; margin-top: 3px; }
 .mcs-card-warn { border-color: rgba(249,115,22,.3); }
-.mcs-card-warn .mcs-card-val, .mcs-card-warn .mcs-card-pct { color: #f97316; }
+.mcs-card-warn .mcs-card-val { color: #f97316; }
 .mcs-card-ok   { border-color: rgba(94,234,212,.25); }
-.mcs-card-ok .mcs-card-val, .mcs-card-ok .mcs-card-pct { color: #5eead4; }
+.mcs-card-ok .mcs-card-val   { color: #5eead4; }
+
+.mcs-scope-note {
+  font-size: 11px;
+  color: var(--muted);
+  background: rgba(255,255,255,.03);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 7px 10px;
+  margin-top: -10px;
+}
 
 /* Section title */
 .mcs-section-title {

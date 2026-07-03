@@ -66,6 +66,220 @@ const ISSUE_DEFS = {
   },
 };
 
+// ─── Tab de estadísticas ──────────────────────────────────────────────────────
+let _malCurrentTab = 'list';
+
+function switchMalTab(tab) {
+  _malCurrentTab = tab;
+  document.querySelectorAll('.mc-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  const filtersEl = document.getElementById('malconfig-tabs');
+  if (tab === 'stats') {
+    filtersEl.style.display = 'none';
+    renderMalConfigStats();
+  } else {
+    filtersEl.style.display = '';
+    renderMalConfigTable(_filteredMalNodes());
+  }
+}
+
+function _svgPie(slices, size) {
+  size = size || 110;
+  const active = slices.filter(s => s.value > 0);
+  const total  = active.reduce((s, sl) => s + sl.value, 0);
+  if (!total) return '';
+  const cx = size / 2, cy = size / 2, r = size / 2 - 2;
+  if (active.length === 1) {
+    return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="display:block">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="${active[0].color}" stroke="#0f172a" stroke-width="1.5"/>
+    </svg>`;
+  }
+  let angle = -Math.PI / 2;
+  const paths = active.map(sl => {
+    const sweep = (sl.value / total) * 2 * Math.PI;
+    const x1 = cx + r * Math.cos(angle), y1 = cy + r * Math.sin(angle);
+    angle += sweep;
+    const x2 = cx + r * Math.cos(angle), y2 = cy + r * Math.sin(angle);
+    const large = sweep > Math.PI ? 1 : 0;
+    return `<path d="M${cx},${cy}L${x1.toFixed(2)},${y1.toFixed(2)}A${r},${r},0,${large},1,${x2.toFixed(2)},${y2.toFixed(2)}Z" fill="${sl.color}" stroke="#0f172a" stroke-width="1.5"/>`;
+  });
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="display:block">${paths.join('')}</svg>`;
+}
+
+function renderMalConfigStats() {
+  const all     = [...malConfigurados.values()];
+  const withIss = all.filter(n => (n.issues || []).length > 0);
+  const el      = document.getElementById('malconfig-content');
+
+  if (!all.length) {
+    el.innerHTML = '<div class="malconfig-empty">Sin datos disponibles</div>';
+    return;
+  }
+
+  // Nodos por tipo de problema (cada nodo cuenta 1 vez por issue key)
+  const issueCounts = {};
+  withIss.forEach(n => {
+    const seen = new Set();
+    (n.issues || []).forEach(i => {
+      if (!seen.has(i.key)) { seen.add(i.key); issueCounts[i.key] = (issueCounts[i.key] || 0) + 1; }
+    });
+  });
+
+  // Total de issues por severidad
+  const sevCounts = { critical: 0, high: 0, medium: 0 };
+  withIss.forEach(n => {
+    (n.issues || []).forEach(i => { sevCounts[i.severity] = (sevCounts[i.severity] || 0) + 1; });
+  });
+
+  // Categorías agrupadas
+  const GROUPS = {
+    'Posición':   ['position_fixed', 'position_mobile', 'position_unknown', 'position_flags'],
+    'Telemetría': ['telemetry_device', 'telemetry_environment', 'telemetry_power'],
+    'NodeInfo':   ['nodeinfo'],
+    'Red/Routing':['routing', 'traceroute_auto', 'hop_limit_high'],
+    'Otros':      ['range_test', 'client_base_fw'],
+  };
+  const GROUP_COLORS = {
+    'Posición':    '#7dd3fc',
+    'Telemetría':  '#f97316',
+    'NodeInfo':    '#a78bfa',
+    'Red/Routing': '#ef4444',
+    'Otros':       '#6b7280',
+  };
+  const groupSlices = Object.entries(GROUPS).map(([group, keys]) => ({
+    label: group, color: GROUP_COLORS[group],
+    value: keys.reduce((s, k) => s + (issueCounts[k] || 0), 0),
+  })).filter(s => s.value > 0);
+
+  // CCAA
+  const ccaaCounts = {};
+  withIss.forEach(n => { if (n.ccaa) ccaaCounts[n.ccaa] = (ccaaCounts[n.ccaa] || 0) + 1; });
+
+  const ISSUE_LABELS = {
+    range_test:            'Range Test activo',
+    position_fixed:        'Posición / nodo fijo',
+    position_mobile:       'Posición / nodo móvil',
+    position_unknown:      'Posición frecuente',
+    nodeinfo:              'NodeInfo frecuente',
+    telemetry_device:      'Telemetría dispositivo',
+    telemetry_environment: 'Telemetría entorno',
+    telemetry_power:       'Telemetría eléctrica',
+    routing:               'Routing excesivo',
+    traceroute_auto:       'Traceroute sistemático',
+    position_flags:        'Flags GPS (fijo)',
+    hop_limit_high:        'Hop limit excesivo',
+    client_base_fw:        'CLIENT_BASE ≥ 2.7.17',
+  };
+
+  const sortedIssues  = Object.entries(issueCounts).sort(([, a], [, b]) => b - a);
+  const maxIssueCount = (sortedIssues[0] || [, 1])[1];
+
+  // ── Summary cards ────────────────────────────────────────────────────────
+  const total   = all.length;
+  const withPct = Math.round(withIss.length / total * 100);
+  const summaryHtml = `
+    <div class="mcs-summary">
+      <div class="mcs-card">
+        <div class="mcs-card-val">${total}</div>
+        <div class="mcs-card-lbl">Nodos analizados</div>
+      </div>
+      <div class="mcs-card mcs-card-warn">
+        <div class="mcs-card-val">${withIss.length}</div>
+        <div class="mcs-card-lbl">Con problemas</div>
+        <div class="mcs-card-pct">${withPct}%</div>
+      </div>
+      <div class="mcs-card mcs-card-ok">
+        <div class="mcs-card-val">${total - withIss.length}</div>
+        <div class="mcs-card-lbl">Optimizados</div>
+        <div class="mcs-card-pct">${100 - withPct}%</div>
+      </div>
+    </div>`;
+
+  // ── Issue type bar chart ──────────────────────────────────────────────────
+  const issuesBarHtml = `
+    <div class="mcs-section-title">Tipos de problema <span class="mcs-subtitle">· nodos afectados</span></div>
+    <div class="mcs-bar-list">
+      ${sortedIssues.map(([key, count]) => `
+        <div class="mcs-bar-row">
+          <div class="mcs-bar-lbl" title="${escHtml(ISSUE_LABELS[key] || key)}">${escHtml(ISSUE_LABELS[key] || key)}</div>
+          <div class="mcs-bar-track"><div class="mcs-bar-fill" style="width:${Math.round(count / maxIssueCount * 100)}%"></div></div>
+          <div class="mcs-bar-num">${count}</div>
+        </div>`).join('')}
+    </div>`;
+
+  // ── Severity pie ──────────────────────────────────────────────────────────
+  const sevSlices = [
+    { label: 'Crítico', value: sevCounts.critical, color: '#ef4444' },
+    { label: 'Alto',    value: sevCounts.high,     color: '#f97316' },
+    { label: 'Medio',   value: sevCounts.medium,   color: '#eab308' },
+  ].filter(s => s.value > 0);
+  const totalIssues = sevSlices.reduce((s, sl) => s + sl.value, 0);
+
+  const sevPieHtml = `
+    <div class="mcs-pie-section">
+      <div class="mcs-section-title">Severidad</div>
+      <div class="mcs-pie-row">
+        ${_svgPie(sevSlices)}
+        <div class="mcs-pie-legend">
+          ${sevSlices.map(s => {
+            const pct = Math.round(s.value / totalIssues * 100);
+            return `<div class="mcs-pie-item">
+              <span class="mcs-pie-dot" style="background:${s.color}"></span>
+              <span class="mcs-pie-label">${s.label}</span>
+              <span class="mcs-pie-count">${s.value} <span class="mcs-pie-pct">(${pct}%)</span></span>
+            </div>`;
+          }).join('')}
+          <div class="mcs-pie-total">${totalIssues} issues en total</div>
+        </div>
+      </div>
+    </div>`;
+
+  // ── Category pie ──────────────────────────────────────────────────────────
+  const catTotal   = groupSlices.reduce((s, sl) => s + sl.value, 0);
+  const catPieHtml = `
+    <div class="mcs-pie-section">
+      <div class="mcs-section-title">Categoría de problema</div>
+      <div class="mcs-pie-row">
+        ${_svgPie(groupSlices)}
+        <div class="mcs-pie-legend">
+          ${groupSlices.map(s => {
+            const pct = Math.round(s.value / catTotal * 100);
+            return `<div class="mcs-pie-item">
+              <span class="mcs-pie-dot" style="background:${s.color}"></span>
+              <span class="mcs-pie-label">${s.label}</span>
+              <span class="mcs-pie-count">${s.value} <span class="mcs-pie-pct">(${pct}%)</span></span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>`;
+
+  // ── CCAA bar chart ────────────────────────────────────────────────────────
+  const sortedCCAA   = Object.entries(ccaaCounts).sort(([, a], [, b]) => b - a).slice(0, 12);
+  const maxCCAACount = (sortedCCAA[0] || [, 1])[1];
+  const ccaaHtml = sortedCCAA.length ? `
+    <div>
+      <div class="mcs-section-title">Por comunidad autónoma <span class="mcs-subtitle">· nodos con problemas</span></div>
+      <div class="mcs-bar-list mcs-ccaa-list">
+        ${sortedCCAA.map(([ccaa, count]) => `
+          <div class="mcs-bar-row">
+            <div class="mcs-bar-lbl">${escHtml(ccaa)}</div>
+            <div class="mcs-bar-track"><div class="mcs-bar-fill mcs-bar-accent" style="width:${Math.round(count / maxCCAACount * 100)}%"></div></div>
+            <div class="mcs-bar-num">${count}</div>
+          </div>`).join('')}
+      </div>
+    </div>` : '';
+
+  el.innerHTML = `
+    <div class="mcs-wrap">
+      ${summaryHtml}
+      ${issuesBarHtml}
+      <div class="mcs-pies">${sevPieHtml}${catPieHtml}</div>
+      ${ccaaHtml}
+    </div>`;
+}
+
 // ─── Diagnóstico de problemas (calculado en el servidor, leído aquí) ──────────
 function detectIssues(malData) {
   return malData?.issues || [];
@@ -234,8 +448,13 @@ function closeMalConfigModal() {
 }
 
 function renderMalConfigModal() {
+  _malCurrentTab    = 'list';
   _malChannelFilter = 'Todos';
   _malCCAAFilter    = '';
+  document.querySelectorAll('.mc-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === 'list');
+  });
+  document.getElementById('malconfig-tabs').style.display = '';
 
   const all      = [...malConfigurados.values()].filter(n => detectIssues(n).length > 0);
   const channels = ['Todos', ...[...new Set(all.map(n => n.channel))].sort()];

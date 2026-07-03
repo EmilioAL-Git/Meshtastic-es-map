@@ -705,7 +705,8 @@ else:
 
     # ── Historial diario ──────────────────────────────────────────────────────
     import datetime
-    HISTORY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "data", "history.json")
+    _json_out    = os.environ.get("JSON_OUT", os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "data"))
+    HISTORY_PATH = os.path.join(_json_out.rstrip("/"), "history.json")
     today = datetime.date.today().isoformat()
     with_issues = [n for n in all_nodes if n.get("issues")]
 

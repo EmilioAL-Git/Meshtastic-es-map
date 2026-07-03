@@ -163,7 +163,10 @@ function _svgLineChart(history) {
 function renderMalConfigStats() {
   const el = document.getElementById('malconfig-content');
   el.innerHTML = '<div class="mcs-wrap"><div class="malconfig-empty">Cargando estadísticas…</div></div>';
-  fetch('data/history.json?t=' + Date.now())
+  const historyUrl = (typeof MAL_CONFIG_URL === 'string' && MAL_CONFIG_URL)
+    ? MAL_CONFIG_URL.replace(/[^/]+$/, 'history.json')
+    : 'data/history.json';
+  fetch(historyUrl + '?t=' + Date.now())
     .then(r => r.ok ? r.json() : [])
     .catch(() => [])
     .then(history => _doRenderStats(history));

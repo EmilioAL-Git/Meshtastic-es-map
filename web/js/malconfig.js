@@ -1,3 +1,15 @@
+// ─── Comparación de versión de firmware ──────────────────────────────────────
+function fwGte(firmware, major, minor, patch) {
+  const parts = (firmware || '').split('.');
+  const a = [parseInt(parts[0]) || 0, parseInt(parts[1]) || 0, parseInt(parts[2]) || 0];
+  const b = [major, minor, patch];
+  for (let i = 0; i < 3; i++) {
+    if (a[i] > b[i]) return true;
+    if (a[i] < b[i]) return false;
+  }
+  return true;
+}
+
 // ─── Definiciones de problemas ────────────────────────────────────────────────
 const ISSUE_DEFS = {
   range_test: {
@@ -47,6 +59,10 @@ const ISSUE_DEFS = {
   hop_limit_high: {
     desc: 'El nodo tiene configurado un hop_limit superior al recomendado. Un hop_limit alto provoca que cada paquete se reemita en cascada muchas más veces de lo necesario, saturando el canal y perjudicando a toda la red. Si estás en un extremo de la malla y tienes problemas de cobertura, puedes probar con 5-6, pero usa siempre el mínimo que te permita comunicarte.',
     fix:  'Config → LoRa → Hop Limit → 3 (recomendado). Si estás en el borde de la malla: prueba 5 o como máximo 6, nunca 7',
+  },
+  client_base_fw: {
+    desc: 'A partir del firmware 2.7.18, el rol CLIENT_BASE se comporta como ROUTER_LATE: el nodo espera antes de reemitir paquetes, lo que ralentiza la propagación de mensajes en la red. Se recomienda no usar este rol.',
+    fix:  'Config → Dispositivo → Rol → cambiar a CLIENT o CLIENT_MUTE si el nodo no necesita enrutar',
   },
 };
 

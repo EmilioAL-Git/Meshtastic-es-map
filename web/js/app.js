@@ -26,11 +26,24 @@ async function loadAll() {
       });
     }
 
-    const noOptCount = [...malConfigurados.values()].filter(n => detectIssues(n).length > 0).length;
-    document.getElementById('noopt-label').textContent = `No optimizados (${noOptCount})`;
-
     if (nodesResp.status === 'fulfilled') {
       allNodes = nodesResp.value.nodes || [];
+
+      // Inyectar issue client_base_fw para nodos CLIENT_BASE con fw >= 2.7.18
+      allNodes.forEach(n => {
+        if (n.role !== 'CLIENT_BASE' || !n.firmware || !fwGte(n.firmware, 2, 7, 18)) return;
+        let entry = malConfigurados.get(n.node_id);
+        if (!entry) {
+          entry = { node_id: n.node_id, short_name: n.short_name, long_name: n.long_name,
+                    channel: n.channel || '', sent: 0, issues: [] };
+          malConfigurados.set(n.node_id, entry);
+        }
+        if (!entry.issues) entry.issues = [];
+        if (!entry.issues.some(i => i.key === 'client_base_fw')) {
+          entry.issues.push({ key: 'client_base_fw', label: 'CLIENT_BASE ≥ 2.7.18 actúa como ROUTER_LATE', severity: 'medium' });
+        }
+      });
+
       renderNodes(allNodes);
       applyFilters();
       // Re-ocultar marker del nodo seleccionado tras re-renderizar
@@ -42,6 +55,9 @@ async function loadAll() {
       console.error('Error cargando nodos:', nodesResp.reason);
       showToast('⚠ Error cargando nodos — el collector puede no haber generado los datos aún');
     }
+
+    const noOptCount = [...malConfigurados.values()].filter(n => detectIssues(n).length > 0).length;
+    document.getElementById('noopt-label').textContent = `No optimizados (${noOptCount})`;
 
     if (edgesResp.status === 'fulfilled') {
       allEdges = edgesResp.value.edges || [];

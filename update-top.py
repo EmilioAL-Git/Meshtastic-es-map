@@ -8,6 +8,20 @@ Genera top-nodos.json con el top 100 de nodos por canal (300 en total) más aná
   - Detección de hop_limit excesivo (> 5) en todos los nodos activos del mapa
 Todo a partir de /api/packets por nodo y /api/packets_seen/{id} para hop_start.
 El payload de la API viene en formato proto-text, no bytes.
+
+Checks desactivables vía DISABLED_CHECKS (línea ~21), uno o varios:
+  - range_test            Range Test activo
+  - position_fixed        Posición muy/algo frecuente en nodo fijo
+  - position_mobile       Posición muy/algo frecuente en nodo móvil
+  - position_unknown      Posición frecuente sin datos de movilidad
+  - nodeinfo              NodeInfo automático frecuente
+  - telemetry_device      Telemetría de dispositivo frecuente
+  - telemetry_environment Telemetría ambiental frecuente
+  - telemetry_power       Telemetría eléctrica frecuente
+  - routing               Routing excesivo
+  - traceroute_auto       Traceroute sistemático (automático o con hop_start máximo)
+  - position_flags        Flags GPS innecesarios en nodo fijo
+  - hop_limit_high        Hop limit excesivo (hop_start >= 7) — desactivado por defecto
 """
 import json, math, os, re, statistics, time, urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -15,6 +29,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 OUT      = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "top-nodos.json")
 BASE     = os.environ.get("MESHVIEW_URL", "http://localhost:18085")
 BROADCAST_ID = 4294967295  # to_node_id de los paquetes broadcast (^all)
+
+# Checks de detect_issues() desactivados. Añade aquí la key (ver THRESHOLDS más abajo)
+# de cualquier detección que quieras quitar, p.ej. {'hop_limit_high', 'range_test'}.
+DISABLED_CHECKS = {'hop_limit_high'}
 
 PORTNUMS = {
     "text":         1,
@@ -475,7 +493,7 @@ def detect_issues(node):
     if hop_start is not None and hop_start >= t['hop_limit_high']['critical']:
         issues.append(_issue('hop_limit_high', f"Hop limit excesivo ({hop_start})", 'critical'))
 
-    return issues
+    return [i for i in issues if i['key'] not in DISABLED_CHECKS]
 
 # ── Comprobación de hop_limit en todos los nodos activos ─────────────────────
 
@@ -599,14 +617,17 @@ with ThreadPoolExecutor(max_workers=5) as executor:
 
 # ── hop_limit en todos los nodos activos (no solo top) ───────────────────────
 
-known_ids = {n["node_id"] for n in all_nodes}
-print(f"\nComprobando hop_limit en todos los nodos activos...")
-hop_nodes = collect_hop_limit_nodes(known_ids)
-if hop_nodes:
-    print(f"  → {len(hop_nodes)} nodos adicionales con hop_limit excesivo")
-    all_nodes += hop_nodes
+if 'hop_limit_high' in DISABLED_CHECKS:
+    print("\nCheck hop_limit_high desactivado (DISABLED_CHECKS) — omitiendo escaneo de red")
 else:
-    print("  → ningún nodo adicional con hop_limit excesivo")
+    known_ids = {n["node_id"] for n in all_nodes}
+    print(f"\nComprobando hop_limit en todos los nodos activos...")
+    hop_nodes = collect_hop_limit_nodes(known_ids)
+    if hop_nodes:
+        print(f"  → {len(hop_nodes)} nodos adicionales con hop_limit excesivo")
+        all_nodes += hop_nodes
+    else:
+        print("  → ningún nodo adicional con hop_limit excesivo")
 
 # ── Comunidad autónoma (solo nodos con problemas) ─────────────────────────────
 

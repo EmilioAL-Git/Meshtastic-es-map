@@ -71,6 +71,7 @@ let _malCurrentTab = 'list';
 
 function switchMalTab(tab) {
   _malCurrentTab = tab;
+  _hideChartTip();
   document.querySelectorAll('.mc-tab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
@@ -82,6 +83,43 @@ function switchMalTab(tab) {
     filtersEl.style.display = '';
     renderMalConfigTable(_filteredMalNodes());
   }
+}
+
+function _showChartTip(evt, el) {
+  let tip = document.getElementById('mcs-tooltip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'mcs-tooltip';
+    tip.className = 'mcs-tooltip';
+    document.body.appendChild(tip);
+  }
+  const d  = el.dataset;
+  const cr = +d.cr, hi = +d.hi, me = +d.me;
+  const sevHtml = (cr || hi || me) ? `
+    <div class="mcs-tip-sev">
+      ${cr ? `<div><span class="mcs-tip-dot" style="background:#ef4444"></span>Crítico: <strong>${cr}</strong></div>` : ''}
+      ${hi ? `<div><span class="mcs-tip-dot" style="background:#f97316"></span>Alto: <strong>${hi}</strong></div>` : ''}
+      ${me ? `<div><span class="mcs-tip-dot" style="background:#eab308"></span>Medio: <strong>${me}</strong></div>` : ''}
+    </div>` : '';
+  tip.innerHTML = `
+    <div class="mcs-tip-date">${d.date}</div>
+    <div class="mcs-tip-main">${d.wi} <span>con problemas</span></div>
+    ${+d.ta ? `<div class="mcs-tip-analyzed">${d.ta} analizados</div>` : ''}
+    ${sevHtml}`;
+  const x = evt.clientX, y = evt.clientY;
+  tip.style.left = (x + 16) + 'px';
+  tip.style.top  = (y - 10) + 'px';
+  tip.classList.add('visible');
+  // Ajustar si sale por la derecha
+  requestAnimationFrame(() => {
+    if (tip.getBoundingClientRect().right > window.innerWidth - 8)
+      tip.style.left = (x - tip.offsetWidth - 12) + 'px';
+  });
+}
+
+function _hideChartTip() {
+  const tip = document.getElementById('mcs-tooltip');
+  if (tip) tip.classList.remove('visible');
 }
 
 function _svgPie(slices, size) {
@@ -138,8 +176,17 @@ function _svgLineChart(history) {
   }).join('');
 
   const dots = pts.map(([x, y], i) => {
+    const d    = history[i];
     const last = i === history.length - 1;
-    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${last ? 4 : 2.5}" fill="#f97316" stroke="#0f172a" stroke-width="1.5"/>`;
+    const sev  = d.by_severity || {};
+    const cx   = x.toFixed(1), cy = y.toFixed(1);
+    return `<g style="cursor:pointer"
+        data-date="${d.date}" data-wi="${d.with_issues}" data-ta="${d.total_analyzed || 0}"
+        data-cr="${sev.critical || 0}" data-hi="${sev.high || 0}" data-me="${sev.medium || 0}"
+        onmouseenter="_showChartTip(event,this)" onmouseleave="_hideChartTip()">
+      <circle cx="${cx}" cy="${cy}" r="10" fill="transparent"/>
+      <circle cx="${cx}" cy="${cy}" r="${last ? 5 : 3.5}" fill="#f97316" stroke="#0f172a" stroke-width="1.5" style="pointer-events:none"/>
+    </g>`;
   }).join('');
 
   return `<svg width="100%" viewBox="0 0 ${VW} ${VH}" style="display:block;overflow:visible">

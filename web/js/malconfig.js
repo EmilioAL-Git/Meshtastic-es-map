@@ -176,27 +176,19 @@ function renderMalConfigStats() {
   const maxIssueCount = (sortedIssues[0] || [, 1])[1];
 
   // ── Summary cards ────────────────────────────────────────────────────────
-  const total = all.length;
-  const networkTotal = parseInt(document.getElementById('hdr-nodes').textContent) || null;
+  const networkTotal = parseInt(document.getElementById('hdr-nodes').textContent) || all.length;
   const summaryHtml = `
     <div class="mcs-summary">
       <div class="mcs-card">
-        <div class="mcs-card-val">${total}</div>
-        <div class="mcs-card-lbl">Top analizados</div>
-        ${networkTotal ? `<div class="mcs-card-pct">de ${networkTotal.toLocaleString('es-ES')} en la red</div>` : ''}
+        <div class="mcs-card-val">${networkTotal.toLocaleString('es-ES')}</div>
+        <div class="mcs-card-lbl">Nodos en la red</div>
       </div>
       <div class="mcs-card mcs-card-warn">
         <div class="mcs-card-val">${withIss.length}</div>
-        <div class="mcs-card-lbl">Con problemas</div>
-        <div class="mcs-card-pct">de los analizados</div>
-      </div>
-      <div class="mcs-card mcs-card-ok">
-        <div class="mcs-card-val">${total - withIss.length}</div>
-        <div class="mcs-card-lbl">Sin problemas</div>
-        <div class="mcs-card-pct">de los analizados</div>
+        <div class="mcs-card-lbl">Con problemas detectados</div>
       </div>
     </div>
-    <div class="mcs-scope-note">Análisis limitado al top ~300 nodos por tráfico — el resto de la red no está incluido.</div>`;
+    <div class="mcs-scope-note">Solo se analizan los ~300 nodos con mayor tráfico — puede haber más nodos con problemas no detectados.</div>`;
 
   // ── Issue type bar chart ──────────────────────────────────────────────────
   const issuesBarHtml = `

@@ -739,6 +739,7 @@ else:
     history.append(entry)
     history = sorted(history, key=lambda h: h["date"])[-30:]
     try:
+        os.makedirs(os.path.dirname(HISTORY_PATH), exist_ok=True)
         with open(HISTORY_PATH, "w") as f:
             json.dump(history, f)
         print(f"Historial actualizado: {len(history)} días")

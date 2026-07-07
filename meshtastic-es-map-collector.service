@@ -16,5 +16,12 @@ RestartSec=30
 StandardOutput=journal
 StandardError=journal
 
+# Endurecimiento: solo puede escribir en data/ (BD+caché) y web/data/ (JSON)
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/meshtastic-es-map/data /opt/meshtastic-es-map/web/data
+
 [Install]
 WantedBy=multi-user.target

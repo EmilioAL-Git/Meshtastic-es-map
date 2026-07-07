@@ -24,7 +24,11 @@ function toggleFilter(cat) {
   else                        activeFilters.add(cat);
   try { localStorage.setItem(FILTER_KEY, JSON.stringify([...activeFilters])); } catch {}
   syncFilterChips();
+  // renderClusters antes de applyFilters: recalcula badges y spreadHidden
+  // con los filtros nuevos (el conteo del badge solo incluye nodos visibles)
+  renderClusters();
   applyFilters();
+  renderSpiderLegs();
 }
 
 function syncFilterChips() {

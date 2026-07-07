@@ -160,6 +160,14 @@ const SPREAD_MIN_ZOOM  = 19;     // zoom a partir del cual se separan en estrell
 
 let spiderLegs = [];  // polylines del patrón estrella
 
+// node_ids de un grupo que pasan los filtros activos
+function filterVisibleIds(nodeIds) {
+  return nodeIds.filter(id => {
+    const n = allNodes.find(nd => nd.node_id === id);
+    return n && activeFilters.has(nodeCategory(n));
+  });
+}
+
 function clearSpiderLegs() {
   spiderLegs.forEach(l => map.removeLayer(l));
   spiderLegs = [];
@@ -181,14 +189,16 @@ function renderSpiderLegs() {
     const isForced = openedClusters.has(key);
     if (z < SPREAD_MIN_ZOOM && !isForced) return;
 
-    const color = clusterDominantColor(group.nodeIds);
+    const visibleIds = filterVisibleIds(group.nodeIds);
+    if (!visibleIds.length) return;
+    const color = clusterDominantColor(visibleIds);
     const dot = L.circleMarker([group.centerLat, group.centerLng], {
       radius: 3, color, fillColor: color, fillOpacity: 1, weight: 1.5,
       opacity: 0.85, interactive: false, pane: 'overlayPane',
     }).addTo(map);
     spiderLegs.push(dot);
 
-    group.nodeIds.forEach(nodeId => {
+    visibleIds.forEach(nodeId => {
       if (spreadHidden.has(nodeId)) return;
       const node = allNodes.find(n => n.node_id === nodeId);
       if (!node) return;
@@ -300,10 +310,14 @@ function renderClusters() {
     // Si este cluster fue abierto por click, mostrar nodos individuales
     if (openedClusters.has(key)) return;
 
+    // El badge solo cuenta los nodos visibles con los filtros activos
+    const visibleIds = filterVisibleIds(group.nodeIds);
+    if (visibleIds.length < 2) return; // 0-1 visibles: sin badge, marker suelto
+
     group.nodeIds.forEach(id => spreadHidden.add(id));
-    const color  = clusterDominantColor(group.nodeIds);
+    const color  = clusterDominantColor(visibleIds);
     const marker = L.marker([group.centerLat, group.centerLng], {
-      icon:         makeClusterIcon(group.nodeIds.length, color),
+      icon:         makeClusterIcon(visibleIds.length, color),
       pane:         'markersPane',
       zIndexOffset: 200,
     });

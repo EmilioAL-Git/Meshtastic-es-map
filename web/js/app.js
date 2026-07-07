@@ -35,8 +35,9 @@ async function loadAll() {
         if (n.role !== 'CLIENT_BASE' || !n.firmware || !fwGte(n.firmware, 2, 7, 17)) return;
         let entry = malConfigurados.get(n.node_id);
         if (!entry) {
-          entry = { node_id: n.node_id, short_name: n.short_name, long_name: n.long_name,
-                    channel: n.channel || '', sent: 0, issues: [] };
+          // node_id como entero decimal, igual que las entradas del servidor
+          entry = { node_id: parseInt(n.node_id.slice(1), 16), short_name: n.short_name,
+                    long_name: n.long_name, channel: n.channel || '', sent: 0, issues: [] };
           malConfigurados.set(n.node_id, entry);
         }
         if (!entry.issues) entry.issues = [];

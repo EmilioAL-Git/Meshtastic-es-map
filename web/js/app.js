@@ -28,7 +28,8 @@ async function loadAll() {
     }
 
     if (nodesResp.status === 'fulfilled') {
-      allNodes = nodesResp.value.nodes || [];
+      allNodes  = nodesResp.value.nodes || [];
+      nodesById = new Map(allNodes.map(n => [n.node_id, n]));
 
       // Inyectar issue client_base_fw para nodos CLIENT_BASE con fw >= 2.7.17
       allNodes.forEach(n => {
@@ -68,6 +69,7 @@ async function loadAll() {
 
     if (statsResp.status === 'fulfilled') {
       const s = statsResp.value;
+      lastStats = s;
       document.getElementById('hdr-nodes').textContent  = s.nodes?.with_position ?? '—';
       document.getElementById('hdr-active').textContent = s.nodes?.active_1h     ?? '—';
       document.getElementById('hdr-gw').textContent     = s.nodes?.mqtt_gateways ?? '—';
@@ -93,8 +95,7 @@ async function loadAll() {
     if (firstLoad) {
       const nodeParam = new URLSearchParams(location.search).get('node');
       if (nodeParam) {
-        const found = allNodes.find(n => n.node_id === nodeParam);
-        if (found) selectNode(nodeParam, true);
+        if (nodesById.has(nodeParam)) selectNode(nodeParam, true);
         else showToast(`Nodo ${nodeParam} no encontrado en la red`);
       }
 

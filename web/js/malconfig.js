@@ -258,7 +258,7 @@ function _doRenderStats(history) {
   const maxIssueCount = (sortedIssues[0] || [, 1])[1];
 
   // ── Summary cards ────────────────────────────────────────────────────────
-  const networkTotal = parseInt(document.getElementById('hdr-nodes').textContent) || all.length;
+  const networkTotal = lastStats?.nodes?.with_position ?? all.length;
   const summaryHtml = `
     <div class="mcs-summary">
       <div class="mcs-card">

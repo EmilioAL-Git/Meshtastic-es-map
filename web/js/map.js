@@ -143,7 +143,7 @@ function updateMarkerSizes() {
   renderSpiderLegs();
 
   if (selectedNodeId && selOverlay) {
-    const selNode = allNodes.find(n => n.node_id === selectedNodeId);
+    const selNode = nodesById.get(selectedNodeId);
     if (selNode && spreadGroups.has(selectedNodeId)) {
       const [dLat, dLng] = getSpreadLatLng(selectedNodeId, selNode.latitude, selNode.longitude);
       selOverlay.setLatLng([dLat, dLng]);
@@ -163,7 +163,7 @@ let spiderLegs = [];  // polylines del patrón estrella
 // node_ids de un grupo que pasan los filtros activos
 function filterVisibleIds(nodeIds) {
   return nodeIds.filter(id => {
-    const n = allNodes.find(nd => nd.node_id === id);
+    const n = nodesById.get(id);
     return n && activeFilters.has(nodeCategory(n));
   });
 }
@@ -200,7 +200,7 @@ function renderSpiderLegs() {
 
     visibleIds.forEach(nodeId => {
       if (spreadHidden.has(nodeId)) return;
-      const node = allNodes.find(n => n.node_id === nodeId);
+      const node = nodesById.get(nodeId);
       if (!node) return;
       const [sLat, sLng] = getSpreadLatLng(nodeId, node.latitude, node.longitude);
       const leg = L.polyline(
@@ -263,7 +263,7 @@ function getSpreadLatLng(nodeId, lat, lng, zoom) {
 }
 
 function clusterDominantColor(nodeIds) {
-  const nodes = nodeIds.map(id => allNodes.find(n => n.node_id === id)).filter(Boolean);
+  const nodes = nodeIds.map(id => nodesById.get(id)).filter(Boolean);
   if (nodes.some(n => n.is_mqtt_gateway))                                           return C_GATEWAY;
   if (nodes.some(n => isRouter(n)))                                                 return C_ROUTER;
   if (nodes.some(n => n.is_recent))                                                 return C_RECENT;

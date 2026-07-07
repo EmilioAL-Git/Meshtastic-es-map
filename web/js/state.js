@@ -8,7 +8,9 @@ let MAP_ZOOM     = 8;
 
 // ─── Estado global ────────────────────────────────────────────────────────────
 let allNodes       = [];
+let nodesById      = new Map(); // node_id → nodo (lookup O(1), se rellena en loadAll)
 let allEdges       = [];
+let lastStats      = null;   // último stats.json cargado
 let markers        = {};     // node_id → Leaflet marker
 let firstLoad      = true;
 let autoFitDone    = false;

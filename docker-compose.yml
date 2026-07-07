@@ -29,7 +29,9 @@ services:
     restart: unless-stopped
     depends_on:
       collector:
-        condition: service_healthy
+        # service_started (no service_healthy): si meshview está caído al
+        # arrancar, la web sirve los JSON viejos del volumen en vez de no levantar
+        condition: service_started
 
 volumes:
   db-data:

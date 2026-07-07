@@ -186,6 +186,13 @@ fetch(API_BASE + '/data/config.json')
   });
 
 // ─── Eventos globales ─────────────────────────────────────────────────────────
+// Escape cierra los modales (el del informe tiene prioridad: está encima)
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (document.getElementById('node-report-modal').classList.contains('open')) closeNodeReport();
+  else if (document.getElementById('malconfig-modal').classList.contains('open')) closeMalConfigModal();
+});
+
 document.addEventListener('click', e => {
   if (!e.target.closest('.search-wrap')) {
     document.getElementById('search-dropdown').classList.remove('open');

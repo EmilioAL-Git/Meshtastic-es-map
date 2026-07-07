@@ -22,6 +22,7 @@ Checks desactivables vía DISABLED_CHECKS (línea ~21), uno o varios:
   - traceroute_auto       Traceroute sistemático (automático o con hop_start máximo)
   - position_flags        Flags GPS innecesarios en nodo fijo
   - hop_limit_high        Hop limit excesivo (hop_start >= 7) — desactivado por defecto
+  - client_base_fw        CLIENT_BASE con firmware >= 2.7.17 (actúa como ROUTER_LATE)
 """
 import json, math, os, re, statistics, time, urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -33,6 +34,19 @@ BROADCAST_ID = 4294967295  # to_node_id de los paquetes broadcast (^all)
 # Checks de detect_issues() desactivados. Añade aquí la key (ver THRESHOLDS más abajo)
 # de cualquier detección que quieras quitar, p.ej. {'hop_limit_high', 'range_test'}.
 DISABLED_CHECKS = {'hop_limit_high'}
+
+def _fw_gte(firmware, major, minor, patch):
+    parts = (firmware or '').split('.')
+    a = []
+    for p in parts[:3]:
+        try: a.append(int(p))
+        except ValueError: a.append(0)
+    while len(a) < 3: a.append(0)
+    b = [major, minor, patch]
+    for i in range(3):
+        if a[i] > b[i]: return True
+        if a[i] < b[i]: return False
+    return True
 
 PORTNUMS = {
     "text":         1,
@@ -493,6 +507,11 @@ def detect_issues(node):
     if hop_start is not None and hop_start >= t['hop_limit_high']['critical']:
         issues.append(_issue('hop_limit_high', f"Hop limit excesivo ({hop_start})", 'critical'))
 
+    # CLIENT_BASE con firmware >= 2.7.17 actúa como ROUTER_LATE
+    meta = _node_meta.get(node.get("node_id"), {})
+    if meta.get("role") == "CLIENT_BASE" and _fw_gte(meta.get("firmware"), 2, 7, 17):
+        issues.append(_issue('client_base_fw', "CLIENT_BASE ≥ 2.7.17 actúa como ROUTER_LATE", 'medium'))
+
     return [i for i in issues if i['key'] not in DISABLED_CHECKS]
 
 # ── Comprobación de hop_limit en todos los nodos activos ─────────────────────
@@ -575,6 +594,19 @@ try:
 except Exception as e:
     print(f"Error obteniendo canales: {e}. JSON anterior conservado.")
     raise SystemExit(1)
+
+# Lookup role+firmware por node_id para el check client_base_fw
+_node_meta = {}
+try:
+    _nodes_data = fetch_json_retry(f"{BASE}/api/nodes")
+    _nodes_list = _nodes_data if isinstance(_nodes_data, list) else _nodes_data.get("nodes", [])
+    for _n in _nodes_list:
+        _nid = _n.get("node_id")
+        if _nid is not None:
+            _node_meta[_nid] = {"role": _n.get("role") or "", "firmware": _n.get("firmware") or ""}
+    print(f"Metadata de nodos cargada: {len(_node_meta)} entradas")
+except Exception as e:
+    print(f"[warn] No se pudo cargar /api/nodes para client_base_fw: {e}")
 
 all_nodes = []
 for ch in CHANNELS:
@@ -665,8 +697,43 @@ if nominatim_calls:
 if not all_nodes:
     print("\nNo se obtuvo ningún nodo (timeout o error de red). JSON anterior conservado.")
 else:
-    result_data = {"updated": int(time.time()), "nodes": all_nodes}
+    # ── Historial diario ──────────────────────────────────────────────────────
+    import datetime
+    today = datetime.date.today().isoformat()
+    with_issues = [n for n in all_nodes if n.get("issues")]
+
+    issue_by_type = {}
+    for n in with_issues:
+        seen = set()
+        for i in n.get("issues", []):
+            if i["key"] not in seen:
+                seen.add(i["key"])
+                issue_by_type[i["key"]] = issue_by_type.get(i["key"], 0) + 1
+
+    by_severity = {"critical": 0, "high": 0, "medium": 0}
+    for n in with_issues:
+        for i in n.get("issues", []):
+            sev = i.get("severity", "medium")
+            by_severity[sev] = by_severity.get(sev, 0) + 1
+
+    try:
+        with open(OUT) as f:
+            prev_history = json.load(f).get("history", [])
+    except Exception:
+        prev_history = []
+
+    prev_history = [h for h in prev_history if h.get("date") != today]
+    prev_history.append({
+        "date":           today,
+        "with_issues":    len(with_issues),
+        "total_analyzed": len(all_nodes),
+        "by_type":        issue_by_type,
+        "by_severity":    by_severity,
+    })
+    history = sorted(prev_history, key=lambda h: h["date"])[-30:]
+
+    result_data = {"updated": int(time.time()), "nodes": all_nodes, "history": history}
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w") as f:
         json.dump(result_data, f)
-    print(f"\nGuardado: {len(all_nodes)} nodos en {OUT}")
+    print(f"\nGuardado: {len(all_nodes)} nodos en {OUT} ({len(history)} días de historial)")

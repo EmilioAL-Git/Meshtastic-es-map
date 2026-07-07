@@ -66,8 +66,8 @@ const malConfigurados = new Map();      // !hexvalue → { avg, sent, seen, pack
 let malHistory = [];                    // historial diario de top-nodos.json
 
 
-// ─── Renderer SVG compartido ──────────────────────────────────────────────────
-const canvasRenderer = L.svg({ padding: 0.5 });
+// ─── Renderer SVG de las líneas de edges (overlayPane, z-index 400) ───────────
+const edgeRenderer = L.svg({ padding: 0.5 });
 
 // ─── Utilidades ───────────────────────────────────────────────────────────────
 function escHtml(s) {

@@ -130,7 +130,7 @@ def get_db(db_path: Path) -> sqlite3.Connection:
 
 def _cache_path(url: str) -> Path:
     """Devuelve la ruta del fichero de caché para una URL."""
-    safe = url.replace("://", "_").replace("/", "_").replace(".", "_")
+    safe = re.sub(r"[^A-Za-z0-9_-]", "_", url.replace("://", "_"))
     return DB_PATH.parent / f"cache_{safe}.json"
 
 def save_cache(url: str, data) -> None:

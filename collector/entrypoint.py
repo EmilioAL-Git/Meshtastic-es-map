@@ -21,6 +21,7 @@ if os.getuid() == 0:
                 os.chown(dirpath, p.pw_uid, p.pw_gid)
                 for fname in filenames:
                     os.chown(os.path.join(dirpath, fname), p.pw_uid, p.pw_gid)
+        os.setgroups([])  # soltar grupos suplementarios de root
         os.setgid(p.pw_gid)
         os.setuid(p.pw_uid)
     except KeyError:

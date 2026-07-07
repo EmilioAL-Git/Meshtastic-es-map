@@ -10,4 +10,5 @@ __pycache__/
 web/data/*.json
 web/top-nodos.json
 ccaa-cache.json
+CLAUDE.md
 RELEASE_NOTES_DRAFT.md

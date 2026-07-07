@@ -24,7 +24,7 @@ Checks desactivables vía DISABLED_CHECKS (línea ~21), uno o varios:
   - hop_limit_high        Hop limit excesivo (hop_start >= 7) — desactivado por defecto
   - client_base_fw        CLIENT_BASE con firmware >= 2.7.17 (actúa como ROUTER_LATE)
 """
-import json, math, os, re, statistics, time, urllib.request
+import datetime, json, math, os, re, statistics, time, urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 OUT      = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "top-nodos.json")
@@ -588,117 +588,121 @@ def collect_hop_limit_nodes(known_ids):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
-try:
-    CHANNELS = fetch_json_retry(f"{BASE}/api/channels").get("channels", [])
-    print(f"Canales: {CHANNELS}")
-except Exception as e:
-    print(f"Error obteniendo canales: {e}. JSON anterior conservado.")
-    raise SystemExit(1)
-
-# Lookup role+firmware por node_id para el check client_base_fw
+# Lookup role+firmware por node_id para el check client_base_fw.
+# Módulo-level porque detect_issues() lo consulta; main() lo rellena.
 _node_meta = {}
-try:
-    _nodes_data = fetch_json_retry(f"{BASE}/api/nodes")
-    _nodes_list = _nodes_data if isinstance(_nodes_data, list) else _nodes_data.get("nodes", [])
-    for _n in _nodes_list:
-        _nid = _n.get("node_id")
-        if _nid is not None:
-            _node_meta[_nid] = {"role": _n.get("role") or "", "firmware": _n.get("firmware") or ""}
-    print(f"Metadata de nodos cargada: {len(_node_meta)} entradas")
-except Exception as e:
-    print(f"[warn] No se pudo cargar /api/nodes para client_base_fw: {e}")
 
-all_nodes = []
-for ch in CHANNELS:
-    url = f"{BASE}/api/stats/top?channel={ch}&limit=100&offset=0"
+
+def main():
     try:
-        data  = fetch_json_retry(url)
-        nodes = data.get("nodes", [])
-        for n in nodes:
-            n["channel"] = ch
-        all_nodes += nodes
-        print(f"{ch}: {len(nodes)} nodos")
+        CHANNELS = fetch_json_retry(f"{BASE}/api/channels").get("channels", [])
+        print(f"Canales: {CHANNELS}")
     except Exception as e:
-        print(f"Error {ch}: {e}")
+        print(f"Error obteniendo canales: {e}. JSON anterior conservado.")
+        raise SystemExit(1)
 
-print(f"\nAnalizando {len(all_nodes)} nodos...")
+    try:
+        _nodes_data = fetch_json_retry(f"{BASE}/api/nodes")
+        _nodes_list = _nodes_data if isinstance(_nodes_data, list) else _nodes_data.get("nodes", [])
+        for _n in _nodes_list:
+            _nid = _n.get("node_id")
+            if _nid is not None:
+                _node_meta[_nid] = {"role": _n.get("role") or "", "firmware": _n.get("firmware") or ""}
+        print(f"Metadata de nodos cargada: {len(_node_meta)} entradas")
+    except Exception as e:
+        print(f"[warn] No se pudo cargar /api/nodes para client_base_fw: {e}")
 
-with ThreadPoolExecutor(max_workers=5) as executor:
-    futures = {executor.submit(analyze_node, n["node_id"]): n for n in all_nodes}
-    for future in as_completed(futures):
-        node   = futures[future]
-        result = future.result()
-        name   = node.get("long_name") or node.get("short_name") or str(node["node_id"])
-        if result:
-            node.update(result)
-            node["issues"] = detect_issues(node)
-            tel    = result.get("telemetry_detail", {})
-            tr     = result.get("traceroute_detail")
-            mob    = result.get("mobility")
-            issues = node["issues"]
-            print(f"  {name}")
-            print(f"    pkts={sum(v for v in result['packets'].values() if v)} "
-                  f"issues={len(issues)} "
-                  f"fijo={'sí (±' + str(mob['max_distance_m']) + 'm)' if mob and mob['is_fixed'] else 'móvil' if mob and not mob['is_fixed'] else '—'}")
-            for iss in issues:
-                print(f"      [{iss['severity']}] {iss['label']}")
-        else:
-            node["packets"] = {k: None for k in PORTNUMS}
-            node["issues"]  = []
-            print(f"  {name}: sin datos")
-
-# ── hop_limit en todos los nodos activos (no solo top) ───────────────────────
-
-if 'hop_limit_high' in DISABLED_CHECKS:
-    print("\nCheck hop_limit_high desactivado (DISABLED_CHECKS) — omitiendo escaneo de red")
-else:
-    known_ids = {n["node_id"] for n in all_nodes}
-    print(f"\nComprobando hop_limit en todos los nodos activos...")
-    hop_nodes = collect_hop_limit_nodes(known_ids)
-    if hop_nodes:
-        print(f"  → {len(hop_nodes)} nodos adicionales con hop_limit excesivo")
-        all_nodes += hop_nodes
-    else:
-        print("  → ningún nodo adicional con hop_limit excesivo")
-
-# ── Comunidad autónoma (solo nodos con problemas) ─────────────────────────────
-
-ccaa_cache     = load_ccaa_cache()
-nominatim_calls = 0
-print(f"\nDetectando comunidad autónoma...")
-
-for node in all_nodes:
-    lat = node.pop("_lat", None)
-    lon = node.pop("_lon", None)
-    if lat is None or not node.get("issues"):
-        node["lat"] = node["lon"] = node["ccaa"] = None
-        continue
-    node["lat"] = round(lat, 5)
-    node["lon"] = round(lon, 5)
-    key = f"{lat:.3f},{lon:.3f}"
-    if key not in ccaa_cache:
+    all_nodes = []
+    for ch in CHANNELS:
+        url = f"{BASE}/api/stats/top?channel={ch}&limit=100&offset=0"
         try:
-            ccaa_cache[key] = nominatim_ccaa(lat, lon)
-            nominatim_calls += 1
-            time.sleep(1.1)
+            data  = fetch_json_retry(url)
+            nodes = data.get("nodes", [])
+            for n in nodes:
+                n["channel"] = ch
+            all_nodes += nodes
+            print(f"{ch}: {len(nodes)} nodos")
         except Exception as e:
-            print(f"  [warn] nominatim {lat:.4f},{lon:.4f}: {e}")
-            ccaa_cache[key] = None
-    node["ccaa"] = ccaa_cache[key]
+            print(f"Error {ch}: {e}")
 
-if nominatim_calls:
-    print(f"  {nominatim_calls} llamadas Nominatim realizadas")
-    try:
-        with open(CCAA_CACHE_PATH, "w") as f:
-            json.dump(ccaa_cache, f)
-    except Exception as e:
-        print(f"  [warn] no se pudo guardar ccaa-cache.json: {e}")
+    print(f"\nAnalizando {len(all_nodes)} nodos...")
 
-if not all_nodes:
-    print("\nNo se obtuvo ningún nodo (timeout o error de red). JSON anterior conservado.")
-else:
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        futures = {executor.submit(analyze_node, n["node_id"]): n for n in all_nodes}
+        for future in as_completed(futures):
+            node   = futures[future]
+            result = future.result()
+            name   = node.get("long_name") or node.get("short_name") or str(node["node_id"])
+            if result:
+                node.update(result)
+                node["issues"] = detect_issues(node)
+                tel    = result.get("telemetry_detail", {})
+                tr     = result.get("traceroute_detail")
+                mob    = result.get("mobility")
+                issues = node["issues"]
+                print(f"  {name}")
+                print(f"    pkts={sum(v for v in result['packets'].values() if v)} "
+                      f"issues={len(issues)} "
+                      f"fijo={'sí (±' + str(mob['max_distance_m']) + 'm)' if mob and mob['is_fixed'] else 'móvil' if mob and not mob['is_fixed'] else '—'}")
+                for iss in issues:
+                    print(f"      [{iss['severity']}] {iss['label']}")
+            else:
+                node["packets"] = {k: None for k in PORTNUMS}
+                node["issues"]  = []
+                print(f"  {name}: sin datos")
+
+    # ── hop_limit en todos los nodos activos (no solo top) ───────────────────
+
+    if 'hop_limit_high' in DISABLED_CHECKS:
+        print("\nCheck hop_limit_high desactivado (DISABLED_CHECKS) — omitiendo escaneo de red")
+    else:
+        known_ids = {n["node_id"] for n in all_nodes}
+        print(f"\nComprobando hop_limit en todos los nodos activos...")
+        hop_nodes = collect_hop_limit_nodes(known_ids)
+        if hop_nodes:
+            print(f"  → {len(hop_nodes)} nodos adicionales con hop_limit excesivo")
+            all_nodes += hop_nodes
+        else:
+            print("  → ningún nodo adicional con hop_limit excesivo")
+
+    # ── Comunidad autónoma (solo nodos con problemas) ─────────────────────────
+
+    ccaa_cache     = load_ccaa_cache()
+    nominatim_calls = 0
+    print(f"\nDetectando comunidad autónoma...")
+
+    for node in all_nodes:
+        lat = node.pop("_lat", None)
+        lon = node.pop("_lon", None)
+        if lat is None or not node.get("issues"):
+            node["lat"] = node["lon"] = node["ccaa"] = None
+            continue
+        node["lat"] = round(lat, 5)
+        node["lon"] = round(lon, 5)
+        key = f"{lat:.3f},{lon:.3f}"
+        if key not in ccaa_cache:
+            try:
+                ccaa_cache[key] = nominatim_ccaa(lat, lon)
+                nominatim_calls += 1
+                time.sleep(1.1)
+            except Exception as e:
+                print(f"  [warn] nominatim {lat:.4f},{lon:.4f}: {e}")
+                ccaa_cache[key] = None
+        node["ccaa"] = ccaa_cache[key]
+
+    if nominatim_calls:
+        print(f"  {nominatim_calls} llamadas Nominatim realizadas")
+        try:
+            with open(CCAA_CACHE_PATH, "w") as f:
+                json.dump(ccaa_cache, f)
+        except Exception as e:
+            print(f"  [warn] no se pudo guardar ccaa-cache.json: {e}")
+
+    if not all_nodes:
+        print("\nNo se obtuvo ningún nodo (timeout o error de red). JSON anterior conservado.")
+        return
+
     # ── Historial diario ──────────────────────────────────────────────────────
-    import datetime
     today = datetime.date.today().isoformat()
     with_issues = [n for n in all_nodes if n.get("issues")]
 
@@ -737,3 +741,7 @@ else:
     with open(OUT, "w") as f:
         json.dump(result_data, f)
     print(f"\nGuardado: {len(all_nodes)} nodos en {OUT} ({len(history)} días de historial)")
+
+
+if __name__ == "__main__":
+    main()

@@ -9,4 +9,5 @@ __pycache__/
 .env
 web/data/*.json
 web/top-nodos.json
-*.md
+ccaa-cache.json
+RELEASE_NOTES_DRAFT.md

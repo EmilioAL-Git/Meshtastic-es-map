@@ -7,9 +7,10 @@ function onSearchInput() {
   if (!q) { dd.classList.remove('open'); return; }
 
   const allResults = allNodes.filter(n => {
-    const name = (n.long_name || n.short_name || '').toLowerCase();
-    const id   = (n.node_id || '').toLowerCase();
-    return name.includes(q) || id.includes(q);
+    const longName  = (n.long_name  || '').toLowerCase();
+    const shortName = (n.short_name || '').toLowerCase();
+    const id        = (n.node_id    || '').toLowerCase();
+    return longName.includes(q) || shortName.includes(q) || id.includes(q);
   });
   const results = allResults.slice(0, 5);
 

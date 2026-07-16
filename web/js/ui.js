@@ -11,7 +11,7 @@ function _flyToCircle(nodeId, lat, lng, circle, duration) {
 
 // ─── Selección de nodo ────────────────────────────────────────────────────────
 function selectNode(nodeId, fly = false) {
-  const node = allNodes.find(n => n.node_id === nodeId);
+  const node = nodesById.get(nodeId);
   if (!node) return;
 
   const prevNodeId = selectedNodeId;
@@ -21,7 +21,7 @@ function selectNode(nodeId, fly = false) {
   if (selOverlay)      { map.removeLayer(selOverlay);      selOverlay      = null; }
   if (precisionCircle) { map.removeLayer(precisionCircle); precisionCircle = null; }
   if (prevNodeId && markers[prevNodeId]) {
-    const prev = allNodes.find(n => n.node_id === prevNodeId);
+    const prev = nodesById.get(prevNodeId);
     if (prev) {
       if (markers[prevNodeId].setStyle)
         markers[prevNodeId].setStyle({ fillOpacity: circleMarkerOptions(nodeColor(prev)).fillOpacity, opacity: 1 });
@@ -129,7 +129,7 @@ function selectNode(nodeId, fly = false) {
   const nodeEdges = allEdges.filter(e => {
     if (e.from_node !== nodeId && e.to_node !== nodeId) return false;
     const otherId = e.from_node === nodeId ? e.to_node : e.from_node;
-    const other   = allNodes.find(n => n.node_id === otherId);
+    const other   = nodesById.get(otherId);
     return other && other.last_seen_ago_min != null && other.last_seen_ago_min < 1440;
   });
   const nNeighbour = nodeEdges.filter(e => e.edge_type === 'neighbor').length;
@@ -202,7 +202,7 @@ function closeDetail() {
   if (selOverlay)      { map.removeLayer(selOverlay);      selOverlay      = null; }
   if (precisionCircle) { map.removeLayer(precisionCircle); precisionCircle = null; }
   if (selectedNodeId && markers[selectedNodeId]) {
-    const n = allNodes.find(n => n.node_id === selectedNodeId);
+    const n = nodesById.get(selectedNodeId);
     if (n) {
       if (markers[selectedNodeId].setStyle)
         markers[selectedNodeId].setStyle({ fillOpacity: circleMarkerOptions(nodeColor(n)).fillOpacity, opacity: 1 });

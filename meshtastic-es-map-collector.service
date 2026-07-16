@@ -7,11 +7,21 @@ Wants=network-online.target
 Type=simple
 User=www-data
 WorkingDirectory=/opt/meshtastic-es-map
+# Variables opcionales (MESHVIEW_URL, MAP_*, MAL_CONFIG_URL…) — el guion
+# inicial hace que no falle si el fichero no existe
+EnvironmentFile=-/opt/meshtastic-es-map/.env
 ExecStart=/opt/meshtastic-es-map/venv/bin/python /opt/meshtastic-es-map/collector/collector.py --daemon --interval 5 --db /opt/meshtastic-es-map/data/meshtastic-es-map.db
 Restart=always
 RestartSec=30
 StandardOutput=journal
 StandardError=journal
+
+# Endurecimiento: solo puede escribir en data/ (BD+caché) y web/data/ (JSON)
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/meshtastic-es-map/data /opt/meshtastic-es-map/web/data
 
 [Install]
 WantedBy=multi-user.target

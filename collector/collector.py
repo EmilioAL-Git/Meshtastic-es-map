@@ -130,7 +130,7 @@ def get_db(db_path: Path) -> sqlite3.Connection:
 
 def _cache_path(url: str) -> Path:
     """Devuelve la ruta del fichero de caché para una URL."""
-    safe = url.replace("://", "_").replace("/", "_").replace(".", "_")
+    safe = re.sub(r"[^A-Za-z0-9_-]", "_", url.replace("://", "_"))
     return DB_PATH.parent / f"cache_{safe}.json"
 
 def save_cache(url: str, data) -> None:
@@ -489,8 +489,6 @@ def upsert_edges(conn: sqlite3.Connection, edges: list[dict]) -> int:
         saved += 1
     # Corregir edges existentes con last_seen NULL (colecciones anteriores)
     conn.execute("UPDATE edges SET last_seen = ? WHERE last_seen IS NULL", (now,))
-    # Migrar edges con IDs enteros al formato !hexvalue para que el JOIN funcione
-    _migrate_edge_ids(conn, now)
     conn.commit()
     return saved
 
@@ -563,7 +561,8 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
                last_seen, first_seen, updated_at
         FROM nodes
         WHERE last_seen >= ?
-          AND NOT (ABS(latitude) < 0.5 AND ABS(longitude) < 0.5)
+          AND (latitude IS NULL OR longitude IS NULL
+               OR NOT (ABS(latitude) < 0.5 AND ABS(longitude) < 0.5))
         ORDER BY last_seen DESC
     """, (cutoff,))
     cols  = [d[0] for d in cur.description]
@@ -576,24 +575,19 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
     _write_atomic(out_dir / "nodes.json", {"nodes": nodes, "count": len(nodes), "generated_at": now})
 
     # ── edges.json ──
+    # Normalizar IDs enteros a !hexvalue antes del JOIN (idempotente; se hace
+    # aquí y no en upsert_edges para que corra aunque el fetch de edges falle)
+    _migrate_edge_ids(conn, now)
+    conn.commit()
     cur = conn.execute("""
-        SELECT
-            CASE WHEN e.from_node LIKE '!%' THEN e.from_node
-                 ELSE '!' || printf('%08x', CAST(e.from_node AS INTEGER))
-            END AS from_node,
-            CASE WHEN e.to_node LIKE '!%' THEN e.to_node
-                 ELSE '!' || printf('%08x', CAST(e.to_node AS INTEGER))
-            END AS to_node,
-            e.snr, e.edge_type, e.last_seen,
+        SELECT e.from_node, e.to_node, e.snr, e.edge_type, e.last_seen,
             COALESCE(NULLIF(fn.long_name,''), fn.short_name) AS from_name,
             fn.latitude AS from_lat, fn.longitude AS from_lon,
             COALESCE(NULLIF(tn.long_name,''), tn.short_name) AS to_name,
             tn.latitude AS to_lat, tn.longitude AS to_lon
         FROM edges e
-        LEFT JOIN nodes fn ON fn.node_id = e.from_node
-                           OR fn.node_id = '!' || printf('%08x', CAST(e.from_node AS INTEGER))
-        LEFT JOIN nodes tn ON tn.node_id = e.to_node
-                           OR tn.node_id = '!' || printf('%08x', CAST(e.to_node AS INTEGER))
+        JOIN nodes fn ON fn.node_id = e.from_node
+        JOIN nodes tn ON tn.node_id = e.to_node
         WHERE e.last_seen >= ?
           AND fn.latitude IS NOT NULL AND fn.longitude IS NOT NULL
           AND tn.latitude IS NOT NULL AND tn.longitude IS NOT NULL
@@ -660,7 +654,9 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
     log.info(f"JSON exportado → {out_dir}  ({len(nodes)} nodos, {len(edges)} edges)")
 
     # ── Purge de datos antiguos (>RETENTION_DAYS) ──
-    deleted_nodes = conn.execute("DELETE FROM nodes WHERE last_seen < ?", (cutoff,)).rowcount
+    # COALESCE: los nodos sin last_seen (la API nunca lo dio) se purgan por updated_at
+    deleted_nodes = conn.execute(
+        "DELETE FROM nodes WHERE COALESCE(last_seen, updated_at) < ?", (cutoff,)).rowcount
     deleted_edges = conn.execute("DELETE FROM edges WHERE last_seen < ?", (cutoff,)).rowcount
     deleted_snaps = conn.execute("DELETE FROM snapshots WHERE collected_at < ?", (cutoff,)).rowcount
     if deleted_nodes or deleted_edges or deleted_snaps:

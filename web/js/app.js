@@ -28,15 +28,17 @@ async function loadAll() {
     }
 
     if (nodesResp.status === 'fulfilled') {
-      allNodes = nodesResp.value.nodes || [];
+      allNodes  = nodesResp.value.nodes || [];
+      nodesById = new Map(allNodes.map(n => [n.node_id, n]));
 
       // Inyectar issue client_base_fw para nodos CLIENT_BASE con fw >= 2.7.17
       allNodes.forEach(n => {
         if (n.role !== 'CLIENT_BASE' || !n.firmware || !fwGte(n.firmware, 2, 7, 17)) return;
         let entry = malConfigurados.get(n.node_id);
         if (!entry) {
-          entry = { node_id: n.node_id, short_name: n.short_name, long_name: n.long_name,
-                    channel: n.channel || '', sent: 0, issues: [] };
+          // node_id como entero decimal, igual que las entradas del servidor
+          entry = { node_id: parseInt(n.node_id.slice(1), 16), short_name: n.short_name,
+                    long_name: n.long_name, channel: n.channel || '', sent: 0, issues: [] };
           malConfigurados.set(n.node_id, entry);
         }
         if (!entry.issues) entry.issues = [];
@@ -67,6 +69,7 @@ async function loadAll() {
 
     if (statsResp.status === 'fulfilled') {
       const s = statsResp.value;
+      lastStats = s;
       document.getElementById('hdr-nodes').textContent  = s.nodes?.with_position ?? '—';
       document.getElementById('hdr-active').textContent = s.nodes?.active_1h     ?? '—';
       document.getElementById('hdr-gw').textContent     = s.nodes?.mqtt_gateways ?? '—';
@@ -92,8 +95,7 @@ async function loadAll() {
     if (firstLoad) {
       const nodeParam = new URLSearchParams(location.search).get('node');
       if (nodeParam) {
-        const found = allNodes.find(n => n.node_id === nodeParam);
-        if (found) selectNode(nodeParam, true);
+        if (nodesById.has(nodeParam)) selectNode(nodeParam, true);
         else showToast(`Nodo ${nodeParam} no encontrado en la red`);
       }
 
@@ -184,6 +186,13 @@ fetch(API_BASE + '/data/config.json')
   });
 
 // ─── Eventos globales ─────────────────────────────────────────────────────────
+// Escape cierra los modales (el del informe tiene prioridad: está encima)
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  if (document.getElementById('node-report-modal').classList.contains('open')) closeNodeReport();
+  else if (document.getElementById('malconfig-modal').classList.contains('open')) closeMalConfigModal();
+});
+
 document.addEventListener('click', e => {
   if (!e.target.closest('.search-wrap')) {
     document.getElementById('search-dropdown').classList.remove('open');

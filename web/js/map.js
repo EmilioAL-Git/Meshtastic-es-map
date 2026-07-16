@@ -66,7 +66,6 @@ function circleMarkerOptions(color, size = 9) {
     weight: isOld ? 0.5 : 1,
     opacity: isOld ? 0.4 : 1,
     fillOpacity: (color === C_RECENT || color === C_GATEWAY) ? 1 : isOld ? 0.3 : 0.85,
-    renderer: canvasRenderer,
   };
 }
 
@@ -143,7 +142,7 @@ function updateMarkerSizes() {
   renderSpiderLegs();
 
   if (selectedNodeId && selOverlay) {
-    const selNode = allNodes.find(n => n.node_id === selectedNodeId);
+    const selNode = nodesById.get(selectedNodeId);
     if (selNode && spreadGroups.has(selectedNodeId)) {
       const [dLat, dLng] = getSpreadLatLng(selectedNodeId, selNode.latitude, selNode.longitude);
       selOverlay.setLatLng([dLat, dLng]);
@@ -160,6 +159,20 @@ const SPREAD_MIN_ZOOM  = 19;     // zoom a partir del cual se separan en estrell
 
 let spiderLegs = [];  // polylines del patrón estrella
 
+// Clave estable de un grupo de spread: redondeada a 5 decimales (~1 m) para
+// que el jitter del centroide entre recargas no invalide openedClusters
+function spreadKey(info) {
+  return `${info.centerLat.toFixed(5)},${info.centerLng.toFixed(5)}`;
+}
+
+// node_ids de un grupo que pasan los filtros activos
+function filterVisibleIds(nodeIds) {
+  return nodeIds.filter(id => {
+    const n = nodesById.get(id);
+    return n && activeFilters.has(nodeCategory(n));
+  });
+}
+
 function clearSpiderLegs() {
   spiderLegs.forEach(l => map.removeLayer(l));
   spiderLegs = [];
@@ -170,7 +183,7 @@ function renderSpiderLegs() {
 
   const groups = new Map();
   spreadGroups.forEach((info, nodeId) => {
-    const key = `${info.centerLat},${info.centerLng}`;
+    const key = spreadKey(info);
     if (!groups.has(key)) groups.set(key, { ...info, nodeIds: [] });
     groups.get(key).nodeIds.push(nodeId);
   });
@@ -181,16 +194,18 @@ function renderSpiderLegs() {
     const isForced = openedClusters.has(key);
     if (z < SPREAD_MIN_ZOOM && !isForced) return;
 
-    const color = clusterDominantColor(group.nodeIds);
+    const visibleIds = filterVisibleIds(group.nodeIds);
+    if (!visibleIds.length) return;
+    const color = clusterDominantColor(visibleIds);
     const dot = L.circleMarker([group.centerLat, group.centerLng], {
       radius: 3, color, fillColor: color, fillOpacity: 1, weight: 1.5,
       opacity: 0.85, interactive: false, pane: 'overlayPane',
     }).addTo(map);
     spiderLegs.push(dot);
 
-    group.nodeIds.forEach(nodeId => {
+    visibleIds.forEach(nodeId => {
       if (spreadHidden.has(nodeId)) return;
-      const node = allNodes.find(n => n.node_id === nodeId);
+      const node = nodesById.get(nodeId);
       if (!node) return;
       const [sLat, sLng] = getSpreadLatLng(nodeId, node.latitude, node.longitude);
       const leg = L.polyline(
@@ -207,19 +222,36 @@ function computeSpreadGroups(nodes) {
   const valid    = nodes.filter(n => n.latitude != null && n.longitude != null);
   const assigned = new Set();
 
+  // Índice por celda de rejilla (tamaño SPREAD_GEO): los candidatos a ±SPREAD_GEO
+  // de un nodo están siempre en su celda o en las 8 adyacentes → O(n) total
+  const grid = new Map();
+  valid.forEach(n => {
+    const key = `${Math.round(n.latitude / SPREAD_GEO)},${Math.round(n.longitude / SPREAD_GEO)}`;
+    if (!grid.has(key)) grid.set(key, []);
+    grid.get(key).push(n);
+  });
+
   valid.forEach(node => {
     if (assigned.has(node.node_id)) return;
     const group = [node];
     assigned.add(node.node_id);
 
-    valid.forEach(other => {
-      if (assigned.has(other.node_id)) return;
-      if (Math.abs(node.latitude  - other.latitude)  <= SPREAD_GEO &&
-          Math.abs(node.longitude - other.longitude) <= SPREAD_GEO) {
-        group.push(other);
-        assigned.add(other.node_id);
+    const ci = Math.round(node.latitude  / SPREAD_GEO);
+    const cj = Math.round(node.longitude / SPREAD_GEO);
+    for (let di = -1; di <= 1; di++) {
+      for (let dj = -1; dj <= 1; dj++) {
+        const bucket = grid.get(`${ci + di},${cj + dj}`);
+        if (!bucket) continue;
+        bucket.forEach(other => {
+          if (assigned.has(other.node_id)) return;
+          if (Math.abs(node.latitude  - other.latitude)  <= SPREAD_GEO &&
+              Math.abs(node.longitude - other.longitude) <= SPREAD_GEO) {
+            group.push(other);
+            assigned.add(other.node_id);
+          }
+        });
       }
-    });
+    }
 
     if (group.length < 2) return;
     const centerLat = group.reduce((s, n) => s + n.latitude,  0) / group.length;
@@ -234,9 +266,8 @@ function computeSpreadGroups(nodes) {
 function getSpreadLatLng(nodeId, lat, lng, zoom) {
   const info = spreadGroups.get(nodeId);
   if (!info) return [lat, lng];
-  const clusterKey = `${info.centerLat},${info.centerLng}`;
   const z = zoom != null ? zoom : map.getZoom();
-  const isForced = openedClusters.has(clusterKey);
+  const isForced = openedClusters.has(spreadKey(info));
   // Para clusters abiertos: posición siempre calculada al zoom de referencia fijo
   const refZ = isForced ? SPREAD_MIN_ZOOM : z;
   if (refZ < SPREAD_MIN_ZOOM) return [lat, lng];
@@ -253,7 +284,7 @@ function getSpreadLatLng(nodeId, lat, lng, zoom) {
 }
 
 function clusterDominantColor(nodeIds) {
-  const nodes = nodeIds.map(id => allNodes.find(n => n.node_id === id)).filter(Boolean);
+  const nodes = nodeIds.map(id => nodesById.get(id)).filter(Boolean);
   if (nodes.some(n => n.is_mqtt_gateway))                                           return C_GATEWAY;
   if (nodes.some(n => isRouter(n)))                                                 return C_ROUTER;
   if (nodes.some(n => n.is_recent))                                                 return C_RECENT;
@@ -291,7 +322,7 @@ function renderClusters() {
   // Agrupar por centroide geográfico (mismo threshold ~10m que spreadGroups)
   const groups = new Map();
   spreadGroups.forEach((info, nodeId) => {
-    const key = `${info.centerLat},${info.centerLng}`;
+    const key = spreadKey(info);
     if (!groups.has(key)) groups.set(key, { ...info, nodeIds: [] });
     groups.get(key).nodeIds.push(nodeId);
   });
@@ -300,10 +331,14 @@ function renderClusters() {
     // Si este cluster fue abierto por click, mostrar nodos individuales
     if (openedClusters.has(key)) return;
 
+    // El badge solo cuenta los nodos visibles con los filtros activos
+    const visibleIds = filterVisibleIds(group.nodeIds);
+    if (visibleIds.length < 2) return; // 0-1 visibles: sin badge, marker suelto
+
     group.nodeIds.forEach(id => spreadHidden.add(id));
-    const color  = clusterDominantColor(group.nodeIds);
+    const color  = clusterDominantColor(visibleIds);
     const marker = L.marker([group.centerLat, group.centerLng], {
-      icon:         makeClusterIcon(group.nodeIds.length, color),
+      icon:         makeClusterIcon(visibleIds.length, color),
       pane:         'markersPane',
       zIndexOffset: 200,
     });
@@ -319,60 +354,103 @@ function renderClusters() {
 }
 
 // ─── Renderizar nodos ─────────────────────────────────────────────────────────
+// Tipo de marker que le corresponde a un nodo (si cambia entre refrescos hay
+// que recrear el marker: circleMarker y L.marker no comparten API de estilo)
+function markerKind(node) {
+  const malData = malConfigurados.get(node.node_id);
+  if (malData && detectIssues(malData).some(i => i.severity !== 'medium')) return 'mal';
+  if (isRouter(node) && !node.is_mqtt_gateway) return 'router';
+  return 'circle';
+}
+
+function popupHtml(node) {
+  const name = node.long_name || node.short_name || node.node_id;
+  const ago  = node.last_seen_ago_min != null
+    ? (node.last_seen_ago_min < 60
+      ? `${node.last_seen_ago_min}min`
+      : `${Math.floor(node.last_seen_ago_min/60)}h`)
+    : '?';
+  return `
+    <div style="font-family:'Space Mono',monospace">
+      <div style="font-weight:700;font-size:13px;margin-bottom:6px;color:#00e5a0">${escHtml(name)}</div>
+      <div style="font-size:11px;color:#64748b;margin-bottom:8px">${escHtml(node.node_id)}</div>
+      ${node.is_mqtt_gateway ? '<div style="background:rgba(245,158,11,.15);color:#f59e0b;font-size:11px;padding:2px 6px;border-radius:4px;margin-bottom:6px;display:inline-block">⚡ GATEWAY MQTT</div><br>' : ''}
+      ${isRouter(node) && !node.is_mqtt_gateway ? `<div style="background:rgba(251,146,60,.15);color:#fb923c;font-size:11px;padding:2px 6px;border-radius:4px;margin-bottom:6px;display:inline-block">⇆ ${escHtml(node.role)}</div><br>` : ''}
+      <table style="font-size:11px;width:100%;border-collapse:collapse">
+        ${node.hardware      ? row('Hardware', node.hardware) : ''}
+        ${node.role          ? row('Rol', node.role) : ''}
+        ${node.battery_level != null ? row('Batería', node.battery_level + '%') : ''}
+        ${node.snr      != null ? row('SNR', node.snr + ' dB') : ''}
+        ${node.hops_away != null ? row('Saltos', node.hops_away) : ''}
+        ${node.firmware      ? row('Firmware', node.firmware) : ''}
+        ${row('Visto', 'hace ' + ago)}
+        ${node.latitude != null ? row('Coords', node.latitude.toFixed(4) + ', ' + node.longitude.toFixed(4)) : ''}
+      </table>
+    </div>
+  `;
+}
+
+function createNodeMarker(node, sz) {
+  const [dLat, dLng] = getSpreadLatLng(node.node_id, node.latitude, node.longitude);
+  const color = nodeColor(node);
+  const kind  = markerKind(node);
+  const marker = kind === 'mal'
+    ? L.marker([dLat, dLng], { icon: makeMalConfiguradoIcon(color, sz), pane: 'markersPane' })
+    : kind === 'router'
+      ? L.marker([dLat, dLng], { icon: makeRouterIcon(color, sz), pane: 'markersPane' })
+      : L.circleMarker([dLat, dLng], { ...circleMarkerOptions(color, sz), renderer: markerRenderer });
+  marker._kind  = kind;
+  marker._color = color;
+  marker.on('click', () => { markerClicked = true; selectNode(node.node_id); });
+  marker.addTo(map);
+  return marker;
+}
+
+function updateNodeMarker(node, marker, sz) {
+  const kind = markerKind(node);
+  if (kind !== marker._kind) {
+    map.removeLayer(marker);
+    return createNodeMarker(node, sz);
+  }
+  const color = nodeColor(node);
+  const [dLat, dLng] = getSpreadLatLng(node.node_id, node.latitude, node.longitude);
+  marker.setLatLng([dLat, dLng]);
+  if (kind === 'circle') {
+    marker.setStyle(circleMarkerOptions(color, sz)); // setStyle de CircleMarker aplica también radius
+  } else if (color !== marker._color) {
+    marker.setIcon(kind === 'mal' ? makeMalConfiguradoIcon(color, sz) : makeRouterIcon(color, sz));
+  }
+  marker._color = color;
+  return marker;
+}
+
 function renderNodes(nodes) {
   clearSpiderLegs();
-  Object.values(markers).forEach(m => map.removeLayer(m));
-  markers = {};
-
   computeSpreadGroups(nodes);
 
   const isMobile = window.innerWidth <= 768;
   const isEmbed  = document.body.classList.contains('embed-mode');
   const sz       = markerSize();
+  const seen     = new Set();
 
   nodes.forEach(node => {
     if (node.latitude == null || node.longitude == null) return;
+    seen.add(node.node_id);
 
-    const [dLat, dLng] = getSpreadLatLng(node.node_id, node.latitude, node.longitude);
-    const color        = nodeColor(node);
-    const malData      = malConfigurados.get(node.node_id);
-    const isMalConfig  = !!malData && detectIssues(malData).some(i => i.severity !== 'medium');
-    const marker = isMalConfig
-      ? L.marker([dLat, dLng], { icon: makeMalConfiguradoIcon(color, sz), pane: 'markersPane' })
-      : (isRouter(node) && !node.is_mqtt_gateway)
-        ? L.marker([dLat, dLng], { icon: makeRouterIcon(color, sz), pane: 'markersPane' })
-        : L.circleMarker([dLat, dLng], { ...circleMarkerOptions(color, sz), renderer: markerRenderer });
+    // Actualizar in situ si ya existe: el auto-refresh no cierra popups abiertos
+    const existing = markers[node.node_id];
+    const marker   = existing ? updateNodeMarker(node, existing, sz) : createNodeMarker(node, sz);
+    markers[node.node_id] = marker;
 
     if (!isMobile && !isEmbed) {
-      const name = node.long_name || node.short_name || node.node_id;
-      const ago  = node.last_seen_ago_min != null
-        ? (node.last_seen_ago_min < 60
-          ? `${node.last_seen_ago_min}min`
-          : `${Math.floor(node.last_seen_ago_min/60)}h`)
-        : '?';
-      marker.bindPopup(`
-        <div style="font-family:'Space Mono',monospace">
-          <div style="font-weight:700;font-size:13px;margin-bottom:6px;color:#00e5a0">${escHtml(name)}</div>
-          <div style="font-size:11px;color:#64748b;margin-bottom:8px">${escHtml(node.node_id)}</div>
-          ${node.is_mqtt_gateway ? '<div style="background:rgba(245,158,11,.15);color:#f59e0b;font-size:11px;padding:2px 6px;border-radius:4px;margin-bottom:6px;display:inline-block">⚡ GATEWAY MQTT</div><br>' : ''}
-          ${isRouter(node) && !node.is_mqtt_gateway ? `<div style="background:rgba(251,146,60,.15);color:#fb923c;font-size:11px;padding:2px 6px;border-radius:4px;margin-bottom:6px;display:inline-block">⇆ ${escHtml(node.role)}</div><br>` : ''}
-          <table style="font-size:11px;width:100%;border-collapse:collapse">
-            ${node.hardware      ? row('Hardware', node.hardware) : ''}
-            ${node.role          ? row('Rol', node.role) : ''}
-            ${node.battery_level != null ? row('Batería', node.battery_level + '%') : ''}
-            ${node.snr      != null ? row('SNR', node.snr + ' dB') : ''}
-            ${node.hops_away != null ? row('Saltos', node.hops_away) : ''}
-            ${node.firmware      ? row('Firmware', node.firmware) : ''}
-            ${row('Visto', 'hace ' + ago)}
-            ${node.latitude != null ? row('Coords', node.latitude.toFixed(4) + ', ' + node.longitude.toFixed(4)) : ''}
-          </table>
-        </div>
-      `);
+      if (marker.getPopup()) marker.getPopup().setContent(popupHtml(node));
+      else marker.bindPopup(popupHtml(node));
     }
+  });
 
-    marker.on('click', () => { markerClicked = true; selectNode(node.node_id); });
-    marker.addTo(map);
-    markers[node.node_id] = marker;
+  // Quitar markers de nodos que ya no vienen en los datos
+  Object.keys(markers).forEach(id => {
+    if (!seen.has(id)) { map.removeLayer(markers[id]); delete markers[id]; }
   });
 
   renderClusters();
@@ -396,7 +474,7 @@ function showNodeEdges(nodeId) {
     if (!activeEdgeFilters.has(type)) return;
 
     edgeGroup.addLayer(
-      L.polyline(coords, { ...EDGE_STYLE_HI[type], interactive: false, renderer: canvasRenderer })
+      L.polyline(coords, { ...EDGE_STYLE_HI[type], interactive: false, renderer: edgeRenderer })
     );
   });
 }

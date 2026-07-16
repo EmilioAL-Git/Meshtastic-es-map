@@ -615,7 +615,11 @@ def main():
 
     ccaa_cache     = load_ccaa_cache()
     nominatim_calls = 0
-    print(f"\nDetectando comunidad autónoma...")
+    pending = sum(1 for n in all_nodes
+                  if n.get("_lat") is not None and n.get("issues")
+                  and f"{n['_lat']:.3f},{n['_lon']:.3f}" not in ccaa_cache)
+    print(f"\nDetectando comunidad autónoma... ({pending} nodos sin caché, "
+          f"~{round(pending * 1.1 / 60, 1)} min por el límite de Nominatim)")
 
     for node in all_nodes:
         lat = node.pop("_lat", None)
@@ -630,6 +634,8 @@ def main():
             try:
                 ccaa_cache[key] = nominatim_ccaa(lat, lon)
                 nominatim_calls += 1
+                if nominatim_calls % 20 == 0:
+                    print(f"  … {nominatim_calls}/{pending} consultados")
                 time.sleep(1.1)
             except Exception as e:
                 print(f"  [warn] nominatim {lat:.4f},{lon:.4f}: {e}")

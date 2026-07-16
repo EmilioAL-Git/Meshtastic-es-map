@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Genera top-nodos.json con el top 100 de nodos por canal (300 en total) más análisis detallado:
+Genera top-nodos.json con el top N de nodos por canal (N configurable por canal
+vía CHANNEL_LIMITS, línea ~35) más análisis detallado:
   - Conteo de paquetes por tipo (portnum)
   - Sub-tipos de telemetría (device / environment / power)
   - Uniformidad de traceroutes (automáticos vs manuales)
@@ -35,6 +36,17 @@ BROADCAST_ID = 4294967295  # to_node_id de los paquetes broadcast (^all)
 # Checks de detect_issues() desactivados. Añade aquí la key (ver THRESHOLDS más abajo)
 # de cualquier detección que quieras quitar, p.ej. {'hop_limit_high', 'range_test'}.
 DISABLED_CHECKS = {'hop_limit_high'}
+
+# Nº de nodos a analizar por canal (top N de /api/stats/top). Los canales no
+# listados aquí usan CHANNEL_LIMIT_DEFAULT.
+CHANNEL_LIMITS = {
+    'SFNarrow': 200,
+}
+CHANNEL_LIMIT_DEFAULT = 100
+
+# Nº máx de nodos que devuelve /api/stats/top por petición (capado por meshview).
+# Si CHANNEL_LIMITS pide más, se pagina con offset.
+API_PAGE_SIZE = 100
 
 def _fw_gte(firmware, major, minor, patch):
     parts = (firmware or '').split('.')
@@ -354,13 +366,16 @@ def analyze_node(node_id):
 
     mobility = None
     if len(coords) >= 2:
-        ref_lat, ref_lon = coords[0]
-        distances = [haversine_m(ref_lat, ref_lon, lat, lon) for lat, lon in coords[1:]]
+        # Mediana por eje como referencia (no el primer punto): un solo fix GPS
+        # con mucho error al arrancar en frío no debe disparar falso "móvil".
+        ref_lat = statistics.median(c[0] for c in coords)
+        ref_lon = statistics.median(c[1] for c in coords)
+        distances = [haversine_m(ref_lat, ref_lon, lat, lon) for lat, lon in coords]
         max_dist  = max(distances)
         mobility  = {
             "max_distance_m":    round(max_dist),
             "positions_checked": len(coords),
-            "is_fixed":          max_dist < 100,
+            "is_fixed":          max_dist < 1000,
         }
 
     # ── 5. hop_start del último paquete ──────────────────────────────────────
@@ -650,10 +665,21 @@ def main():
 
     all_nodes = []
     for ch in CHANNELS:
-        url = f"{BASE}/api/stats/top?channel={ch}&limit=100&offset=0"
+        limit = CHANNEL_LIMITS.get(ch, CHANNEL_LIMIT_DEFAULT)
         try:
-            data  = fetch_json_retry(url)
-            nodes = data.get("nodes", [])
+            # La API capea /api/stats/top a PAGE_SIZE nodos por petición
+            # aunque se pida un limit mayor, así que hay que paginar con offset.
+            nodes = []
+            offset = 0
+            while len(nodes) < limit:
+                page_size = min(API_PAGE_SIZE, limit - len(nodes))
+                url  = f"{BASE}/api/stats/top?channel={ch}&limit={page_size}&offset={offset}"
+                data = fetch_json_retry(url)
+                page = data.get("nodes", [])
+                nodes += page
+                offset += len(page)
+                if len(page) < page_size:
+                    break  # no hay más nodos en este canal
             for n in nodes:
                 n["channel"] = ch
             all_nodes += nodes

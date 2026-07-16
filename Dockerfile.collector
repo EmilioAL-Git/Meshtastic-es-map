@@ -1,5 +1,10 @@
 FROM docker.io/python:3.12-alpine
 
+# Sin esto, los print() de update-top.py se quedan en el buffer de stdout
+# (no es una tty) y "docker compose logs" no muestra nada hasta que el
+# buffer se llena o el proceso termina — parece que no hace nada.
+ENV PYTHONUNBUFFERED=1
+
 WORKDIR /app
 COPY collector/collector.py collector/entrypoint.py collector/update-top.py ./
 

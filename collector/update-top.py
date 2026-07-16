@@ -186,7 +186,9 @@ def nominatim_ccaa(lat, lon):
 # ── API ───────────────────────────────────────────────────────────────────────
 
 def fetch_json(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "meshtastic-es-map-topnodos/1.0", "Accept": "application/json",
+    })
     with urllib.request.urlopen(req, timeout=15) as r:
         return json.loads(r.read())
 

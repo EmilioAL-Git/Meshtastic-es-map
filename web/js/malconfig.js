@@ -49,8 +49,8 @@ const ISSUE_DEFS = {
     fix:  'Módulos → Store & Forward → desactivar si no es necesario',
   },
   position_flags: {
-    desc: 'Este nodo fijo está enviando campos GPS innecesarios en sus paquetes de posición. Según meshtastic.es, para nodos fijos solo debe activarse el flag DOP. SPEED y HEADING son exclusivos de nodos móviles; NVSS_SATS, SEQ_NO, TIMESTAMP y ALT_HAE añaden datos sin valor en un nodo estático.',
-    fix:  'Config → Posición → Position Flags → activar solo DOP, desactivar el resto',
+    desc: 'Este nodo fijo está enviando campos GPS innecesarios en sus paquetes de posición. Para nodos fijos es recomendable desactivar todas los flags/marcas. SPEED y HEADING son exclusivos de nodos móviles; NVSS_SATS, SEQ_NO, TIMESTAMP y ALT_HAE añaden datos sin valor en un nodo estático.',
+    fix:  'Config → Posición → Position Flags → desactivar todos los flags',
   },
   traceroute_auto: {
     desc: 'Este nodo está generando traceroutes de forma sistemática (posiblemente una herramienta de monitorización de red). Genera tráfico considerable en la red.',
@@ -63,6 +63,10 @@ const ISSUE_DEFS = {
   client_base_fw: {
     desc: 'A partir del firmware 2.7.17, el rol CLIENT_BASE se comporta como ROUTER_LATE: el nodo espera antes de reemitir paquetes, lo que ralentiza la propagación de mensajes en la red. Se recomienda no usar este rol.',
     fix:  'Config → Dispositivo → Rol → cambiar a CLIENT o CLIENT_MUTE si el nodo no necesita enrutar',
+  },
+  client_mute_mobile: {
+    desc: 'Este nodo ha sido detectado como móvil pero no usa el rol CLIENT_MUTE. Un nodo móvil que retransmite paquetes ajenos genera rutas inestables y tráfico redundante al cambiar de posición.',
+    fix:  'Config → Dispositivo → Rol → CLIENT_MUTE (el nodo sigue emitiendo su posición, pero deja de reenviar paquetes ajenos)',
   },
 };
 
@@ -234,7 +238,7 @@ function _doRenderStats(history) {
     'Telemetría': ['telemetry_device', 'telemetry_environment', 'telemetry_power'],
     'NodeInfo':   ['nodeinfo'],
     'Red/Routing':['routing', 'traceroute_auto', 'hop_limit_high'],
-    'Otros':      ['range_test', 'client_base_fw'],
+    'Otros':      ['range_test', 'client_base_fw', 'client_mute_mobile'],
   };
   const GROUP_COLORS = {
     'Posición':    '#7dd3fc',
@@ -526,6 +530,7 @@ const ISSUE_SHORT_LABELS = {
   position_flags:        'Flags GPS (fijo)',
   hop_limit_high:        'Hop limit excesivo',
   client_base_fw:        'CLIENT_BASE ≥ 2.7.17',
+  client_mute_mobile:    'Móvil sin CLIENT_MUTE',
 };
 
 // ─── Modal: Nodos mal configurados ────────────────────────────────────────────

@@ -23,6 +23,7 @@ Checks desactivables vía DISABLED_CHECKS (línea ~21), uno o varios:
   - position_flags        Flags GPS innecesarios en nodo fijo
   - hop_limit_high        Hop limit excesivo (hop_start >= 7) — desactivado por defecto
   - client_base_fw        CLIENT_BASE con firmware >= 2.7.17 (actúa como ROUTER_LATE)
+  - client_mute_mobile    Nodo móvil sin rol CLIENT_MUTE
 """
 import datetime, json, math, os, re, statistics, time, urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -47,6 +48,27 @@ def _fw_gte(firmware, major, minor, patch):
         if a[i] > b[i]: return True
         if a[i] < b[i]: return False
     return True
+
+# Hardware móvil por diseño (tarjetas GPS trackers, wearables, tags): aunque
+# no tengamos aún suficientes posiciones históricas para detectar movimiento,
+# este hardware se vende y usa explícitamente en movimiento. Coincidencia por
+# substring porque los nombres de HW_MODEL varían entre versiones de firmware
+# (p.ej. TRACKER_T1000_E, WIO_TRACKER_L1, HELTEC_WIRELESS_TRACKER, WISMESH_TAP).
+MOBILE_HW_KEYWORDS = ('T1000', 'TRACKER', 'WISMESH_TAP', 'WATCH')
+
+def is_mobile_by_design(hw_model):
+    hw = (hw_model or '').upper()
+    return any(k in hw for k in MOBILE_HW_KEYWORDS)
+
+# Roles que ya evitan o justifican el reenvío de paquetes en un nodo móvil:
+# CLIENT_MUTE/CLIENT_HIDDEN no retransmiten; TRACKER/TAK_TRACKER son roles
+# pensados explícitamente para dispositivos en movimiento; los roles de
+# router/repetidor son un problema aparte (nodo router en movimiento), no
+# el que cubre este check.
+ROLES_MOBILE_OK = {
+    'CLIENT_MUTE', 'CLIENT_HIDDEN', 'TRACKER', 'TAK_TRACKER',
+    'ROUTER', 'ROUTER_CLIENT', 'REPEATER', 'ROUTER_LATE',
+}
 
 PORTNUMS = {
     "text":         1,
@@ -512,6 +534,16 @@ def detect_issues(node):
     if meta.get("role") == "CLIENT_BASE" and _fw_gte(meta.get("firmware"), 2, 7, 17):
         issues.append(_issue('client_base_fw', "CLIENT_BASE ≥ 2.7.17 actúa como ROUTER_LATE", 'medium'))
 
+    # Nodo móvil sin CLIENT_MUTE: al moverse, retransmitir paquetes ajenos
+    # genera rutas inestables y tráfico redundante en la malla. CLIENT_MUTE
+    # evita que el nodo reenvíe, sin dejar de emitir su propia posición.
+    role_upper   = (meta.get("role") or "CLIENT").upper()
+    by_design    = is_mobile_by_design(meta.get("hw_model"))
+    by_detection = bool(mob and not mob.get("is_fixed"))
+    if (by_design or by_detection) and role_upper not in ROLES_MOBILE_OK:
+        issues.append(_issue('client_mute_mobile',
+            "Nodo móvil sin rol CLIENT_MUTE", 'medium'))
+
     return [i for i in issues if i['key'] not in DISABLED_CHECKS]
 
 # ── Comprobación de hop_limit en todos los nodos activos ─────────────────────
@@ -607,7 +639,11 @@ def main():
         for _n in _nodes_list:
             _nid = _n.get("node_id")
             if _nid is not None:
-                _node_meta[_nid] = {"role": _n.get("role") or "", "firmware": _n.get("firmware") or ""}
+                _node_meta[_nid] = {
+                    "role":     _n.get("role") or "",
+                    "firmware": _n.get("firmware") or "",
+                    "hw_model": _n.get("hw_model") or "",
+                }
         print(f"Metadata de nodos cargada: {len(_node_meta)} entradas")
     except Exception as e:
         print(f"[warn] No se pudo cargar /api/nodes para client_base_fw: {e}")

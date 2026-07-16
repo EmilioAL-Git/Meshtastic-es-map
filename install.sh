@@ -28,8 +28,9 @@ chown -R "$SERVICE_USER":"$SERVICE_USER" "$INSTALL_DIR"
 
 # ─── 3. Copiar archivos (asume que estás en el repo) ──────────────────────────
 info "Copiando archivos…"
-cp collector/collector.py "$INSTALL_DIR/collector/"
-cp web/index.html         "$INSTALL_DIR/web/"
+cp collector/collector.py  "$INSTALL_DIR/collector/"
+cp collector/update-top.py "$INSTALL_DIR/collector/"
+cp web/index.html          "$INSTALL_DIR/web/"
 cp web/style.css          "$INSTALL_DIR/web/"
 cp web/favicon.svg        "$INSTALL_DIR/web/"
 mkdir -p "$INSTALL_DIR/web/js"
@@ -45,10 +46,11 @@ info "Entorno virtual listo (el collector solo usa stdlib)"
 # ─── 5. Servicios systemd ─────────────────────────────────────────────────────
 info "Instalando servicios systemd…"
 cp meshtastic-es-map-collector.service /etc/systemd/system/
+cp meshtastic-es-map-topnodos.service  /etc/systemd/system/
 
 systemctl daemon-reload
-systemctl enable meshtastic-es-map-collector
-systemctl start  meshtastic-es-map-collector
+systemctl enable meshtastic-es-map-collector meshtastic-es-map-topnodos
+systemctl start  meshtastic-es-map-collector meshtastic-es-map-topnodos
 
 # ─── 6. Primera colección (para que la BD tenga datos antes de abrir Nginx) ──
 info "Ejecutando primera colección de datos (puede tardar 10-20 seg)…"
@@ -83,6 +85,8 @@ echo "  y recarga Nginx: sudo systemctl reload nginx"
 echo ""
 echo "  Estado de servicios:"
 systemctl is-active meshtastic-es-map-collector && echo "  ✓ collector activo" || echo "  ✗ collector INACTIVO"
+systemctl is-active meshtastic-es-map-topnodos  && echo "  ✓ topnodos activo"  || echo "  ✗ topnodos INACTIVO"
 echo ""
 echo "  Logs: journalctl -u meshtastic-es-map-collector -f"
+echo "        journalctl -u meshtastic-es-map-topnodos -f"
 echo "  BD: $DATA_DIR/meshtastic-es-map.db"

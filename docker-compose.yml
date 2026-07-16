@@ -18,6 +18,20 @@ services:
       retries: 3
       start_period: 60s
 
+  topnodos:
+    build:
+      context: .
+      dockerfile: Dockerfile.collector
+    command: ["python", "/app/entrypoint.py", "update-top.py", "--daemon"]
+    volumes:
+      - db-data:/data
+      - json-data:/data/json
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - JSON_OUT=/data/json
+      - CCAA_CACHE_PATH=/data/ccaa-cache.json
+
   web:
     image: nginx:alpine
     ports:

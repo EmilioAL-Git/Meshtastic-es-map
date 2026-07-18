@@ -1,0 +1,28 @@
+[Unit]
+Description=Meshtastic-es-map Top Nodos — análisis de nodos mal configurados (update-top.py)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/meshtastic-es-map
+# Variables opcionales (MESHVIEW_URL, TOP_NODOS_INTERVAL…) — el guion
+# inicial hace que no falle si el fichero no existe
+EnvironmentFile=-/opt/meshtastic-es-map/.env
+ExecStart=/opt/meshtastic-es-map/venv/bin/python /opt/meshtastic-es-map/collector/update-top.py --daemon
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+
+# Endurecimiento: solo puede escribir en web/data/ (top-nodos.json) y
+# collector/ (ccaa-cache.json)
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/meshtastic-es-map/web/data /opt/meshtastic-es-map/collector
+
+[Install]
+WantedBy=multi-user.target

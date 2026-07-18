@@ -14,7 +14,10 @@ async function loadAll() {
       fetchJSON('/data/edges.json'),
       fetchJSON('/data/stats.json'),
       MAL_CONFIG_URL
-        ? fetch(MAL_CONFIG_URL + '?t=' + Date.now()).then(r => r.ok ? r.json() : null).catch(() => null)
+        // Ruta interna (empieza por '/'): respeta API_BASE (p.ej. /map) igual
+        // que el resto de fetches. URL externa completa: se usa tal cual.
+        ? fetch((MAL_CONFIG_URL.startsWith('/') ? API_BASE + MAL_CONFIG_URL : MAL_CONFIG_URL)
+            + '?t=' + Date.now()).then(r => r.ok ? r.json() : null).catch(() => null)
         : Promise.resolve(null),
     ]);
 

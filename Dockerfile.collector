@@ -1,9 +1,16 @@
 FROM docker.io/python:3.12-alpine
 
+# Sin esto, los print() de update-top.py se quedan en el buffer de stdout
+# (no es una tty) y "docker compose logs" no muestra nada hasta que el
+# buffer se llena o el proceso termina — parece que no hace nada.
+ENV PYTHONUNBUFFERED=1
+
 WORKDIR /app
-COPY collector/collector.py collector/entrypoint.py ./
+COPY collector/collector.py collector/entrypoint.py collector/update-top.py ./
 
 RUN adduser -S -s /bin/false -u 500 appuser
 
 # Arranca como root → entrypoint.py fija permisos → baja a appuser
-CMD ["python", "/app/entrypoint.py", "--daemon", "--db", "/data/meshtastic-es-map.db"]
+# (el CMD por defecto arranca el collector; docker-compose sobreescribe
+# el comando en el servicio "topnodos" para arrancar update-top.py)
+CMD ["python", "/app/entrypoint.py", "collector.py", "--daemon", "--db", "/data/meshtastic-es-map.db"]

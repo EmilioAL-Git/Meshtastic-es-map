@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Genera top-nodos.json con el top N de nodos por canal (N configurable por canal
-vía CHANNEL_LIMITS, línea ~35) más análisis detallado:
+Genera top-nodos.json analizando TODOS los nodos de /api/nodes, con análisis
+detallado:
   - Conteo de paquetes por tipo (portnum)
   - Sub-tipos de telemetría (device / environment / power)
   - Uniformidad de traceroutes (automáticos vs manuales)
@@ -26,27 +26,20 @@ Checks desactivables vía DISABLED_CHECKS (línea ~21), uno o varios:
   - client_base_fw        CLIENT_BASE con firmware >= 2.7.17 (actúa como ROUTER_LATE)
   - client_mute_mobile    Nodo móvil sin rol CLIENT_MUTE
 """
-import datetime, json, math, os, re, statistics, time, urllib.request
+import argparse, datetime, json, math, os, re, statistics, time, urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-OUT      = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "top-nodos.json")
-BASE     = os.environ.get("MESHVIEW_URL", "http://localhost:18085")
+_SCRIPT_DIR  = os.path.dirname(os.path.abspath(__file__))
+_REPO_ROOT   = os.path.dirname(_SCRIPT_DIR)
+JSON_OUT     = os.environ.get("JSON_OUT", os.path.join(_REPO_ROOT, "web", "data"))
+OUT          = os.path.join(JSON_OUT, "top-nodos.json")
+BASE         = os.environ.get("MESHVIEW_URL", "http://localhost:18085")
+INTERVAL_MIN = int(os.environ.get("TOP_NODOS_INTERVAL", 60))
 BROADCAST_ID = 4294967295  # to_node_id de los paquetes broadcast (^all)
 
 # Checks de detect_issues() desactivados. Añade aquí la key (ver THRESHOLDS más abajo)
 # de cualquier detección que quieras quitar, p.ej. {'hop_limit_high', 'range_test'}.
 DISABLED_CHECKS = {'hop_limit_high'}
-
-# Nº de nodos a analizar por canal (top N de /api/stats/top). Los canales no
-# listados aquí usan CHANNEL_LIMIT_DEFAULT.
-CHANNEL_LIMITS = {
-    'SFNarrow': 200,
-}
-CHANNEL_LIMIT_DEFAULT = 100
-
-# Nº máx de nodos que devuelve /api/stats/top por petición (capado por meshview).
-# Si CHANNEL_LIMITS pide más, se pagina con offset.
-API_PAGE_SIZE = 100
 
 def _fw_gte(firmware, major, minor, patch):
     parts = (firmware or '').split('.')
@@ -169,7 +162,7 @@ CCAA_NORMALIZE = {
     'andalucia':                  'Andalucía',
 }
 
-CCAA_CACHE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ccaa-cache.json")
+CCAA_CACHE_PATH = os.environ.get("CCAA_CACHE_PATH", os.path.join(_SCRIPT_DIR, "ccaa-cache.json"))
 
 def load_ccaa_cache():
     try:
@@ -193,7 +186,9 @@ def nominatim_ccaa(lat, lon):
 # ── API ───────────────────────────────────────────────────────────────────────
 
 def fetch_json(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    req = urllib.request.Request(url, headers={
+        "User-Agent": "meshtastic-es-map-topnodos/1.0", "Accept": "application/json",
+    })
     with urllib.request.urlopen(req, timeout=15) as r:
         return json.loads(r.read())
 
@@ -387,6 +382,7 @@ def analyze_node(node_id):
             hop_start = fetch_hop_start(packet_id)
 
     return {
+        "sent":              sum(counts.values()),
         "packets":           counts,
         "telemetry_detail":  tel_detail,
         "traceroute_detail": tr_detail,
@@ -561,78 +557,6 @@ def detect_issues(node):
 
     return [i for i in issues if i['key'] not in DISABLED_CHECKS]
 
-# ── Comprobación de hop_limit en todos los nodos activos ─────────────────────
-
-def collect_hop_limit_nodes(known_ids):
-    """
-    Comprueba el hop_start de TODOS los nodos de la red (no solo el top).
-    Para cada nodo de /api/nodes que no esté en known_ids, pide su último
-    paquete y consulta /api/packets_seen/{id} para obtener el hop_start.
-    """
-    try:
-        data  = fetch_json_retry(f"{BASE}/api/nodes")
-        nodes = data if isinstance(data, list) else data.get("nodes", [])
-    except Exception as e:
-        print(f"  [warn] collect_hop_limit_nodes (nodes): {e}")
-        return []
-
-    # Solo nodos no analizados ya en el top
-    candidates = [n for n in nodes if n.get("node_id") not in known_ids]
-    print(f"  {len(candidates)} nodos fuera del top a comprobar...")
-
-    results = []
-
-    def check_hop(node):
-        node_id = node.get("node_id")
-        if node_id is None:
-            return None
-        try:
-            data    = fetch_json(f"{BASE}/api/packets?from_node_id={node_id}&limit=1")
-            packets = data.get("packets", []) if isinstance(data, dict) else []
-        except Exception:
-            return None
-        if not packets:
-            return None
-        packet_id = packets[0].get("id")
-        if not packet_id:
-            return None
-        hs = fetch_hop_start(packet_id)
-        if hs is None or hs < THRESHOLDS['hop_limit_high']['critical']:
-            return None
-        sev = 'critical'
-        return {
-            "node_id":           node_id,
-            "long_name":         node.get("long_name") or "",
-            "short_name":        node.get("short_name") or "",
-            "channel":           node.get("channel") or packets[0].get("channel") or "",
-            "sent":              0,
-            "hop_start":         hs,
-            "packets":           {k: None for k in PORTNUMS},
-            "issues":            [_issue('hop_limit_high', f"Hop limit excesivo ({hs})", sev)],
-            "telemetry_detail":  None,
-            "traceroute_detail": None,
-            "nodeinfo_detail":   None,
-            "routing_detail":    None,
-            "position_detail":   None,
-            "mobility":          None,
-            "lat":               None,
-            "lon":               None,
-            "ccaa":              None,
-        }
-
-    with ThreadPoolExecutor(max_workers=10) as executor:
-        futures = {executor.submit(check_hop, n): n for n in candidates}
-        for future in as_completed(futures):
-            result = future.result()
-            if result:
-                name = result['long_name'] or result['short_name'] or str(result['node_id'])
-                hs   = result['hop_start']
-                sev  = result['issues'][0]['severity'].upper()
-                print(f"  [{sev}] {name}: hop_start={hs}")
-                results.append(result)
-
-    return results
-
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 # Lookup role+firmware por node_id para el check client_base_fw.
@@ -642,54 +566,25 @@ _node_meta = {}
 
 def main():
     try:
-        CHANNELS = fetch_json_retry(f"{BASE}/api/channels").get("channels", [])
-        print(f"Canales: {CHANNELS}")
+        _nodes_data = fetch_json_retry(f"{BASE}/api/nodes")
+        all_nodes   = _nodes_data if isinstance(_nodes_data, list) else _nodes_data.get("nodes", [])
     except Exception as e:
-        print(f"Error obteniendo canales: {e}. JSON anterior conservado.")
+        print(f"Error obteniendo /api/nodes: {e}. JSON anterior conservado.")
         raise SystemExit(1)
 
-    try:
-        _nodes_data = fetch_json_retry(f"{BASE}/api/nodes")
-        _nodes_list = _nodes_data if isinstance(_nodes_data, list) else _nodes_data.get("nodes", [])
-        for _n in _nodes_list:
-            _nid = _n.get("node_id")
-            if _nid is not None:
-                _node_meta[_nid] = {
-                    "role":     _n.get("role") or "",
-                    "firmware": _n.get("firmware") or "",
-                    "hw_model": _n.get("hw_model") or "",
-                }
-        print(f"Metadata de nodos cargada: {len(_node_meta)} entradas")
-    except Exception as e:
-        print(f"[warn] No se pudo cargar /api/nodes para client_base_fw: {e}")
-
-    all_nodes = []
-    for ch in CHANNELS:
-        limit = CHANNEL_LIMITS.get(ch, CHANNEL_LIMIT_DEFAULT)
-        try:
-            # La API capea /api/stats/top a PAGE_SIZE nodos por petición
-            # aunque se pida un limit mayor, así que hay que paginar con offset.
-            nodes = []
-            offset = 0
-            while len(nodes) < limit:
-                page_size = min(API_PAGE_SIZE, limit - len(nodes))
-                url  = f"{BASE}/api/stats/top?channel={ch}&limit={page_size}&offset={offset}"
-                data = fetch_json_retry(url)
-                page = data.get("nodes", [])
-                nodes += page
-                offset += len(page)
-                if len(page) < page_size:
-                    break  # no hay más nodos en este canal
-            for n in nodes:
-                n["channel"] = ch
-            all_nodes += nodes
-            print(f"{ch}: {len(nodes)} nodos")
-        except Exception as e:
-            print(f"Error {ch}: {e}")
+    for n in all_nodes:
+        nid = n.get("node_id")
+        if nid is not None:
+            _node_meta[nid] = {
+                "role":     n.get("role") or "",
+                "firmware": n.get("firmware") or "",
+                "hw_model": n.get("hw_model") or "",
+            }
+    print(f"Metadata de nodos cargada: {len(_node_meta)} entradas")
 
     print(f"\nAnalizando {len(all_nodes)} nodos...")
 
-    with ThreadPoolExecutor(max_workers=5) as executor:
+    with ThreadPoolExecutor(max_workers=20) as executor:
         futures = {executor.submit(analyze_node, n["node_id"]): n for n in all_nodes}
         for future in as_completed(futures):
             node   = futures[future]
@@ -709,29 +604,22 @@ def main():
                 for iss in issues:
                     print(f"      [{iss['severity']}] {iss['label']}")
             else:
+                node["sent"]    = 0
                 node["packets"] = {k: None for k in PORTNUMS}
                 node["issues"]  = []
                 print(f"  {name}: sin datos")
 
-    # ── hop_limit en todos los nodos activos (no solo top) ───────────────────
-
-    if 'hop_limit_high' in DISABLED_CHECKS:
-        print("\nCheck hop_limit_high desactivado (DISABLED_CHECKS) — omitiendo escaneo de red")
-    else:
-        known_ids = {n["node_id"] for n in all_nodes}
-        print(f"\nComprobando hop_limit en todos los nodos activos...")
-        hop_nodes = collect_hop_limit_nodes(known_ids)
-        if hop_nodes:
-            print(f"  → {len(hop_nodes)} nodos adicionales con hop_limit excesivo")
-            all_nodes += hop_nodes
-        else:
-            print("  → ningún nodo adicional con hop_limit excesivo")
+    all_nodes.sort(key=lambda n: n.get("sent") or 0, reverse=True)
 
     # ── Comunidad autónoma (solo nodos con problemas) ─────────────────────────
 
     ccaa_cache     = load_ccaa_cache()
     nominatim_calls = 0
-    print(f"\nDetectando comunidad autónoma...")
+    pending = sum(1 for n in all_nodes
+                  if n.get("_lat") is not None and n.get("issues")
+                  and f"{n['_lat']:.3f},{n['_lon']:.3f}" not in ccaa_cache)
+    print(f"\nDetectando comunidad autónoma... ({pending} nodos sin caché, "
+          f"~{round(pending * 1.1 / 60, 1)} min por el límite de Nominatim)")
 
     for node in all_nodes:
         lat = node.pop("_lat", None)
@@ -746,6 +634,8 @@ def main():
             try:
                 ccaa_cache[key] = nominatim_ccaa(lat, lon)
                 nominatim_calls += 1
+                if nominatim_calls % 20 == 0:
+                    print(f"  … {nominatim_calls}/{pending} consultados")
                 time.sleep(1.1)
             except Exception as e:
                 print(f"  [warn] nominatim {lat:.4f},{lon:.4f}: {e}")
@@ -806,4 +696,22 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Meshtastic-es-map — análisis de nodos mal configurados")
+    parser.add_argument("--daemon",   action="store_true", help="Modo bucle continuo")
+    parser.add_argument("--interval", type=int, default=INTERVAL_MIN,
+                        help="Minutos entre recargas (default: %(default)s)")
+    args = parser.parse_args()
+
+    if args.daemon:
+        print(f"Modo daemon — intervalo: {args.interval} min")
+        while True:
+            try:
+                main()
+            except SystemExit as e:
+                print(f"[error] Recarga abortada (código {e.code}) — se reintentará en el próximo ciclo")
+            except Exception as e:
+                print(f"[error] Fallo en la recarga: {e}")
+            print(f"Durmiendo {args.interval} min …")
+            time.sleep(args.interval * 60)
+    else:
+        main()

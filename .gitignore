@@ -8,7 +8,6 @@ __pycache__/
 *.log
 .env
 web/data/*.json
-web/top-nodos.json
 ccaa-cache.json
 CLAUDE.md
 RELEASE_NOTES_DRAFT.md

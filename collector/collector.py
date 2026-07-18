@@ -35,7 +35,7 @@ MAP_AUTO_FIT    = os.environ.get("MAP_AUTO_FIT", "true").lower() == "true"
 MAP_LAT         = float(os.environ.get("MAP_LAT", 40.2))
 MAP_LNG         = float(os.environ.get("MAP_LNG", -3.7))
 MAP_ZOOM        = int(os.environ.get("MAP_ZOOM", 8))
-MAL_CONFIG_URL  = os.environ.get("MAL_CONFIG_URL", "https://datos.meshtastic.es/top-mal-configurados")
+MAL_CONFIG_URL  = os.environ.get("MAL_CONFIG_URL", "/data/top-nodos.json")
 REQUEST_TIMEOUT = 20       # segundos
 
 logging.basicConfig(

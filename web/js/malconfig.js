@@ -547,22 +547,36 @@ function _filteredMalNodes() {
     .sort((a, b) => (b.sent || 0) - (a.sent || 0));
 }
 
-function openMalConfigModal() {
+function _malUpdatedLabel() {
+  if (!malUpdated) return '';
+  const diffMin = Math.round((Date.now() / 1000 - malUpdated) / 60);
+  const time = new Date(malUpdated * 1000).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  if (diffMin < 1)  return 'Actualizado hace un momento';
+  if (diffMin < 60) return `Actualizado hace ${diffMin} min`;
+  const diffH = Math.round(diffMin / 60);
+  if (diffH < 24)   return `Actualizado hace ${diffH}h (${time})`;
+  return `Actualizado a las ${time}`;
+}
+
+function openMalConfigModal(preserveFilters) {
   document.getElementById('malconfig-modal').classList.add('open');
-  renderMalConfigModal();
+  document.getElementById('malconfig-updated').textContent = _malUpdatedLabel();
+  renderMalConfigModal(preserveFilters);
 }
 
 function closeMalConfigModal() {
   document.getElementById('malconfig-modal').classList.remove('open');
 }
 
-function renderMalConfigModal() {
-  _malCurrentTab    = 'list';
-  _malChannelFilter = 'Todos';
-  _malCCAAFilter    = '';
-  _malIssueFilter   = '';
+function renderMalConfigModal(preserveFilters) {
+  if (!preserveFilters) {
+    _malCurrentTab    = 'list';
+    _malChannelFilter = 'Todos';
+    _malCCAAFilter    = '';
+    _malIssueFilter   = '';
+  }
   document.querySelectorAll('.mc-tab').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.tab === 'list');
+    btn.classList.toggle('active', btn.dataset.tab === _malCurrentTab);
   });
   document.getElementById('malconfig-tabs').style.display = '';
 
@@ -578,25 +592,31 @@ function renderMalConfigModal() {
   const issueKeys = Object.entries(issueCounts).sort(([,a],[,b]) => b - a).map(([k]) => k);
 
   const channelHtml = `<select class="malconfig-filter-select" onchange="switchChannelFilter(this.value)">
-    ${channels.map(ch => `<option value="${escHtml(ch)}">Preset: ${escHtml(ch)}</option>`).join('')}
+    ${channels.map(ch => `<option value="${escHtml(ch)}" ${ch === _malChannelFilter ? 'selected' : ''}>Preset: ${escHtml(ch)}</option>`).join('')}
   </select>`;
 
   const ccaaHtml = ccaas.length
     ? `<select class="malconfig-filter-select" onchange="switchCCAAFilter(this.value)">
-        <option value="">CCAA: Todas</option>
-        ${ccaas.map(c => `<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('')}
+        <option value="" ${_malCCAAFilter === '' ? 'selected' : ''}>CCAA: Todas</option>
+        ${ccaas.map(c => `<option value="${escHtml(c)}" ${c === _malCCAAFilter ? 'selected' : ''}>${escHtml(c)}</option>`).join('')}
        </select>`
     : '';
 
   const issueHtml = issueKeys.length
     ? `<select class="malconfig-filter-select" onchange="switchIssueFilter(this.value)">
-        <option value="">Problema: Todos</option>
-        ${issueKeys.map(k => `<option value="${k}">${escHtml(ISSUE_SHORT_LABELS[k] || k)} (${issueCounts[k]})</option>`).join('')}
+        <option value="" ${_malIssueFilter === '' ? 'selected' : ''}>Problema: Todos</option>
+        ${issueKeys.map(k => `<option value="${k}" ${k === _malIssueFilter ? 'selected' : ''}>${escHtml(ISSUE_SHORT_LABELS[k] || k)} (${issueCounts[k]})</option>`).join('')}
        </select>`
     : '';
 
   document.getElementById('malconfig-tabs').innerHTML = channelHtml + ccaaHtml + issueHtml;
-  renderMalConfigTable(_filteredMalNodes());
+
+  if (_malCurrentTab === 'stats') {
+    document.getElementById('malconfig-tabs').style.display = 'none';
+    renderMalConfigStats();
+  } else {
+    renderMalConfigTable(_filteredMalNodes());
+  }
 }
 
 function switchChannelFilter(channel) {

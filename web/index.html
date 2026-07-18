@@ -178,7 +178,7 @@
   <div class="malconfig-inner nr-inner">
     <div class="malconfig-header">
       <div class="malconfig-title">
-        <button id="node-report-back" class="nr-back" onclick="closeNodeReport(); openMalConfigModal();" style="display:none">← Listado</button>
+        <button id="node-report-back" class="nr-back" onclick="closeNodeReport(); openMalConfigModal(true);" style="display:none">← Listado</button>
         <svg width="16" height="15" viewBox="0 0 22 20" aria-hidden="true"><polygon points="11,1 21,19 1,19" fill="#f97316" stroke="#ef4444" stroke-width="1.5" stroke-linejoin="round"/><text x="11" y="15.5" text-anchor="middle" font-size="9" font-weight="bold" font-family="monospace" fill="#1e293b">!</text></svg>
         Diagnóstico del nodo
       </div>
@@ -197,7 +197,7 @@
         <span>Nodos no optimizados <span class="malconfig-subtitle">· Top 300 por tráfico</span></span>
       </div>
       <div class="malconfig-header-right">
-        <span class="malconfig-updated">Actualizado cada día a las 23:00</span>
+        <span class="malconfig-updated" id="malconfig-updated"></span>
         <button class="malconfig-close" onclick="closeMalConfigModal()" aria-label="Cerrar">✕</button>
       </div>
     </div>

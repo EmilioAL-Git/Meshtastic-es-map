@@ -373,6 +373,15 @@ def analyze_node(node_id):
             "is_fixed":          max_dist < 1000,
         }
 
+    # Nodos móviles por diseño (T1000-E, tags RAK, wearables...): nunca deben
+    # detectarse ni alertarse como "fijo", aunque las pocas posiciones vistas
+    # hasta ahora no muestren movimiento (p.ej. recién encendido, en interior).
+    if is_mobile_by_design(_node_meta.get(node_id, {}).get("hw_model")):
+        if mobility is None:
+            mobility = {"max_distance_m": None, "positions_checked": len(coords), "is_fixed": False}
+        else:
+            mobility["is_fixed"] = False
+
     # ── 5. hop_start del último paquete ──────────────────────────────────────
     hop_start = None
     if packets:

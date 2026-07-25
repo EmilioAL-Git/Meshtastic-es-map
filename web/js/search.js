@@ -15,7 +15,7 @@ function onSearchInput() {
   const results = allResults.slice(0, 5);
 
   if (!results.length) {
-    dd.innerHTML = '<div class="search-no-results">Sin resultados</div>';
+    dd.innerHTML = `<div class="search-no-results">${escHtml(t('search.noResults'))}</div>`;
     dd.classList.add('open');
     return;
   }
@@ -32,7 +32,7 @@ function onSearchInput() {
     </div>`).join('');
 
   if (allResults.length > 5) {
-    dd.innerHTML += `<div class="search-more">y ${allResults.length - 5} más — afina la búsqueda</div>`;
+    dd.innerHTML += `<div class="search-more">${escHtml(t('search.more', { n: allResults.length - 5 }))}</div>`;
   }
 
   dd.querySelectorAll('.search-result').forEach(el => {

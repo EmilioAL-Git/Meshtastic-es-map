@@ -82,7 +82,7 @@ function selectNode(nodeId, fly = false) {
 
     showNodeEdges(nodeId);
   } else {
-    showToast('Ubicación no disponible para este nodo');
+    showToast(t('toast.locationUnavailable'));
   }
 
   // Panel de detalle
@@ -92,27 +92,27 @@ function selectNode(nodeId, fly = false) {
 
   const ago = node.last_seen_ago_min != null
     ? (node.last_seen_ago_min < 60
-      ? `hace ${node.last_seen_ago_min} min`
-      : `hace ${Math.floor(node.last_seen_ago_min/60)}h ${node.last_seen_ago_min%60}min`)
-    : 'desconocido';
+      ? t('detail.agoMin', { n: node.last_seen_ago_min })
+      : t('detail.agoHourMin', { h: Math.floor(node.last_seen_ago_min/60), m: node.last_seen_ago_min%60 }))
+    : t('detail.unknown');
 
   const fields = [
-    ['ID',           node.node_id],
-    ['Nombre corto', node.short_name || '—'],
-    ['Hardware',     node.hardware   || '—'],
-    ['Rol',          node.role       || '—'],
-    ...(node.channel       ? [['Canal',       node.channel]]                       : []),
-    ...(node.firmware      ? [['Firmware',    node.firmware]]                      : []),
-    ['Gateway MQTT', node.is_mqtt_gateway ? '✓ Sí' : 'No'],
-    ...(node.battery_level != null ? [['Batería',     node.battery_level + '%']]   : []),
-    ...(node.voltage       != null ? [['Voltaje',     node.voltage.toFixed(2) + ' V']] : []),
-    ...(node.snr           != null ? [['SNR',         node.snr + ' dB']]           : []),
-    ...(node.rssi          != null ? [['RSSI',        node.rssi + ' dBm']]         : []),
-    ...(node.channel_util  != null ? [['Chan. util.', node.channel_util.toFixed(1) + '%']] : []),
-    ...(node.hops_away     != null ? [['Saltos',      node.hops_away]]             : []),
-    ['Latitud',  node.latitude  != null ? node.latitude.toFixed(5)  : '—'],
-    ['Longitud', node.longitude != null ? node.longitude.toFixed(5) : '—'],
-    ...(node.altitude != null ? [['Altitud', node.altitude + ' m']] : []),
+    ['ID',                   node.node_id],
+    [t('detail.shortName'),  node.short_name || '—'],
+    [t('detail.hardware'),   node.hardware   || '—'],
+    [t('detail.role'),       node.role       || '—'],
+    ...(node.channel       ? [[t('detail.channel'),     node.channel]]                   : []),
+    ...(node.firmware      ? [[t('detail.firmware'),    node.firmware]]                  : []),
+    [t('detail.gatewayMqtt'), node.is_mqtt_gateway ? t('common.yes') : t('common.no')],
+    ...(node.battery_level != null ? [[t('detail.battery'),  node.battery_level + '%']]   : []),
+    ...(node.voltage       != null ? [[t('detail.voltage'),  node.voltage.toFixed(2) + ' V']] : []),
+    ...(node.snr           != null ? [[t('detail.snr'),      node.snr + ' dB']]           : []),
+    ...(node.rssi          != null ? [[t('detail.rssi'),     node.rssi + ' dBm']]         : []),
+    ...(node.channel_util  != null ? [[t('detail.chanUtil'), node.channel_util.toFixed(1) + '%']] : []),
+    ...(node.hops_away     != null ? [[t('detail.hops'),     node.hops_away]]             : []),
+    [t('detail.latitude'),  node.latitude  != null ? node.latitude.toFixed(5)  : '—'],
+    [t('detail.longitude'), node.longitude != null ? node.longitude.toFixed(5) : '—'],
+    ...(node.altitude != null ? [[t('detail.altitude'), node.altitude + ' m']] : []),
     ...(() => {
       const r = (node.precision_bits != null && node.latitude != null)
         ? precisionRadiusMeters(node.precision_bits, node.latitude) : 0;
@@ -120,9 +120,9 @@ function selectNode(nodeId, fly = false) {
       const label = r >= 1000
         ? (r / 1000).toFixed(1) + ' km'
         : Math.round(r) + ' m';
-      return [['Precisión ubicación', label + ' (círculo)']];
+      return [[t('detail.locationPrecision'), t('detail.precisionCircleValue', { label })]];
     })(),
-    ['Último visto', ago],
+    [t('detail.lastSeen'), ago],
   ];
 
   // Solo conexiones con nodos activos (vistos en las últimas 24h)
@@ -136,9 +136,9 @@ function selectNode(nodeId, fly = false) {
   const nTrace     = nodeEdges.filter(e => e.edge_type !== 'neighbor').length;
   if (nodeEdges.length > 0) {
     const parts = [];
-    if (nNeighbour) parts.push(`${nNeighbour} vecino${nNeighbour > 1 ? 's' : ''}`);
-    if (nTrace)     parts.push(`${nTrace} conexión${nTrace > 1 ? 'es' : ''}`);
-    fields.splice(fields.length - 1, 0, ['Conexiones', parts.join(' · ')]);
+    if (nNeighbour) parts.push(tp('detail.neighbors', nNeighbour, { n: nNeighbour }));
+    if (nTrace)     parts.push(tp('detail.connections', nTrace, { n: nTrace }));
+    fields.splice(fields.length - 1, 0, [t('detail.connectionsLabel'), parts.join(' · ')]);
   }
 
   const fieldsHtml = fields
@@ -152,15 +152,15 @@ function selectNode(nodeId, fly = false) {
   let   malBanner = '';
   if (malData && malIssues.length > 0) {
     const issuesHtml = malIssues.slice(0, 3).map(i =>
-      `<div class="mal-config-issue issue-${i.severity}">${escHtml(shortIssueLabel(i.label))}</div>`
+      `<div class="mal-config-issue issue-${i.severity}">${escHtml(issueChipLabel(i))}</div>`
     ).join('');
     malBanner = `<div class="mal-config-banner">
       <div class="mal-config-row">
         <svg width="14" height="13" viewBox="0 0 22 20" aria-hidden="true"><polygon points="11,1 21,19 1,19" fill="#f97316" stroke="#ef4444" stroke-width="2" stroke-linejoin="round"/><text x="11" y="15.5" text-anchor="middle" font-size="10" font-weight="bold" font-family="monospace" fill="#1e293b">!</text></svg>
-        <span>Este nodo puede estar <strong>no optimizado</strong>.</span>
+        <span>${t('detail.malBannerText')}</span>
       </div>
       ${issuesHtml}
-      <button class="mal-config-link" onclick="openNodeReport('${node.node_id}')">Ver recomendaciones →</button>
+      <button class="mal-config-link" onclick="openNodeReport('${node.node_id}')">${escHtml(t('detail.malBannerLink'))}</button>
     </div>`;
   }
 

@@ -391,12 +391,13 @@ def _to_unix_seconds(v) -> int | None:
         return None
     try:
         v = int(v)
-        # Si viene en microsegundos (>= año 3000 en segundos) → dividir
-        if v > 32503680000:
-            v = v // 1_000_000
-        # Si viene en milisegundos
+        # El umbral de microsegundos debe ser mayor que cualquier timestamp
+        # real en milisegundos (~10^13 hoy en día); si no, un ms real caería
+        # aquí y se dividiría por 1e6 en vez de por 1e3 (resultado ~1000x menor)
+        if v > 10 ** 14:
+            v = v // 1_000_000  # microsegundos
         elif v > 9_999_999_999:
-            v = v // 1000
+            v = v // 1000       # milisegundos
         return v
     except (TypeError, ValueError):
         return None

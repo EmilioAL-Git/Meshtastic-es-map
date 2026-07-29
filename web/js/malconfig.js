@@ -412,12 +412,20 @@ function openNodeReport(nodeId) {
     const isFixed = mob.is_fixed;
     const dist    = mob.max_distance_m;
     const checks  = mob.positions_checked;
-    mobHtml = `<div class="nr-mobility nr-mobility-${isFixed ? 'fixed' : 'mobile'}">
-      <span class="nr-mob-icon">${isFixed ? '📍' : '🚶'}</span>
-      <span>Detectado como <strong>${isFixed ? 'nodo fijo' : 'nodo móvil'}</strong>
-        — desplazamiento máximo ${dist >= 1000 ? (dist/1000).toFixed(1)+'km' : dist+'m'}
-        (${checks} posiciones analizadas)</span>
-    </div>`;
+    if (isFixed === null) {
+      mobHtml = `<div class="nr-mobility nr-mobility-pending">
+        <span class="nr-mob-icon">⏳</span>
+        <span>Movilidad <strong>no disponible</strong>
+          — aún no hay suficientes posiciones para determinarla (${checks} analizadas)</span>
+      </div>`;
+    } else {
+      mobHtml = `<div class="nr-mobility nr-mobility-${isFixed ? 'fixed' : 'mobile'}">
+        <span class="nr-mob-icon">${isFixed ? '📍' : '🚶'}</span>
+        <span>Detectado como <strong>${isFixed ? 'nodo fijo' : 'nodo móvil'}</strong>
+          — desplazamiento máximo ${dist >= 1000 ? (dist/1000).toFixed(1)+'km' : dist+'m'}
+          (${checks} posiciones analizadas)</span>
+      </div>`;
+    }
   }
 
   // Indicador de hop_start (solo si no está ya en la sección de problemas)
@@ -641,7 +649,9 @@ function renderMalConfigTable(nodes) {
           const issues = detectIssues(n);
           const mob    = n.mobility;
           const mobChip = mob != null
-            ? `<span class="mob-chip ${mob.is_fixed ? 'mob-fixed' : 'mob-mobile'}">${mob.is_fixed ? '📍 Fijo' : '🚶 Móvil'}</span>`
+            ? (mob.is_fixed === null
+                ? `<span class="mob-chip mob-pending">⏳ No disponible</span>`
+                : `<span class="mob-chip ${mob.is_fixed ? 'mob-fixed' : 'mob-mobile'}">${mob.is_fixed ? '📍 Fijo' : '🚶 Móvil'}</span>`)
             : '';
           return `<tr class="mc-row" onclick="openNodeReport(${n.node_id})">
             <td class="mc-rank">${i + 1}</td>

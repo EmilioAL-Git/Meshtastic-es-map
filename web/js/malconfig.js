@@ -273,8 +273,7 @@ function _doRenderStats(history) {
         <div class="mcs-card-val">${withIss.length}</div>
         <div class="mcs-card-lbl">Con problemas detectados</div>
       </div>
-    </div>
-    <div class="mcs-scope-note">Solo se analizan los ~300 nodos con mayor tráfico — puede haber más nodos con problemas no detectados.</div>`;
+    </div>`;
 
   // ── Issue type bar chart ──────────────────────────────────────────────────
   const issuesBarHtml = `

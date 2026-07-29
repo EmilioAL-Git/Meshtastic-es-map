@@ -32,3 +32,6 @@ jobs:
             echo "Checking $f"
             node --check "$f"
           done
+
+      - name: Run collector tests
+        run: python -m unittest discover -s tests -v

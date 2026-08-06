@@ -1,4 +1,4 @@
-// ─── Feed en vivo: MQTT → WebSocket → animación en el mapa ─────────────────────
+// ─── Feed en directo: MQTT → WebSocket → animación en el mapa ─────────────────────
 
 let liveTracked = new Map();  // packet_id → { info, stages, legIndex, marker, halo, trails, color, expiring }
 let liveLayer;                // L.layerGroup de marcadores/halos animados
@@ -571,23 +571,29 @@ function renderPacketDetail(packetId) {
     ? 'Ruta confirmada — al menos un salto trae el nodo real que retransmitió (relay_node)'
     : 'Ruta aproximada — estimada por qué gateways oyeron cada salto, sin relay_node';
 
-  const stagesRows = stages.length
+  const hopsHtml = stages.length
     ? stages.map((s, i) => `
-      <tr>
-        <td>${i + 1}</td>
-        <td>${s.hop_limit}</td>
-        <td>${s.gateway_ids.map(nodeLabel).join(', ')}</td>
-        <td>${s.relay_node ? nodeLabel(s.relay_node) : '—'}</td>
-        <td>${formatTime(s.rx_time)}</td>
-      </tr>`).join('')
-    : '<tr><td colspan="5">Sin saltos con coordenadas conocidas todavía</td></tr>';
+      <div class="pkt-hop">
+        <div class="pkt-hop-num">${i + 1}</div>
+        <div class="pkt-hop-body">
+          <div class="pkt-hop-meta">
+            <span>hop_limit ${s.hop_limit}</span>
+            <span>${formatTime(s.rx_time)}</span>
+          </div>
+          <div class="pkt-hop-gateways">
+            ${s.gateway_ids.map(gw => `<span class="pkt-gw-chip${gw === s.relay_node ? ' relay' : ''}">${gw === s.relay_node ? '🔗 ' : ''}${nodeLabel(gw)}</span>`).join('')}
+            ${s.relay_node && !s.gateway_ids.includes(s.relay_node) ? `<span class="pkt-gw-chip relay">🔗 ${nodeLabel(s.relay_node)}</span>` : ''}
+          </div>
+        </div>
+      </div>`).join('')
+    : '<p class="pkt-hop-empty">Sin saltos con coordenadas conocidas todavía</p>';
 
   const textRow = info.text
     ? `<tr><td>Mensaje</td><td>💬 “${escHtml(info.text)}”</td></tr>`
     : '';
 
   return `
-    <table class="malconfig-table">
+    <table class="malconfig-table pkt-kv">
       <tr><td>Packet ID</td><td>${info.packet_id}</td></tr>
       <tr><td>Origen</td><td>${nodeLabelFull(info.from)}</td></tr>
       <tr><td>Destino</td><td>${nodeLabelFull(info.to)}</td></tr>
@@ -597,11 +603,11 @@ function renderPacketDetail(packetId) {
       ${textRow}
       <tr><td>Confianza de ruta</td><td>${confLabel}</td></tr>
     </table>
-    <h4 style="margin:16px 0 8px;font-size:12px;color:var(--muted);font-family:var(--mono)">Saltos detectados (${stages.length})</h4>
-    <table class="malconfig-table">
-      <thead><tr><th>#</th><th>hop_limit</th><th>Gateways que la oyeron</th><th>relay_node</th><th>Hora</th></tr></thead>
-      <tbody>${stagesRows}</tbody>
-    </table>`;
+    <h4 class="pkt-hops-title">
+      Saltos detectados (${stages.length})
+      <span class="pkt-hops-hint">🔗 = relay_node confirmado en ese salto</span>
+    </h4>
+    <div class="pkt-hops">${hopsHtml}</div>`;
 }
 
 // ─── Mini-mapa del desglose ─────────────────────────────────────────────────
@@ -894,9 +900,9 @@ function toggleSound() {
 
 // ─── Línea de tiempo: barras de actividad + reproducción ───────────────────
 // Reutiliza handleLiveEvent() para "reproducir" — un paquete histórico se
-// alimenta al mismo pipeline que uno en vivo (animación, panel, Modo Focus
+// alimenta al mismo pipeline que uno en directo (animación, panel, Modo Focus
 // incluido), solo que la fuente es /timeline en vez del WebSocket. Mientras
-// se reproduce, el feed en vivo real se pausa (mismo livePaused de siempre)
+// se reproduce, el feed en directo real se pausa (mismo livePaused de siempre)
 // para no mezclar ambos.
 
 let timelineRangeS = 3600;
@@ -1173,7 +1179,7 @@ function hideTimelineHover() {
 }
 
 // Arrastrar el cursor sobre las barras: el extremo derecho es "Live" — si
-// se suelta cerca de ahí, vuelve directo a en vivo en vez de quedarse
+// se suelta cerca de ahí, vuelve directo a en directo en vez de quedarse
 // reproduciendo un instante del pasado a medio segundo de "ahora".
 let timelineDragging = false;
 const TIMELINE_LIVE_EDGE_FRAC = 0.02;

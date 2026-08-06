@@ -334,7 +334,7 @@ function nodeLabel(nodeId) {
   if (!nodeId) return '?';
   if (nodeId === '!ffffffff') return 'Todos';
   const n = nodesById.get(nodeId);
-  return n && n.short_name ? `${escHtml(n.short_name)}` : escHtml(nodeId);
+  return n && n.long_name ? escHtml(n.long_name) : escHtml(nodeId);
 }
 
 function renderLogRow(info, { hops, path_confidence }) {
@@ -361,8 +361,8 @@ function nodeLabelFull(nodeId) {
   if (!nodeId) return '—';
   if (nodeId === '!ffffffff') return 'Todos (broadcast)';
   const n = nodesById.get(nodeId);
-  return n && n.short_name
-    ? `${escHtml(n.short_name)} — ${escHtml(n.long_name || '')} (${escHtml(nodeId)})`
+  return n && n.long_name
+    ? `${escHtml(n.long_name)} (${escHtml(n.short_name || '')}) — ${escHtml(nodeId)}`
     : escHtml(nodeId);
 }
 

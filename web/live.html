@@ -174,7 +174,7 @@
 <div class="malconfig-modal" id="live-info-modal" onclick="if(event.target===this) closeLiveInfo()">
   <div class="malconfig-inner live-info-inner">
     <div class="malconfig-header">
-      <div class="malconfig-title">Cómo funciona el directo</div>
+      <div class="malconfig-title">Cómo funciona el visualizador de la actividad en directo</div>
       <div class="malconfig-header-right">
         <button class="malconfig-close" onclick="closeLiveInfo()" aria-label="Cerrar">✕</button>
       </div>
@@ -182,16 +182,13 @@
     <div class="malconfig-content live-info-content">
       <h4>Qué se ve aquí</h4>
       <p>Esta página escucha en directo el broker MQTT de la red Meshtastic
-      España — <strong>no es solo España</strong>: el feed cubre toda la
-      malla EU_868, así que la mayoría de paquetes vienen de nodos y
-      gateways de otros países que no aparecen en el mapa (se muestran igual,
-      simplemente sin poder dibujar su origen si no lo conocemos).</p>
+      España.</p>
 
       <h4>Cómo se reconstruye la ruta</h4>
       <p>Un mismo paquete puede ser oído por varios gateways MQTT. Se
       correla por su <code>packet_id</code> y se ordenan las apariciones por
       <code>hop_limit</code> descendente para aproximar el camino salto a
-      salto. Si el firmware del nodo incluye el campo <code>relay_node</code>,
+      salto. Si el paquete del nodo incluye el campo <code>relay_node</code>,
       la ruta de ese salto se marca como <strong>confirmada</strong>; si no,
       es una <strong>estimación</strong> basada en qué gateways oyeron cada
       salto — con muchos gateways cerca puede no coincidir exactamente con
@@ -200,9 +197,9 @@
       tiene el puente MQTT activado — y esos son una minoría de la malla. Si
       un paquete pasa de un nodo normal a otro nodo normal sin que ninguno de
       los dos sea gateway MQTT, ese salto ocurre por radio pero nunca llega
-      al broker: no falta información nuestra, es que no existe ningún dato
+      a la web: no falta información nuestra, es que no existe ningún dato
       que lo reporte. Por eso el desglose casi nunca muestra <em>todos</em>
-      los saltos reales, solo los puntos donde algún gateway MQTT lo pescó de
+      los saltos reales, solo los puntos donde algún gateway MQTT lo "pescó" de
       camino.</p>
 
       <h4>Qué contenido se puede leer</h4>
@@ -215,12 +212,10 @@
 
       <h4>Limitaciones</h4>
       <ul>
-        <li>No hay batería, SNR ni RSSI — ese dato no lo expone el feed.</li>
         <li>La mayoría de saltos reales no se ven: solo se registran los que pasan por un nodo con MQTT activado.</li>
         <li>La ruta sin <code>relay_node</code> es aproximada, no un traceroute real.</li>
         <li>En el mapa solo se dibujan los últimos 20 paquetes en vuelo a la vez.</li>
-        <li>El histórico de la línea de tiempo guarda como mucho 7 días.</li>
-        <li>Depende de que el broker MQTT esté disponible en cada momento.</li>
+        <li>El histórico de la línea de tiempo guarda 7 días.</li>
       </ul>
     </div>
   </div>

@@ -1154,6 +1154,14 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.live-log-row .lr-text {
+  margin-top: 3px;
+  color: var(--accent2);
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .live-log-row .lr-meta {
   margin-top: 3px;
   display: flex;

@@ -50,6 +50,7 @@ class PacketState:
     hop_start: int | None
     channel: int | None
     portnum: str | None
+    text: str | None = None
     stages: dict[int, StageInfo] = field(default_factory=dict)
 
     @property
@@ -79,6 +80,7 @@ class PacketState:
             "hop_start": self.hop_start,
             "channel": self.channel,
             "portnum": self.portnum,
+            "text": self.text,
             "path_confidence": self.path_confidence,
         }
 
@@ -112,6 +114,7 @@ class Correlator:
                 hop_start=event.get("hop_start"),
                 channel=event.get("channel"),
                 portnum=event.get("portnum"),
+                text=event.get("text"),
             )
             self._packets[packet_id] = state
             out.append(state.new_event())

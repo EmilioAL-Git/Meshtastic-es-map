@@ -2,11 +2,14 @@
 Cliente MQTT que decodifica paquetes ServiceEnvelope de Meshtastic y los
 entrega, ya saneados, a un asyncio.Queue.
 
-Importante (privacidad): esta función NUNCA lee ni reenvía
-`packet.decoded.payload` ni el contenido del mensaje una vez descifrado.
-Solo se extraen metadatos de enrutamiento (incluido el portnum real, si se
-puede recuperar — ver try_decrypt_default_channel). No añadir el payload
-aquí sin revisar tests/test_livefeed.py, que falla si aparece.
+Privacidad: por defecto solo se extraen metadatos de enrutamiento — nunca
+el contenido del mensaje. La única excepción, explícitamente pedida y
+acotada, es TEXT_MESSAGE_APP: si el portnum decodificado (directamente, o
+descifrado con la PSK pública por defecto — ver try_decrypt_default_channel)
+es un mensaje de texto, se incluye su contenido en el campo "text". Un
+canal con PSK propia sigue sin poder descifrarse, así que su texto nunca
+se expone. Cualquier otro portnum (posición, telemetría...) nunca lleva
+"text". Ver tests/test_livefeed.py para las garantías exactas.
 """
 
 from __future__ import annotations
@@ -66,6 +69,17 @@ def try_decrypt_default_channel(packet_id: int, from_node: int, ciphertext: byte
     return data
 
 
+def _safe_text(payload: bytes) -> str | None:
+    """Decodifica un payload de TEXT_MESSAGE_APP como UTF-8. None si no es
+    texto válido (protege contra basura si el "descifrado" era en realidad
+    un canal con PSK propia que coló un portnum por casualidad)."""
+    try:
+        text = payload.decode("utf-8").strip()
+    except UnicodeDecodeError:
+        return None
+    return text or None
+
+
 def decode_service_envelope(payload: bytes) -> dict | None:
     """Decodifica un ServiceEnvelope protobuf a un dict saneado.
 
@@ -83,16 +97,21 @@ def decode_service_envelope(payload: bytes) -> dict | None:
         return None
 
     variant = packet.WhichOneof("payload_variant")
+    text = None
     if variant == "decoded":
         try:
             portnum = portnums_pb2.PortNum.Name(packet.decoded.portnum)
         except ValueError:
             portnum = None
+        if packet.decoded.portnum == portnums_pb2.PortNum.TEXT_MESSAGE_APP:
+            text = _safe_text(packet.decoded.payload)
     elif variant == "encrypted":
         portnum = "ENCRYPTED"
         data = try_decrypt_default_channel(packet.id, getattr(packet, "from"), packet.encrypted)
         if data is not None:
             portnum = portnums_pb2.PortNum.Name(data.portnum)
+            if data.portnum == portnums_pb2.PortNum.TEXT_MESSAGE_APP:
+                text = _safe_text(data.payload)
     else:
         portnum = None
 
@@ -106,6 +125,7 @@ def decode_service_envelope(payload: bytes) -> dict | None:
         "hop_start": packet.hop_start or None,
         "channel": packet.channel or None,
         "portnum": portnum,
+        "text": text,
         "gateway_id": envelope.gateway_id or None,
         "rx_time": rx_time,
         "relay_node": format_node_id(packet.relay_node) if packet.relay_node else None,

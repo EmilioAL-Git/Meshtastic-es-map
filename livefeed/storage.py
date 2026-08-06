@@ -5,7 +5,8 @@ Permite que un enlace compartido a un paquete concreto (?packet=<id>)
 siga funcionando más allá de la ventana de correlación en memoria de
 Correlator (LIVE_CORRELATION_WINDOW_S, segundos) — aquí se guardan
 durante LIVEFEED_RETENTION_DAYS (días). Solo metadatos de enrutamiento,
-igual que el resto del pipeline — nunca contenido de mensajes.
+salvo el texto de TEXT_MESSAGE_APP cuando es descifrable (ver
+mqtt_source.py) — es la única excepción, acotada a ese portnum.
 """
 
 from __future__ import annotations
@@ -36,6 +37,10 @@ def init_db(path: str) -> sqlite3.Connection:
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_packets_last_seen ON packets(last_seen)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_packets_first_seen ON packets(first_seen)")
+    try:
+        conn.execute("ALTER TABLE packets ADD COLUMN text TEXT")
+    except sqlite3.OperationalError:
+        pass  # la columna ya existe (base de datos de una versión anterior)
     conn.commit()
     return conn
 
@@ -46,20 +51,21 @@ def record_event(conn: sqlite3.Connection, event: dict) -> None:
         conn.execute(
             """
             INSERT INTO packets
-                (packet_id, from_id, to_id, hop_start, channel, portnum, path_confidence, stages_json, first_seen, last_seen)
-            VALUES (?, ?, ?, ?, ?, ?, ?, '[]', ?, ?)
+                (packet_id, from_id, to_id, hop_start, channel, portnum, text, path_confidence, stages_json, first_seen, last_seen)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, ?)
             ON CONFLICT(packet_id) DO UPDATE SET
                 from_id = excluded.from_id,
                 to_id = excluded.to_id,
                 hop_start = excluded.hop_start,
                 channel = excluded.channel,
                 portnum = excluded.portnum,
+                text = excluded.text,
                 path_confidence = excluded.path_confidence,
                 last_seen = excluded.last_seen
             """,
             (
                 event["packet_id"], event["from"], event["to"], event["hop_start"],
-                event["channel"], event["portnum"], event["path_confidence"], now, now,
+                event["channel"], event["portnum"], event.get("text"), event["path_confidence"], now, now,
             ),
         )
     elif event["type"] == "packet_stage":
@@ -74,7 +80,7 @@ def record_event(conn: sqlite3.Connection, event: dict) -> None:
 
 def get_packet(conn: sqlite3.Connection, packet_id: int) -> dict | None:
     row = conn.execute(
-        "SELECT packet_id, from_id, to_id, hop_start, channel, portnum, path_confidence, stages_json "
+        "SELECT packet_id, from_id, to_id, hop_start, channel, portnum, path_confidence, stages_json, text "
         "FROM packets WHERE packet_id = ?",
         (packet_id,),
     ).fetchone()
@@ -89,6 +95,7 @@ def get_packet(conn: sqlite3.Connection, packet_id: int) -> dict | None:
         "portnum": row[5],
         "path_confidence": row[6],
         "stages": json.loads(row[7]),
+        "text": row[8],
     }
 
 
@@ -114,7 +121,7 @@ def list_range(conn: sqlite3.Connection, since: float, until: float, limit: int 
     reproducir la línea de tiempo. Ordenados por primera vez visto."""
     rows = conn.execute(
         """
-        SELECT packet_id, from_id, to_id, hop_start, channel, portnum, path_confidence, stages_json, first_seen
+        SELECT packet_id, from_id, to_id, hop_start, channel, portnum, path_confidence, stages_json, first_seen, text
         FROM packets
         WHERE first_seen >= ? AND first_seen <= ?
         ORDER BY first_seen ASC
@@ -126,7 +133,7 @@ def list_range(conn: sqlite3.Connection, since: float, until: float, limit: int 
         {
             "packet_id": row[0], "from": row[1], "to": row[2], "hop_start": row[3],
             "channel": row[4], "portnum": row[5], "path_confidence": row[6],
-            "stages": json.loads(row[7]), "first_seen": row[8],
+            "stages": json.loads(row[7]), "first_seen": row[8], "text": row[9],
         }
         for row in rows
     ]

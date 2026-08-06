@@ -68,12 +68,21 @@ class DecodeServiceEnvelopeTests(unittest.TestCase):
         self.assertEqual(event["gateway_id"], "!11111111")
         self.assertEqual(event["portnum"], "TEXT_MESSAGE_APP")
 
-    def test_never_exposes_message_payload(self):
-        """Guarda de regresión de privacidad: el payload nunca debe aparecer."""
+    def test_decoded_text_message_shows_text(self):
+        """Única excepción a la privacidad, pedida explícitamente: el texto
+        de un TEXT_MESSAGE_APP legible (no cifrado, o descifrable con la PSK
+        por defecto) se expone en el campo "text"."""
         event = mqtt_source.decode_service_envelope(make_envelope())
-        serialized = json.dumps(event)
-        self.assertNotIn("contenido secreto", serialized)
-        self.assertNotIn("payload", event)
+        self.assertEqual(event["text"], "contenido secreto del mensaje")
+
+    def test_non_text_portnum_never_exposes_text(self):
+        """Cualquier portnum que no sea TEXT_MESSAGE_APP nunca lleva texto,
+        aunque tengamos el payload delante (p.ej. POSITION_APP)."""
+        event = mqtt_source.decode_service_envelope(
+            make_envelope(portnum=portnums_pb2.PortNum.POSITION_APP)
+        )
+        self.assertEqual(event["portnum"], "POSITION_APP")
+        self.assertIsNone(event["text"])
 
     def test_encrypted_packet_reports_portnum_unknown(self):
         # Ciphertext arbitrario que no descifra a un Data protobuf válido con
@@ -104,10 +113,39 @@ class DecodeServiceEnvelopeTests(unittest.TestCase):
         self.assertEqual(event["portnum"], "POSITION_APP")
 
         # Guarda de regresión de privacidad: aunque se descifre para sacar el
-        # portnum, el contenido del mensaje no debe filtrarse nunca.
+        # portnum, el contenido no se expone salvo que sea TEXT_MESSAGE_APP.
         serialized = json.dumps(event)
         self.assertNotIn("posicion secreta", serialized)
-        self.assertNotIn("payload", event)
+        self.assertIsNone(event["text"])
+
+    def test_encrypted_default_psk_text_message_shows_text(self):
+        """Un TEXT_MESSAGE_APP en un canal sin PSK propia sí revela el texto
+        — es la excepción explícitamente pedida, acotada a este portnum."""
+        data = mesh_pb2.Data()
+        data.portnum = portnums_pb2.PortNum.TEXT_MESSAGE_APP
+        data.payload = "hola mesh España".encode("utf-8")
+        packet_id, from_id = 777, 0xAABBCCDD
+        ciphertext = encrypt_with_default_key(packet_id, from_id, data.SerializeToString())
+
+        env = mqtt_pb2.ServiceEnvelope()
+        env.gateway_id = "!11111111"
+        env.packet.id = packet_id
+        setattr(env.packet, "from", from_id)
+        env.packet.to = 0xFFFFFFFF
+        env.packet.hop_limit = 3
+        env.packet.hop_start = 3
+        env.packet.encrypted = ciphertext
+
+        event = mqtt_source.decode_service_envelope(env.SerializeToString())
+        self.assertEqual(event["portnum"], "TEXT_MESSAGE_APP")
+        self.assertEqual(event["text"], "hola mesh España")
+
+    def test_custom_psk_encrypted_never_exposes_text(self):
+        # Ciphertext que no descifra a un Data válido con la PSK por defecto
+        # (canal con PSK propia) — ni portnum real ni texto, como antes.
+        event = mqtt_source.decode_service_envelope(make_envelope(encrypted=True))
+        self.assertEqual(event["portnum"], "ENCRYPTED")
+        self.assertIsNone(event["text"])
 
     def test_relay_node_present(self):
         event = mqtt_source.decode_service_envelope(make_envelope(relay_node=0x11))

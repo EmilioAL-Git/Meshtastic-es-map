@@ -438,8 +438,12 @@ function renderLogRow(info, { hops, path_confidence }) {
   const confClass = path_confidence === 'relay_node' ? 'lr-conf-relay' : 'lr-conf-heuristic';
   const confLabel = path_confidence === 'relay_node' ? 'ruta confirmada' : 'ruta aproximada';
   const color = packetColor(info.packet_id);
+  const textHtml = info.text
+    ? `<div class="lr-text">💬 “${escHtml(info.text)}”</div>`
+    : '';
   return `
     <div class="lr-route"><span class="lr-swatch" style="background:${color};box-shadow:0 0 5px ${color}"></span>${nodeLabel(info.from)} → ${nodeLabel(info.to)}</div>
+    ${textHtml}
     <div class="lr-meta">
       <span>${hops} salto${hops === 1 ? '' : 's'}</span>
       <span>${escHtml(info.portnum || '—')}</span>
@@ -482,6 +486,10 @@ function renderPacketDetail(packetId) {
       </tr>`).join('')
     : '<tr><td colspan="5">Sin saltos con coordenadas conocidas todavía</td></tr>';
 
+  const textRow = info.text
+    ? `<tr><td>Mensaje</td><td>💬 “${escHtml(info.text)}”</td></tr>`
+    : '';
+
   return `
     <table class="malconfig-table">
       <tr><td>Packet ID</td><td>${info.packet_id}</td></tr>
@@ -490,6 +498,7 @@ function renderPacketDetail(packetId) {
       <tr><td>hop_start</td><td>${info.hop_start ?? '—'}</td></tr>
       <tr><td>Canal</td><td>${info.channel ?? '—'}</td></tr>
       <tr><td>Tipo (portnum)</td><td>${escHtml(info.portnum || '—')}</td></tr>
+      ${textRow}
       <tr><td>Confianza de ruta</td><td>${confLabel}</td></tr>
     </table>
     <h4 style="margin:16px 0 8px;font-size:12px;color:var(--muted);font-family:var(--mono)">Saltos detectados (${stages.length})</h4>
@@ -623,6 +632,7 @@ async function loadSharedPacket(rawId) {
       info: {
         packet_id: data.packet_id, from: data.from, to: data.to,
         hop_start: data.hop_start, channel: data.channel, portnum: data.portnum,
+        text: data.text,
       },
       stages: data.stages,
       path_confidence: data.path_confidence,

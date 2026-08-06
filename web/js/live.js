@@ -3,6 +3,7 @@
 let liveTracked = new Map();  // packet_id → { info, stages, legIndex, marker, halo, trails, color, expiring }
 let liveLayer;                // L.layerGroup de marcadores/halos animados
 let liveTrailLayer;           // L.layerGroup de las líneas de recorrido (por debajo de los marcadores)
+let liveSiblingLayer;         // L.layerGroup de las líneas de "mismo salto oído por varios gateways"
 let livePingLayer;            // L.layerGroup de los pings de origen
 let liveNodeLayer;            // L.layerGroup de puntos base de nodos
 let liveWs = null;
@@ -57,9 +58,12 @@ function initLiveMap() {
 
   liveNodeLayer = L.layerGroup().addTo(map);
   liveTrailLayer = L.layerGroup().addTo(map);
+  liveSiblingLayer = L.layerGroup().addTo(map);
   liveLayer = L.layerGroup().addTo(map);
   livePingLayer = L.layerGroup().addTo(map);
   liveFocusLayer = L.layerGroup().addTo(map);
+
+  applyAllLiveLayerVisibility();
 }
 
 function nodeTooltipHtml(n) {
@@ -250,7 +254,7 @@ function drawStageSiblingLines(tracked, stage) {
     const line = L.polyline([a, b], {
       pane: 'livePane', color: tracked.color, weight: 1.5, opacity: 0.35,
       dashArray: '3 4', interactive: false,
-    }).addTo(liveTrailLayer);
+    }).addTo(liveSiblingLayer);
     tracked.trails.push(line);
   }
 }
@@ -349,7 +353,12 @@ function expirePacket(packetId) {
       else l.setStyle({ opacity, fillOpacity: opacity });
     }
     if (t < 1) requestAnimationFrame(step);
-    else layers.forEach(l => (liveLayer.hasLayer(l) ? liveLayer : liveTrailLayer).removeLayer(l));
+    else layers.forEach(l => {
+      const owner = liveLayer.hasLayer(l) ? liveLayer
+        : liveSiblingLayer.hasLayer(l) ? liveSiblingLayer
+        : liveTrailLayer;
+      owner.removeLayer(l);
+    });
   }
   requestAnimationFrame(step);
 }
@@ -366,6 +375,7 @@ function addLogRow(event) {
   const row = document.createElement('div');
   row.className = 'live-log-row';
   row.id = 'live-log-row-' + event.packet_id;
+  row.dataset.confidence = event.path_confidence === 'relay_node' ? 'relay' : 'heuristic';
   row.innerHTML = renderLogRow(event, { hop_start: event.hop_start, hops: 0, path_confidence: event.path_confidence });
   row.addEventListener('click', () => openPacketDetail(event.packet_id));
   log.insertBefore(row, log.firstChild);
@@ -386,6 +396,7 @@ function updateLogRow(stageEvent) {
   if (!row) return;
   const tracked = liveTracked.get(stageEvent.packet_id);
   if (!tracked) return;
+  row.dataset.confidence = stageEvent.path_confidence === 'relay_node' ? 'relay' : 'heuristic';
   row.innerHTML = renderLogRow(tracked.info, {
     hop_start: tracked.info.hop_start,
     hops: stageEvent.stages.length,
@@ -662,7 +673,7 @@ function resetLiveState() {
   for (const tracked of liveTracked.values()) {
     if (tracked.marker) liveLayer.removeLayer(tracked.marker);
     if (tracked.halo) liveLayer.removeLayer(tracked.halo);
-    tracked.trails.forEach(l => liveTrailLayer.removeLayer(l));
+    tracked.trails.forEach(l => { liveTrailLayer.removeLayer(l); liveSiblingLayer.removeLayer(l); });
   }
   liveTracked.clear();
   livePacketLog.clear();
@@ -987,9 +998,59 @@ function hideTimelineHover() {
   if (tooltip) tooltip.style.display = 'none';
 }
 
+// Arrastrar el cursor sobre las barras: el extremo derecho es "Live" — si
+// se suelta cerca de ahí, vuelve directo a en vivo en vez de quedarse
+// reproduciendo un instante del pasado a medio segundo de "ahora".
+let timelineDragging = false;
+const TIMELINE_LIVE_EDGE_FRAC = 0.02;
+
+function timelineEventX(e) {
+  return e.changedTouches ? e.changedTouches[0] : (e.touches ? e.touches[0] : e);
+}
+
+function onTimelinePointerDown(e) {
+  timelineDragging = true;
+  updateTimelineDragPreview(timelineEventX(e));
+  window.addEventListener('mousemove', onTimelinePointerMove);
+  window.addEventListener('mouseup', onTimelinePointerUp);
+  window.addEventListener('touchmove', onTimelinePointerMove, { passive: false });
+  window.addEventListener('touchend', onTimelinePointerUp);
+}
+
+function onTimelinePointerMove(e) {
+  if (!timelineDragging) return;
+  if (e.cancelable) e.preventDefault();
+  updateTimelineDragPreview(timelineEventX(e));
+}
+
+function updateTimelineDragPreview(e) {
+  enterReplayView();
+  replayCursorTime = timelineTimeFromEvent(e);
+  updateCursorLabel();
+  drawTimeline();
+}
+
+function onTimelinePointerUp(e) {
+  if (!timelineDragging) return;
+  timelineDragging = false;
+  window.removeEventListener('mousemove', onTimelinePointerMove);
+  window.removeEventListener('mouseup', onTimelinePointerUp);
+  window.removeEventListener('touchmove', onTimelinePointerMove);
+  window.removeEventListener('touchend', onTimelinePointerUp);
+
+  const t = timelineTimeFromEvent(timelineEventX(e));
+  const span = timelineUntil - timelineSince;
+  if ((timelineUntil - t) < span * TIMELINE_LIVE_EDGE_FRAC) {
+    goLive();
+  } else {
+    seekTimelineTo(t);
+  }
+}
+
 async function initTimeline() {
   const canvas = document.getElementById('timeline-canvas');
-  canvas.addEventListener('click', (e) => seekTimelineTo(timelineTimeFromEvent(e)));
+  canvas.addEventListener('mousedown', onTimelinePointerDown);
+  canvas.addEventListener('touchstart', onTimelinePointerDown, { passive: true });
   canvas.addEventListener('mousemove', handleTimelineHover);
   canvas.addEventListener('mouseleave', hideTimelineHover);
   window.addEventListener('resize', () => { drawTimeline(); drawTimelineAxis(); });
@@ -1018,6 +1079,113 @@ function togglePause() {
     : '<rect x="4" y="3" width="3" height="10" rx="1" fill="currentColor"/><rect x="9" y="3" width="3" height="10" rx="1" fill="currentColor"/>';
 }
 
+// ─── Leyenda: capas activables/desactivables ───────────────────────────────
+
+const LIVE_LAYER_KEYS = ['nodes', 'focus', 'packets', 'trail', 'siblings', 'pings', 'conf-relay', 'conf-heuristic'];
+const LIVE_LAYER_KEY  = 'mesh_live_hidden_layers';
+const _savedHiddenLayers = (() => { try { return JSON.parse(localStorage.getItem(LIVE_LAYER_KEY)); } catch { return null; } })();
+const liveHiddenLayers = new Set(
+  Array.isArray(_savedHiddenLayers) ? _savedHiddenLayers.filter(k => LIVE_LAYER_KEYS.includes(k)) : []
+);
+
+function liveLayerGroupFor(key) {
+  return {
+    nodes: liveNodeLayer, focus: liveFocusLayer, packets: liveLayer,
+    trail: liveTrailLayer, siblings: liveSiblingLayer, pings: livePingLayer,
+  }[key];
+}
+
+function applyLiveLayerVisibility(key) {
+  const show = !liveHiddenLayers.has(key);
+  const group = liveLayerGroupFor(key);
+  if (group) {
+    if (show) { if (!map.hasLayer(group)) group.addTo(map); }
+    else if (map.hasLayer(group)) map.removeLayer(group);
+    return;
+  }
+  if (key === 'conf-relay')     document.body.classList.toggle('hide-conf-relay', !show);
+  if (key === 'conf-heuristic') document.body.classList.toggle('hide-conf-heuristic', !show);
+}
+
+function applyAllLiveLayerVisibility() {
+  LIVE_LAYER_KEYS.forEach(applyLiveLayerVisibility);
+}
+
+function syncLiveLegendToggles() {
+  document.querySelectorAll('.legend-item[data-layer]').forEach(el => {
+    el.classList.toggle('active', !liveHiddenLayers.has(el.dataset.layer));
+  });
+}
+
+function toggleLiveLayer(key) {
+  if (liveHiddenLayers.has(key)) liveHiddenLayers.delete(key);
+  else liveHiddenLayers.add(key);
+  try { localStorage.setItem(LIVE_LAYER_KEY, JSON.stringify([...liveHiddenLayers])); } catch {}
+  applyLiveLayerVisibility(key);
+  syncLiveLegendToggles();
+}
+
+// ─── Leyenda: arrastrable ───────────────────────────────────────────────────
+
+function initLegendDrag() {
+  const legend = document.getElementById('live-legend');
+  const handle = document.getElementById('live-legend-handle');
+  if (!legend || !handle) return;
+  const POS_KEY = 'mesh_live_legend_pos';
+  const container = legend.parentElement;
+
+  try {
+    const pos = JSON.parse(localStorage.getItem(POS_KEY));
+    if (pos && Number.isFinite(pos.left) && Number.isFinite(pos.top)) {
+      legend.style.left = pos.left + 'px';
+      legend.style.top = pos.top + 'px';
+      legend.style.right = 'auto';
+      legend.style.bottom = 'auto';
+    }
+  } catch {}
+
+  let dragging = false, startX = 0, startY = 0, startLeft = 0, startTop = 0;
+
+  handle.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    handle.setPointerCapture(e.pointerId);
+    const rect = legend.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    startLeft = rect.left - containerRect.left;
+    startTop = rect.top - containerRect.top;
+    startX = e.clientX;
+    startY = e.clientY;
+    legend.classList.add('dragging');
+    e.preventDefault();
+  });
+
+  handle.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const containerRect = container.getBoundingClientRect();
+    let left = startLeft + (e.clientX - startX);
+    let top = startTop + (e.clientY - startY);
+    left = Math.max(0, Math.min(left, containerRect.width - legend.offsetWidth));
+    top = Math.max(0, Math.min(top, containerRect.height - legend.offsetHeight));
+    legend.style.left = left + 'px';
+    legend.style.top = top + 'px';
+    legend.style.right = 'auto';
+    legend.style.bottom = 'auto';
+  });
+
+  function endDrag(e) {
+    if (!dragging) return;
+    dragging = false;
+    legend.classList.remove('dragging');
+    try {
+      localStorage.setItem(POS_KEY, JSON.stringify({
+        left: parseFloat(legend.style.left), top: parseFloat(legend.style.top),
+      }));
+    } catch {}
+  }
+  handle.addEventListener('pointerup', endDrag);
+  handle.addEventListener('pointercancel', endDrag);
+}
+
 async function bootLive() {
   try {
     const cfg = await fetch(API_BASE + '/data/config.json?t=' + Date.now()).then(r => r.ok ? r.json() : {});
@@ -1027,6 +1195,8 @@ async function bootLive() {
   } catch { /* config.json es opcional aquí, se usan los valores por defecto */ }
 
   initLiveMap();
+  syncLiveLegendToggles();
+  initLegendDrag();
   try { await loadNodes(); } catch (e) { console.error(e); }
   connectLive();
   initTimeline();

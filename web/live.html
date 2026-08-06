@@ -57,23 +57,23 @@
     </button>
 
     <div class="legend" id="live-legend">
-      <div class="legend-title">Leyenda</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#64748b"></div> Nodo</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#5eead4;box-shadow:0 0 6px #5eead4"></div> Nodo enfocado</div>
+      <div class="legend-title" id="live-legend-handle" title="Arrastrar para mover">Leyenda <span class="legend-drag-hint">⠿</span></div>
+      <div class="legend-item legend-toggle active" data-layer="nodes" onclick="toggleLiveLayer('nodes')" role="button" tabindex="0"><div class="legend-dot" style="background:#64748b"></div> Nodo</div>
+      <div class="legend-item legend-toggle active" data-layer="focus" onclick="toggleLiveLayer('focus')" role="button" tabindex="0"><div class="legend-dot" style="background:#5eead4;box-shadow:0 0 6px #5eead4"></div> Nodo enfocado</div>
       <hr class="legend-sep">
-      <div class="legend-item"><div class="legend-dot" style="background:#38bdf8;border:1.5px solid #fff"></div> Paquete en tránsito (color = ese paquete)</div>
-      <div class="legend-item">
+      <div class="legend-item legend-toggle active" data-layer="packets" onclick="toggleLiveLayer('packets')" role="button" tabindex="0"><div class="legend-dot" style="background:#38bdf8;border:1.5px solid #fff"></div> Paquete en tránsito (color = ese paquete)</div>
+      <div class="legend-item legend-toggle active" data-layer="trail" onclick="toggleLiveLayer('trail')" role="button" tabindex="0">
         <svg class="legend-line" width="24" height="10" viewBox="0 0 24 10"><line x1="0" y1="5" x2="24" y2="5" stroke="#38bdf8" stroke-width="2.5"/></svg>
         Ruta trazada del paquete
       </div>
-      <div class="legend-item">
+      <div class="legend-item legend-toggle active" data-layer="siblings" onclick="toggleLiveLayer('siblings')" role="button" tabindex="0">
         <svg class="legend-line" width="24" height="10" viewBox="0 0 24 10"><line x1="0" y1="5" x2="24" y2="5" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="3 4"/></svg>
         Mismo salto oído por varios gateways
       </div>
-      <div class="legend-item"><div class="legend-dot" style="background:transparent;border:2px solid #38bdf8"></div> Origen del paquete (anillo)</div>
+      <div class="legend-item legend-toggle active" data-layer="pings" onclick="toggleLiveLayer('pings')" role="button" tabindex="0"><div class="legend-dot" style="background:transparent;border:2px solid #38bdf8"></div> Origen del paquete (anillo)</div>
       <hr class="legend-sep">
-      <div class="legend-item"><span style="color:var(--accent)">●</span> Ruta confirmada (relay_node real)</div>
-      <div class="legend-item"><span style="color:var(--accent2)">●</span> Ruta aproximada (heurística de gateways)</div>
+      <div class="legend-item legend-toggle active" data-layer="conf-relay" onclick="toggleLiveLayer('conf-relay')" role="button" tabindex="0"><span style="color:var(--accent)">●</span> Ruta confirmada (relay_node real)</div>
+      <div class="legend-item legend-toggle active" data-layer="conf-heuristic" onclick="toggleLiveLayer('conf-heuristic')" role="button" tabindex="0"><span style="color:var(--accent2)">●</span> Ruta aproximada (heurística de gateways)</div>
     </div>
 
     <!-- Línea de tiempo: overlay sobre el mapa, no afecta al panel lateral -->
@@ -81,6 +81,7 @@
       <div class="timeline-canvas-wrap">
         <canvas class="timeline-canvas" id="timeline-canvas"></canvas>
         <div class="timeline-tooltip" id="timeline-tooltip"></div>
+        <div class="timeline-live-marker"><span class="live-dot"></span>Live</div>
       </div>
       <div class="timeline-axis" id="timeline-axis"></div>
       <div class="timeline-controls">

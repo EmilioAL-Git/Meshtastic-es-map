@@ -573,6 +573,7 @@ function setFocusNode(nodeId) {
 
   resetLiveState();
   updateFocusHighlight();
+  liveNodeLayer.clearLayers(); // fuera los puntos grises del resto de nodos — solo interesa el enfocado
 
   const pos = nodeLatLng(nodeId);
   if (pos) map.setView(pos, Math.max(map.getZoom(), 11));
@@ -585,6 +586,7 @@ function clearFocus() {
   document.getElementById('focus-wrap').classList.remove('active');
   document.getElementById('focus-dropdown').classList.remove('open');
   liveFocusLayer.clearLayers();
+  renderBaseNodes(); // restaura los puntos del resto de nodos, sin tocar lo demás
 }
 
 // ─── Boot ───────────────────────────────────────────────────────────────────

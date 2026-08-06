@@ -235,9 +235,21 @@ function animateNextLeg(packetId) {
   // La posición de partida es siempre la última posición conocida en la
   // que el marcador se dibujó de verdad — nunca se recalcula desde una
   // etapa intermedia sin coordenadas, o el "salto" se perdía por completo.
+  // legIndex arranca en -1 cuando el origen es conocido para que stages[0]
+  // siga contando como un tramo real (si no, se saltaba y el mini-mapa del
+  // desglose — que sí usa todas las etapas vía buildPacketPath — no
+  // coincidía con lo animado aquí).
   if (!tracked.lastPos) {
-    tracked.lastPos = nodeLatLng(tracked.info.from) || stagePosition(stages[0]);
-    if (!tracked.lastPos) return; // aún no hay ninguna posición conocida
+    const originPos = nodeLatLng(tracked.info.from);
+    if (originPos) {
+      tracked.lastPos = originPos;
+      tracked.legIndex = -1;
+    } else {
+      const firstPos = stagePosition(stages[0]);
+      if (!firstPos) return; // aún no hay ninguna posición conocida
+      tracked.lastPos = firstPos;
+      tracked.legIndex = 0; // ya "empezamos" en stages[0], no se re-anima hacia él
+    }
   }
 
   // Avanza etapa a etapa hasta encontrar la siguiente con coordenadas

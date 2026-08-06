@@ -57,17 +57,19 @@ function initLiveMap() {
   liveFocusLayer = L.layerGroup().addTo(map);
 }
 
-function renderBaseNodes() {
+function renderBaseNodes(dim) {
   liveNodeLayer.clearLayers();
+  const color = dim ? '#334155' : C_OLD;
   for (const n of allNodes) {
     if (n.latitude == null || n.longitude == null) continue;
+    if (dim && n.node_id === liveFocusNodeId) continue; // ya tiene su propio resaltado
     L.circleMarker([n.latitude, n.longitude], {
       pane: 'livePane',
       radius: 3,
-      color: C_OLD,
+      color,
       weight: 1,
-      fillColor: C_OLD,
-      fillOpacity: 0.6,
+      fillColor: color,
+      fillOpacity: dim ? 0.35 : 0.6,
       interactive: false,
     }).addTo(liveNodeLayer);
   }
@@ -581,7 +583,7 @@ function setFocusNode(nodeId) {
 
   resetLiveState();
   updateFocusHighlight();
-  liveNodeLayer.clearLayers(); // fuera los puntos grises del resto de nodos — solo interesa el enfocado
+  renderBaseNodes(true); // resto de nodos, atenuados — el enfocado ya destaca con su halo
 
   const pos = nodeLatLng(nodeId);
   if (pos) map.setView(pos, Math.max(map.getZoom(), 11));
@@ -594,7 +596,7 @@ function clearFocus() {
   document.getElementById('focus-wrap').classList.remove('active');
   document.getElementById('focus-dropdown').classList.remove('open');
   liveFocusLayer.clearLayers();
-  renderBaseNodes(); // restaura los puntos del resto de nodos, sin tocar lo demás
+  renderBaseNodes(); // restaura el brillo normal del resto de nodos, sin tocar lo demás
 }
 
 // ─── Boot ───────────────────────────────────────────────────────────────────

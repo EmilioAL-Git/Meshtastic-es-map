@@ -11,7 +11,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY livefeed/ .
 
-RUN useradd -u 500 -s /usr/sbin/nologin appuser
+RUN useradd -u 500 -s /usr/sbin/nologin appuser \
+    && mkdir -p /data && chown appuser:appuser /data
 USER appuser
 
 EXPOSE 8765

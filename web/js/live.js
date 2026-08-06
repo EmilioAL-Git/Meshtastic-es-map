@@ -10,6 +10,7 @@ let liveBackoffMs = 1000;
 let livePaused = false;
 let liveFocusNodeId = null;   // !xxxxxxxx del nodo enfocado, o null (sin filtro)
 let liveFocusLayer;           // L.layerGroup con el resaltado del nodo enfocado
+let currentDetailPacketId = null; // packet_id del desglose abierto ahora mismo, o null
 const LIVE_BACKOFF_MAX_MS = 30000;
 const LIVE_LOG_MAX = 200;
 
@@ -530,16 +531,68 @@ function renderDetailMiniMap(packetId) {
 }
 
 function openPacketDetail(packetId) {
+  currentDetailPacketId = packetId;
   document.getElementById('packet-detail-tables').innerHTML = renderPacketDetail(packetId);
   document.getElementById('packet-detail-modal').classList.add('open');
   renderDetailMiniMap(packetId);
   // El modal acaba de hacerse visible — Leaflet necesita recalcular el
   // tamaño del contenedor una vez el navegador aplique el nuevo layout.
   setTimeout(() => { if (detailMap) detailMap.invalidateSize(); }, 60);
+  syncUrl();
 }
 
 function closePacketDetail() {
+  currentDetailPacketId = null;
   document.getElementById('packet-detail-modal').classList.remove('open');
+  syncUrl();
+}
+
+// ─── Enlaces compartibles (?focus=, ?packet=) ───────────────────────────────
+
+function syncUrl() {
+  const params = new URLSearchParams();
+  if (liveFocusNodeId) params.set('focus', liveFocusNodeId);
+  if (currentDetailPacketId) params.set('packet', currentDetailPacketId);
+  const qs = params.toString();
+  history.replaceState(null, '', qs ? `?${qs}` : location.pathname);
+}
+
+function showToast(msg, ms = 3000) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), ms);
+}
+
+async function copyCurrentLink() {
+  try {
+    await navigator.clipboard.writeText(location.href);
+    showToast('Enlace copiado');
+  } catch {
+    showToast('No se pudo copiar — usa la barra de direcciones');
+  }
+}
+
+async function loadSharedPacket(rawId) {
+  const packetId = Number(rawId);
+  if (!Number.isFinite(packetId)) return;
+  try {
+    const r = await fetch(`${API_BASE}/live-ws/packet/${packetId}`);
+    if (!r.ok) { showToast('Ese paquete ya no está disponible (caducó)'); return; }
+    const data = await r.json();
+    livePacketLog.set(data.packet_id, {
+      info: {
+        packet_id: data.packet_id, from: data.from, to: data.to,
+        hop_start: data.hop_start, channel: data.channel, portnum: data.portnum,
+      },
+      stages: data.stages,
+      path_confidence: data.path_confidence,
+    });
+    openPacketDetail(data.packet_id);
+  } catch {
+    showToast('No se pudo cargar el paquete compartido');
+  }
 }
 
 // ─── Modo Focus: filtrar el feed a un solo nodo ─────────────────────────────
@@ -641,6 +694,7 @@ function setFocusNode(nodeId) {
 
   const pos = nodeLatLng(nodeId);
   if (pos) map.setView(pos, Math.max(map.getZoom(), 11));
+  syncUrl();
 }
 
 function clearFocus() {
@@ -651,6 +705,7 @@ function clearFocus() {
   document.getElementById('focus-dropdown').classList.remove('open');
   liveFocusLayer.clearLayers();
   renderBaseNodes(); // reincluye el nodo que estaba enfocado, sin tocar lo demás
+  syncUrl();
 }
 
 // ─── Boot ───────────────────────────────────────────────────────────────────
@@ -682,6 +737,12 @@ async function bootLive() {
   initLiveMap();
   try { await loadNodes(); } catch (e) { console.error(e); }
   connectLive();
+
+  const params = new URLSearchParams(location.search);
+  const focusParam = params.get('focus');
+  if (focusParam && nodesById.has(focusParam)) setFocusNode(focusParam);
+  const packetParam = params.get('packet');
+  if (packetParam) loadSharedPacket(packetParam);
 
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;

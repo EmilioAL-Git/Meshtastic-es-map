@@ -86,7 +86,10 @@
   <div class="malconfig-inner" style="max-width:640px">
     <div class="malconfig-header">
       <div class="malconfig-title">Desglose del paquete</div>
-      <button class="malconfig-close" onclick="closePacketDetail()" aria-label="Cerrar">✕</button>
+      <div class="malconfig-header-right">
+        <button class="malconfig-close" onclick="copyCurrentLink()" title="Copiar enlace a este paquete">🔗</button>
+        <button class="malconfig-close" onclick="closePacketDetail()" aria-label="Cerrar">✕</button>
+      </div>
     </div>
     <div class="malconfig-content">
       <div id="packet-detail-map" class="pkt-detail-map"></div>
@@ -94,6 +97,9 @@
     </div>
   </div>
 </div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
 
 <script src="js/state.js?v=1.4.0"></script>
 <script src="js/live.js?v=1.4.0"></script>

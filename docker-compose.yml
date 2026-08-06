@@ -36,11 +36,13 @@ services:
     build:
       context: .
       dockerfile: livefeed/Dockerfile
+    volumes:
+      - livefeed-data:/data
     restart: unless-stopped
     env_file: .env
     environment:
       - LIVE_WS_PORT=8765
-    # sin volumes: correlación en memoria, no guarda estado en disco
+      - LIVEFEED_DB_PATH=/data/livefeed.db
 
   web:
     image: nginx:alpine
@@ -62,3 +64,4 @@ services:
 volumes:
   db-data:
   json-data:
+  livefeed-data:

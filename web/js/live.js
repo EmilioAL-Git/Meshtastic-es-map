@@ -62,10 +62,15 @@ function renderTopNodes() {
 // Solo se dibujan en el mapa los últimos MAX_VISIBLE_PACKETS paquetes — el
 // que se sale de esa ventana arranca una cuenta atrás de TRAIL_GRACE_MS
 // antes de desvanecerse, en vez de desaparecer de golpe.
+// OJO con subir mucho este valor: con tráfico alto (red EU_868 entera,
+// no solo España) entran paquetes nuevos constantemente, así que durante
+// la cuenta atrás se siguen acumulando más — el "límite de 20" deja de
+// notarse porque en la práctica hay 20 + (todos los que cayeron en los
+// últimos TRAIL_GRACE_MS) a la vez en el mapa.
 let liveOrder = [];                      // packet_id en orden de llegada (packet_new)
 const pendingTrailRemovals = new Map();  // packet_id → timeoutId
 const MAX_VISIBLE_PACKETS = 20;
-const TRAIL_GRACE_MS = 30000;
+const TRAIL_GRACE_MS = 5000;
 
 // packet_id → { info, stages, path_confidence } — historial persistente
 // para el desglose, independiente del ciclo de vida de la animación

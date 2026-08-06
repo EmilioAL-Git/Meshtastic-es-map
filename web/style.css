@@ -534,7 +534,7 @@ header {
 
 /* live.html tiene la barra de línea de tiempo pegada abajo del mapa —
    la leyenda sube para no quedar tapada por ella */
-body.live-page .legend { bottom: 90px; }
+body.live-page .legend { bottom: 130px; }
 
 .legend-title {
   font-family: var(--mono);
@@ -991,22 +991,26 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   background: rgba(94,234,212,.1);
 }
 
-/* ── Línea de tiempo: objeto suelto sobre el mapa, sin caja ni fondo ── */
+/* ── Línea de tiempo: tarjeta compacta y centrada sobre el mapa ── */
 .timeline-bar {
   position: absolute;
-  left: 14px;
-  right: 14px;
+  left: 50%;
   bottom: 14px;
+  transform: translateX(-50%);
+  width: min(560px, calc(100% - 28px));
   z-index: 650;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  pointer-events: none; /* solo los elementos concretos (barras, botones) capturan clicks */
+  gap: 6px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 10px 12px;
 }
 
 .timeline-canvas-wrap {
   position: relative;
-  pointer-events: auto;
 }
 
 .timeline-canvas {
@@ -1014,7 +1018,6 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   height: 34px;
   display: block;
   cursor: pointer;
-  filter: drop-shadow(0 1px 3px rgba(0,0,0,.7));
 }
 
 .timeline-live-marker {
@@ -1029,7 +1032,6 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   font-size: 9px;
   font-weight: 700;
   color: #fca5a5;
-  text-shadow: 0 1px 3px rgba(0,0,0,.9);
   pointer-events: none;
 }
 .timeline-live-marker .live-dot {
@@ -1043,7 +1045,7 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   position: absolute;
   top: -22px;
   transform: translateX(-50%);
-  background: var(--panel);
+  background: var(--panel2);
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 2px 6px;
@@ -1061,9 +1063,7 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   justify-content: space-between;
   font-family: var(--mono);
   font-size: 9px;
-  color: var(--text);
-  text-shadow: 0 1px 3px rgba(0,0,0,.9);
-  pointer-events: none;
+  color: var(--muted);
 }
 
 .timeline-controls {
@@ -1071,15 +1071,16 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-  pointer-events: none; /* los .tl-btn/.tl-chip individuales sí capturan */
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
 }
 
 .tl-btn {
   display: flex;
   align-items: center;
   gap: 5px;
-  background: rgba(17,24,39,.85);
-  border: 1px solid rgba(31,45,69,.9);
+  background: var(--panel2);
+  border: 1px solid var(--border);
   border-radius: 20px;
   color: var(--text);
   font-family: var(--mono);
@@ -1087,8 +1088,6 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   padding: 4px 9px;
   cursor: pointer;
   transition: all .15s;
-  box-shadow: 0 2px 8px rgba(0,0,0,.4);
-  pointer-events: auto;
 }
 .tl-btn:hover { border-color: var(--accent2); }
 
@@ -1109,11 +1108,9 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 .tl-group {
   display: flex;
   gap: 1px;
-  background: rgba(17,24,39,.85);
-  border: 1px solid rgba(31,45,69,.9);
+  background: var(--panel2);
+  border: 1px solid var(--border);
   border-radius: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,.4);
-  pointer-events: auto;
   overflow: hidden;
 }
 .tl-chip {
@@ -1131,10 +1128,8 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 .timeline-cursor-label {
   font-family: var(--mono);
   font-size: 11px;
-  color: var(--text);
-  text-shadow: 0 1px 3px rgba(0,0,0,.9);
+  color: var(--muted);
   white-space: nowrap;
-  pointer-events: none;
 }
 
 .live-log {
@@ -1188,9 +1183,6 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 }
 .live-log-row .lr-conf-relay { color: var(--accent); }
 .live-log-row .lr-conf-heuristic { color: var(--accent2); }
-
-body.hide-conf-relay     .live-log-row[data-confidence="relay"]     { display: none; }
-body.hide-conf-heuristic .live-log-row[data-confidence="heuristic"] { display: none; }
 .live-log-row .lr-swatch {
   width: 7px;
   height: 7px;

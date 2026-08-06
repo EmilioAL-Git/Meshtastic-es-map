@@ -130,6 +130,15 @@ function packetColor(packetId) {
 
 function easeInOutQuad(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
 
+// El selector de velocidad de la reproducción histórica (0.25x…5x) solo debe
+// ralentizar la animación del paquete moviéndose por el mapa, nunca
+// acelerarla — a >1x el paquete seguiría viajando a su ritmo visual normal,
+// solo se reproducen más rápido los huecos de espera entre paquetes
+// (ver runNextReplayEvent). Fuera de la reproducción histórica siempre 1x.
+function packetAnimSlowdown() {
+  return inReplayView ? Math.max(1, 1 / replaySpeed) : 1;
+}
+
 function initLiveMap() {
   map = L.map('map', {
     center: [MAP_LAT, MAP_LNG],
@@ -143,9 +152,8 @@ function initLiveMap() {
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
   }).addTo(map);
 
-  // La barra de línea de tiempo ocupa la parte de abajo del mapa — el
-  // aviso de atribución de Leaflet (bottom-right por defecto) se sube.
-  map.attributionControl.setPosition('topright');
+  // bottom-right lo ocupan la leyenda y la barra de línea de tiempo.
+  map.attributionControl.setPosition('bottomleft');
 
   map.createPane('livePane');
   map.getPane('livePane').style.zIndex = 460;
@@ -312,7 +320,7 @@ function spawnOriginPing(event) {
     fillOpacity: 0, interactive: false,
   }).addTo(livePingLayer);
 
-  const durationMs = 900;
+  const durationMs = 900 * packetAnimSlowdown();
   const start = performance.now();
   function step(now) {
     const t = Math.min(1, (now - start) / durationMs);
@@ -418,7 +426,7 @@ function animateNextLeg(packetId) {
   ensureMarker(tracked, fromPos);
   tracked.animating = true;
 
-  const durationMs = 900;
+  const durationMs = 900 * packetAnimSlowdown();
   const start = performance.now();
 
   function step(now) {

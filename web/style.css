@@ -970,6 +970,20 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 .conn-badge.disabled { border-color: rgba(239,68,68,.35); color: var(--danger); }
 .conn-badge.disabled .conn-dot { background: var(--danger); }
 
+.packet-rate-badge {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  padding: 5px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.packet-rate-badge #packet-rate-value { color: var(--accent2); font-weight: 700; }
+
 .live-info-btn {
   display: flex;
   align-items: center;
@@ -2297,6 +2311,7 @@ body.embed-mode .malconfig-table td:nth-child(3) { display: none; }
   body.live-page .conn-badge,
   body.live-page .live-info-btn { order: 1; }
   body.live-page #pause-label { display: none; } /* solo icono, ahorra sitio */
+  body.live-page .packet-rate-badge { display: none; } /* sitio justo en móvil, es un dato secundario */
 
   body.live-page #portnum-filter-group { display: none; }
   body.live-page .focus-wrap { order: 2; flex-shrink: 0; }

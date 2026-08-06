@@ -35,13 +35,49 @@ function portnumCategory(portnum) {
   if (portnum === 'ENCRYPTED') return 'encrypted';
   return PORTNUM_CATEGORIES[portnum] || 'other';
 }
-let activePortnumFilters = new Set(['position', 'text', 'telemetry', 'nodeinfo', 'encrypted', 'other']);
+const ALL_PORTNUM_CATS = ['position', 'text', 'telemetry', 'nodeinfo', 'encrypted', 'other'];
+const PORTNUM_FILTER_KEY = 'mesh_live_portnum_filters';
+
+function loadPortnumFilters() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PORTNUM_FILTER_KEY));
+    if (Array.isArray(saved) && saved.every(c => ALL_PORTNUM_CATS.includes(c))) {
+      return new Set(saved);
+    }
+  } catch {}
+  return new Set(ALL_PORTNUM_CATS);
+}
+
+let activePortnumFilters = loadPortnumFilters();
+
+// El HTML trae todos los chips marcados "active" por defecto — hay que
+// reflejar aquí el filtro ya guardado antes de que se vea la cabecera.
+function syncPortnumFilterButtons() {
+  document.querySelectorAll('#portnum-filter-group .tl-chip').forEach(btn => {
+    btn.classList.toggle('active', activePortnumFilters.has(btn.dataset.cat));
+  });
+}
 
 function togglePortnumFilter(cat) {
   if (activePortnumFilters.has(cat)) activePortnumFilters.delete(cat);
   else activePortnumFilters.add(cat);
+  try { localStorage.setItem(PORTNUM_FILTER_KEY, JSON.stringify([...activePortnumFilters])); } catch {}
   const btn = document.querySelector(`#portnum-filter-group [data-cat="${cat}"]`);
   if (btn) btn.classList.toggle('active', activePortnumFilters.has(cat));
+}
+
+// ─── Paquetes/min: tasa de tráfico en vivo ──────────────────────────────────
+let recentPacketTimes = []; // timestamps (ms) de packet_new reales, ventana de 60s
+
+function recordPacketForRate() {
+  recentPacketTimes.push(Date.now());
+}
+
+function updatePacketRateDisplay() {
+  const cutoff = Date.now() - 60000;
+  while (recentPacketTimes.length && recentPacketTimes[0] < cutoff) recentPacketTimes.shift();
+  const el = document.getElementById('packet-rate-value');
+  if (el) el.textContent = recentPacketTimes.length;
 }
 
 // ─── Contador de actividad por nodo (ranking de la sesión) ─────────────────
@@ -282,7 +318,7 @@ function handleLiveEvent(event) {
     enforceLiveWindow();
     addLogRow(event);
     spawnOriginPing(event);
-    if (!inReplayView) { recordNodeActivity(event.from); renderTopNodes(); }
+    if (!inReplayView) { recordNodeActivity(event.from); renderTopNodes(); recordPacketForRate(); }
     if (soundEnabled && liveFocusNodeId && !inReplayView) playAlertBeep();
   } else if (event.type === 'packet_stage') {
     const tracked = liveTracked.get(key);
@@ -1406,12 +1442,15 @@ async function bootLive() {
 
   initLiveMap();
   syncLiveLegendToggles();
+  syncPortnumFilterButtons();
   initLegendDrag();
   try { await loadNodes(); } catch (e) { console.error(e); }
   connectLive();
   await initTimeline();
   positionLegendAboveTimeline();
   window.addEventListener('resize', positionLegendAboveTimeline);
+  updatePacketRateDisplay();
+  setInterval(updatePacketRateDisplay, 2000);
 
   const params = new URLSearchParams(location.search);
   const focusParam = params.get('focus');

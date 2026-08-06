@@ -201,6 +201,13 @@
       que lo reporte. Por eso el desglose casi nunca muestra <em>todos</em>
       los saltos reales, solo los puntos donde algún gateway MQTT lo "pescó" de
       camino.</p>
+      <p>Y no es solo cuestión de saltos: si <strong>ningún</strong> gateway
+      MQTT oye un paquete en todo su recorrido, el paquete ni siquiera
+      aparece aquí — aunque haya llegado bien a su destino por radio. No hay
+      nada que hacer desde esta página para verlo: depende por completo del
+      feed MQTT, no escucha el aire directamente. Para eso haría falta
+      desplegar nodos sniffer/gateway propios en más sitios, algo fuera del
+      alcance de este mapa.</p>
 
       <h4>Qué contenido se puede leer</h4>
       <p>Solo se decodifica lo necesario para saber el <em>tipo</em> de

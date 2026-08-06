@@ -174,11 +174,10 @@ function renderBaseNodes() {
     if (n.node_id === liveFocusNodeId) continue; // ya tiene su propio resaltado
     L.circleMarker([n.latitude, n.longitude], {
       pane: 'livePane',
-      radius: 3,
-      color: C_OLD,
-      weight: 1,
+      radius: 2,
+      weight: 0,
       fillColor: C_OLD,
-      fillOpacity: 0.6,
+      fillOpacity: 0.45,
       interactive: true,
     }).bindTooltip(nodeTooltipHtml(n), { direction: 'top', offset: [0, -3] })
       .addTo(liveNodeLayer);

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>En vivo · Red Meshtastic España</title>
+
+<!-- Leaflet (self-hosted: sin dependencia de disponibilidad de unpkg) -->
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=1.9.4"/>
+<script src="vendor/leaflet/leaflet.js?v=1.9.4"></script>
+
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="stylesheet" href="style.css?v=1.4.0"/>
+</head>
+
+<body>
+
+<!-- Header -->
+<header>
+  <a class="back-link" href="index.html">
+    ← <span>Volver al mapa</span>
+  </a>
+  <div class="logo">
+    <span>MESHTASTIC ESPAÑA <em>/ En vivo</em></span>
+  </div>
+
+  <div class="stats-bar">
+    <div class="conn-badge" id="conn-badge">
+      <span class="conn-dot"></span>
+      <span id="conn-label">Conectando…</span>
+    </div>
+  </div>
+</header>
+
+<!-- Main -->
+<div class="main">
+  <div id="map"></div>
+  <div class="live-log" id="live-log">
+    <div class="live-log-empty" id="live-log-empty">Esperando paquetes…</div>
+  </div>
+</div>
+
+<script src="js/state.js?v=1.4.0"></script>
+<script src="js/live.js?v=1.4.0"></script>
+</body>
+</html>

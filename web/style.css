@@ -804,6 +804,118 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 }
 .noopt-btn:hover { background: rgba(249,115,22,.22); }
 
+/* ── Enlace feed en vivo ── */
+.live-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: rgba(94,234,212,.10);
+  border: 1px solid rgba(94,234,212,.35);
+  border-radius: var(--radius);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 11px;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background .15s;
+  flex-shrink: 0;
+}
+.live-link:hover { background: rgba(94,234,212,.2); }
+.live-link .live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 6px #ef4444;
+  animation: live-pulse 1.6s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .35; }
+}
+
+/* ── Página live.html ── */
+.back-link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--muted);
+  text-decoration: none;
+}
+.back-link:hover { color: var(--text); }
+
+.conn-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.conn-badge .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.conn-badge.connected { border-color: rgba(94,234,212,.35); color: var(--accent); }
+.conn-badge.connected .conn-dot { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.conn-badge.reconnecting { border-color: rgba(251,191,36,.4); color: var(--warn); }
+.conn-badge.reconnecting .conn-dot { background: var(--warn); animation: live-pulse 1s ease-in-out infinite; }
+.conn-badge.disabled { border-color: rgba(239,68,68,.35); color: var(--danger); }
+.conn-badge.disabled .conn-dot { background: var(--danger); }
+
+.live-log {
+  width: 320px;
+  flex-shrink: 0;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.live-log-empty {
+  padding: 20px 14px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.live-log-row {
+  padding: 9px 14px;
+  border-bottom: 1px solid rgba(31,45,69,.6);
+  font-family: var(--mono);
+  font-size: 11px;
+  animation: live-row-in .3s ease;
+}
+@keyframes live-row-in {
+  from { background: rgba(94,234,212,.18); }
+  to   { background: transparent; }
+}
+
+.live-log-row .lr-route {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.live-log-row .lr-meta {
+  margin-top: 3px;
+  display: flex;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.live-log-row .lr-conf-relay { color: var(--accent); }
+.live-log-row .lr-conf-heuristic { color: var(--accent2); }
+
 /* ── Modal mal configurados ── */
 .malconfig-modal {
   display: none;

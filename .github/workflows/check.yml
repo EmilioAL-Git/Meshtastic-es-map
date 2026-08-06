@@ -34,4 +34,24 @@ jobs:
           done
 
       - name: Run collector tests
-        run: python -m unittest discover -s tests -v
+        run: python -m unittest discover -s tests -p "test_collector.py" -v
+
+  livefeed-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install livefeed dependencies
+        run: pip install -r livefeed/requirements.txt
+
+      - name: Compile livefeed files
+        run: python -m py_compile livefeed/livefeed.py livefeed/mqtt_source.py livefeed/correlator.py livefeed/ws_server.py
+
+      - name: Run livefeed tests
+        run: python -m unittest discover -s tests -p "test_livefeed.py" -v

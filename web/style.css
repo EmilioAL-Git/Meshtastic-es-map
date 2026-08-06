@@ -1488,7 +1488,7 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   top: 14px;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 768px) {
   .pkt-detail-layout { grid-template-columns: 1fr; }
   .pkt-detail-map { height: 240px; position: static; }
 }
@@ -2217,4 +2217,31 @@ body.embed-mode .malconfig-table td:nth-child(3) { display: none; }
   .timeline-controls::-webkit-scrollbar { display: none; }
   .timeline-cursor-label { display: none; }
   .tl-live-btn { margin-left: 0; flex-shrink: 0; }
+
+  /* ── live.html: cabecera en varias filas, si no todo se apiña/monta ── */
+  body.live-page header { flex-wrap: wrap; row-gap: 8px; }
+
+  /* Fila propia, a todo el ancho, bajo el logo — se reordena por dentro:
+     primero Pausar + estado de conexión, luego filtros y foco, que se
+     envuelven a otra línea si no caben en vez de desbordar. */
+  body.live-page .stats-bar {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  body.live-page .live-pause-btn,
+  body.live-page .conn-badge { order: 1; }
+  body.live-page #pause-label { display: none; } /* solo icono, ahorra sitio */
+
+  body.live-page #portnum-filter-group,
+  body.live-page .focus-wrap { order: 2; flex-shrink: 0; }
+  body.live-page .focus-wrap .search-input { width: 120px; }
+  body.live-page .focus-wrap .search-dropdown { width: min(260px, calc(100vw - 24px)); }
+
+  /* live.html no tiene nada que enseñar en la leyenda de "edges" del mapa
+     principal — sin esto quedaba un recuadro vacío flotando en el mapa */
+  body.live-page .legend { display: none; }
 }

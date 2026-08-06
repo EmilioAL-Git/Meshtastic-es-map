@@ -958,30 +958,6 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   background: rgba(94,234,212,.1);
 }
 
-.legend-toggle-btn {
-  position: absolute;
-  bottom: 14px;
-  right: 20px;
-  z-index: 1000;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: var(--shadow);
-  transition: all .15s;
-}
-.legend-toggle-btn:hover { color: var(--text); border-color: var(--accent2); }
-.legend-toggle-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(94,234,212,.1); }
-
-body.live-page .legend { display: none; }
-body.live-page .legend.open { display: block; }
-
 .live-log {
   width: 320px;
   flex-shrink: 0;

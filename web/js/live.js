@@ -64,19 +64,18 @@ function nodeTooltipHtml(n) {
   return `<div class="node-tooltip"><strong>${name}</strong>${sub ? `<br>${sub}` : ''}${meta ? `<br>${meta}` : ''}</div>`;
 }
 
-function renderBaseNodes(dim) {
+function renderBaseNodes() {
   liveNodeLayer.clearLayers();
-  const color = dim ? '#334155' : C_OLD;
   for (const n of allNodes) {
     if (n.latitude == null || n.longitude == null) continue;
-    if (dim && n.node_id === liveFocusNodeId) continue; // ya tiene su propio resaltado
+    if (n.node_id === liveFocusNodeId) continue; // ya tiene su propio resaltado
     L.circleMarker([n.latitude, n.longitude], {
       pane: 'livePane',
       radius: 3,
-      color,
+      color: C_OLD,
       weight: 1,
-      fillColor: color,
-      fillOpacity: dim ? 0.35 : 0.6,
+      fillColor: C_OLD,
+      fillOpacity: 0.6,
       interactive: true,
     }).bindTooltip(nodeTooltipHtml(n), { direction: 'top', offset: [0, -3] })
       .addTo(liveNodeLayer);
@@ -430,8 +429,8 @@ function renderPacketDetail(packetId) {
   if (!data) return '<p class="malconfig-empty">Sin datos de este paquete (se ha perdido del historial).</p>';
   const { info, stages, path_confidence } = data;
   const confLabel = path_confidence === 'relay_node'
-    ? 'Ruta confirmada — al menos una etapa trae el nodo real que retransmitió (relay_node)'
-    : 'Ruta aproximada — estimada por qué gateways oyeron cada etapa, sin relay_node';
+    ? 'Ruta confirmada — al menos un salto trae el nodo real que retransmitió (relay_node)'
+    : 'Ruta aproximada — estimada por qué gateways oyeron cada salto, sin relay_node';
 
   const stagesRows = stages.length
     ? stages.map((s, i) => `
@@ -442,7 +441,7 @@ function renderPacketDetail(packetId) {
         <td>${s.relay_node ? nodeLabel(s.relay_node) : '—'}</td>
         <td>${formatTime(s.rx_time)}</td>
       </tr>`).join('')
-    : '<tr><td colspan="5">Sin etapas con coordenadas conocidas todavía</td></tr>';
+    : '<tr><td colspan="5">Sin saltos con coordenadas conocidas todavía</td></tr>';
 
   return `
     <table class="malconfig-table">
@@ -454,7 +453,7 @@ function renderPacketDetail(packetId) {
       <tr><td>Tipo (portnum)</td><td>${escHtml(info.portnum || '—')}</td></tr>
       <tr><td>Confianza de ruta</td><td>${confLabel}</td></tr>
     </table>
-    <h4 style="margin:16px 0 8px;font-size:12px;color:var(--muted);font-family:var(--mono)">Etapas detectadas (${stages.length})</h4>
+    <h4 style="margin:16px 0 8px;font-size:12px;color:var(--muted);font-family:var(--mono)">Saltos detectados (${stages.length})</h4>
     <table class="malconfig-table">
       <thead><tr><th>#</th><th>hop_limit</th><th>Gateways que la oyeron</th><th>relay_node</th><th>Hora</th></tr></thead>
       <tbody>${stagesRows}</tbody>
@@ -638,7 +637,7 @@ function setFocusNode(nodeId) {
 
   resetLiveState();
   updateFocusHighlight();
-  renderBaseNodes(true); // resto de nodos, atenuados — el enfocado ya destaca con su halo
+  renderBaseNodes(); // el nodo enfocado se excluye solo (ya tiene su propio halo)
 
   const pos = nodeLatLng(nodeId);
   if (pos) map.setView(pos, Math.max(map.getZoom(), 11));
@@ -651,7 +650,7 @@ function clearFocus() {
   document.getElementById('focus-wrap').classList.remove('active');
   document.getElementById('focus-dropdown').classList.remove('open');
   liveFocusLayer.clearLayers();
-  renderBaseNodes(); // restaura el brillo normal del resto de nodos, sin tocar lo demás
+  renderBaseNodes(); // reincluye el nodo que estaba enfocado, sin tocar lo demás
 }
 
 // ─── Boot ───────────────────────────────────────────────────────────────────
@@ -659,11 +658,6 @@ function clearFocus() {
 function toggleLiveLogPanel() {
   document.getElementById('live-log').classList.toggle('open');
   document.getElementById('live-log-toggle-btn').classList.toggle('active');
-}
-
-function toggleLegend() {
-  document.getElementById('live-legend').classList.toggle('open');
-  document.getElementById('legend-toggle-btn').classList.toggle('active');
 }
 
 function togglePause() {

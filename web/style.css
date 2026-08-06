@@ -532,6 +532,10 @@ header {
   font-size: 11px;
 }
 
+/* live.html tiene la barra de línea de tiempo pegada abajo del mapa —
+   la leyenda sube para no quedar tapada por ella */
+body.live-page .legend { bottom: 104px; }
+
 .legend-title {
   font-family: var(--mono);
   color: var(--muted);
@@ -958,13 +962,18 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   background: rgba(94,234,212,.1);
 }
 
-/* ── Línea de tiempo ── */
+/* ── Línea de tiempo (overlay sobre el mapa, no sobre el panel lateral) ── */
 .timeline-bar {
-  flex-shrink: 0;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 650;
   display: flex;
   flex-direction: column;
   background: var(--panel);
   border-top: 1px solid var(--border);
+  box-shadow: 0 -4px 16px rgba(0,0,0,.35);
 }
 
 .timeline-canvas-wrap {

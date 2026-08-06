@@ -75,40 +75,40 @@
       <div class="legend-item"><span style="color:var(--accent)">●</span> Ruta confirmada (relay_node real)</div>
       <div class="legend-item"><span style="color:var(--accent2)">●</span> Ruta aproximada (heurística de gateways)</div>
     </div>
+
+    <!-- Línea de tiempo: overlay sobre el mapa, no afecta al panel lateral -->
+    <div class="timeline-bar" id="timeline-bar">
+      <div class="timeline-canvas-wrap">
+        <canvas class="timeline-canvas" id="timeline-canvas"></canvas>
+        <div class="timeline-tooltip" id="timeline-tooltip"></div>
+      </div>
+      <div class="timeline-axis" id="timeline-axis"></div>
+      <div class="timeline-controls">
+        <button class="tl-btn tl-play-btn" id="timeline-play-btn" onclick="toggleReplay()" title="Reproducir/pausar">▶</button>
+
+        <div class="tl-group" id="timeline-speed-group">
+          <button class="tl-chip active" data-speed="1" onclick="setReplaySpeed(1)">1x</button>
+          <button class="tl-chip" data-speed="2" onclick="setReplaySpeed(2)">2x</button>
+          <button class="tl-chip" data-speed="5" onclick="setReplaySpeed(5)">5x</button>
+          <button class="tl-chip" data-speed="10" onclick="setReplaySpeed(10)">10x</button>
+        </div>
+
+        <div class="tl-group" id="timeline-range-group">
+          <button class="tl-chip active" data-range="3600" onclick="setTimelineRange(3600)">1h</button>
+          <button class="tl-chip" data-range="43200" onclick="setTimelineRange(43200)">12h</button>
+          <button class="tl-chip" data-range="604800" onclick="setTimelineRange(604800)">7d</button>
+        </div>
+
+        <span class="timeline-cursor-label" id="timeline-cursor-label"></span>
+
+        <button class="tl-btn tl-live-btn active" id="timeline-live-btn" onclick="goLive()" title="Volver a en vivo">
+          <span class="live-dot"></span> En vivo
+        </button>
+      </div>
+    </div>
   </div>
   <div class="live-log" id="live-log">
     <div class="live-log-empty" id="live-log-empty">Esperando paquetes…</div>
-  </div>
-</div>
-
-<!-- Línea de tiempo -->
-<div class="timeline-bar" id="timeline-bar">
-  <div class="timeline-canvas-wrap">
-    <canvas class="timeline-canvas" id="timeline-canvas"></canvas>
-    <div class="timeline-tooltip" id="timeline-tooltip"></div>
-  </div>
-  <div class="timeline-axis" id="timeline-axis"></div>
-  <div class="timeline-controls">
-    <button class="tl-btn tl-play-btn" id="timeline-play-btn" onclick="toggleReplay()" title="Reproducir/pausar">▶</button>
-
-    <div class="tl-group" id="timeline-speed-group">
-      <button class="tl-chip active" data-speed="1" onclick="setReplaySpeed(1)">1x</button>
-      <button class="tl-chip" data-speed="2" onclick="setReplaySpeed(2)">2x</button>
-      <button class="tl-chip" data-speed="5" onclick="setReplaySpeed(5)">5x</button>
-      <button class="tl-chip" data-speed="10" onclick="setReplaySpeed(10)">10x</button>
-    </div>
-
-    <div class="tl-group" id="timeline-range-group">
-      <button class="tl-chip active" data-range="3600" onclick="setTimelineRange(3600)">1h</button>
-      <button class="tl-chip" data-range="43200" onclick="setTimelineRange(43200)">12h</button>
-      <button class="tl-chip" data-range="604800" onclick="setTimelineRange(604800)">7d</button>
-    </div>
-
-    <span class="timeline-cursor-label" id="timeline-cursor-label"></span>
-
-    <button class="tl-btn tl-live-btn active" id="timeline-live-btn" onclick="goLive()" title="Volver a en vivo">
-      <span class="live-dot"></span> En vivo
-    </button>
   </div>
 </div>
 

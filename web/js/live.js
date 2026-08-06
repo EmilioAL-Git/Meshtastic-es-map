@@ -15,6 +15,50 @@ let currentDetailPacketId = null; // packet_id del desglose abierto ahora mismo,
 const LIVE_BACKOFF_MAX_MS = 30000;
 const LIVE_LOG_MAX = 200;
 
+// ─── Filtro por tipo de paquete ─────────────────────────────────────────────
+const PORTNUM_CATEGORIES = {
+  TEXT_MESSAGE_APP: 'text',
+  POSITION_APP: 'position',
+  NODEINFO_APP: 'nodeinfo',
+  TELEMETRY_APP: 'telemetry',
+};
+function portnumCategory(portnum) {
+  if (!portnum) return 'other';
+  if (portnum === 'ENCRYPTED') return 'encrypted';
+  return PORTNUM_CATEGORIES[portnum] || 'other';
+}
+let activePortnumFilters = new Set(['position', 'text', 'telemetry', 'nodeinfo', 'encrypted', 'other']);
+
+function togglePortnumFilter(cat) {
+  if (activePortnumFilters.has(cat)) activePortnumFilters.delete(cat);
+  else activePortnumFilters.add(cat);
+  const btn = document.querySelector(`#portnum-filter-group [data-cat="${cat}"]`);
+  if (btn) btn.classList.toggle('active', activePortnumFilters.has(cat));
+}
+
+// ─── Contador de actividad por nodo (ranking de la sesión) ─────────────────
+let nodeActivityCount = new Map(); // node_id → nº de paquetes vistos como origen
+
+function recordNodeActivity(nodeId) {
+  if (!nodeId || nodeId === '!ffffffff') return;
+  nodeActivityCount.set(nodeId, (nodeActivityCount.get(nodeId) || 0) + 1);
+}
+
+function renderTopNodes() {
+  const el = document.getElementById('live-log-top');
+  if (!el) return;
+  const top = [...nodeActivityCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+  if (!top.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div class="lt-title">Más activos en esta sesión</div>
+    ${top.map(([id, count], i) => `
+      <div class="lt-row">
+        <span class="lt-rank">${i + 1}</span>
+        <span class="lt-name">${nodeLabel(id)}</span>
+        <span class="lt-count">${count}</span>
+      </div>`).join('')}`;
+}
+
 // Solo se dibujan en el mapa los últimos MAX_VISIBLE_PACKETS paquetes — el
 // que se sale de esa ventana arranca una cuenta atrás de TRAIL_GRACE_MS
 // antes de desvanecerse, en vez de desaparecer de golpe.
@@ -28,6 +72,43 @@ const TRAIL_GRACE_MS = 30000;
 // (liveTracked se borra al expirar; esto se conserva mientras la fila
 // siga en la lista, hasta LIVE_LOG_MAX).
 let livePacketLog = new Map();
+
+// ─── Exportar la sesión ─────────────────────────────────────────────────────
+function downloadFile(filename, content, mime) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function exportSessionJSON() {
+  if (!livePacketLog.size) { showToast('No hay paquetes en la sesión todavía'); return; }
+  const packets = [...livePacketLog.values()];
+  downloadFile(`meshtastic-live-${Date.now()}.json`, JSON.stringify(packets, null, 2), 'application/json');
+}
+
+function csvCell(value) {
+  const s = String(value ?? '');
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+function exportSessionCSV() {
+  if (!livePacketLog.size) { showToast('No hay paquetes en la sesión todavía'); return; }
+  const header = ['packet_id', 'from', 'to', 'hop_start', 'channel', 'portnum', 'text', 'path_confidence', 'saltos'];
+  const lines = [header.join(',')];
+  for (const { info, stages, path_confidence } of livePacketLog.values()) {
+    lines.push([
+      info.packet_id, info.from, info.to, info.hop_start,
+      info.channel, info.portnum, info.text, path_confidence, stages.length,
+    ].map(csvCell).join(','));
+  }
+  downloadFile(`meshtastic-live-${Date.now()}.csv`, lines.join('\n'), 'text/csv');
+}
 
 // Paleta para diferenciar paquetes simultáneos — cada packet_id se queda
 // siempre con el mismo color mientras esté en vuelo (hash estable).
@@ -169,6 +250,7 @@ function enforceLiveWindow() {
 function handleLiveEvent(event) {
   if (event.type === 'packet_new') {
     if (liveFocusNodeId && event.from !== liveFocusNodeId && event.to !== liveFocusNodeId) return;
+    if (!activePortnumFilters.has(portnumCategory(event.portnum))) return;
     liveTracked.set(event.packet_id, {
       info: event, stages: [], legIndex: 0,
       marker: null, halo: null, trails: [],
@@ -179,6 +261,8 @@ function handleLiveEvent(event) {
     enforceLiveWindow();
     addLogRow(event);
     spawnOriginPing(event);
+    if (!inReplayView) { recordNodeActivity(event.from); renderTopNodes(); }
+    if (soundEnabled && liveFocusNodeId && !inReplayView) playAlertBeep();
   } else if (event.type === 'packet_stage') {
     const tracked = liveTracked.get(event.packet_id);
     if (!tracked) return;
@@ -396,7 +480,7 @@ function addLogRow(event) {
   const empty = document.getElementById('live-log-empty');
   if (empty) empty.remove();
 
-  const log = document.getElementById('live-log');
+  const log = document.getElementById('live-log-rows');
   const row = document.createElement('div');
   row.className = 'live-log-row';
   row.id = 'live-log-row-' + event.packet_id;
@@ -713,7 +797,9 @@ function resetLiveState() {
   for (const timer of pendingTrailRemovals.values()) clearTimeout(timer);
   pendingTrailRemovals.clear();
   liveOrder = [];
-  document.getElementById('live-log').innerHTML = '<div class="live-log-empty" id="live-log-empty">Esperando paquetes…</div>';
+  document.getElementById('live-log-rows').innerHTML = '<div class="live-log-empty" id="live-log-empty">Esperando paquetes…</div>';
+  nodeActivityCount.clear();
+  renderTopNodes();
 }
 
 function updateFocusHighlight() {
@@ -737,6 +823,7 @@ function setFocusNode(nodeId) {
   input.value = nodeLabel(nodeId);
   document.getElementById('focus-dropdown').classList.remove('open');
   document.getElementById('focus-clear-btn').style.display = '';
+  document.getElementById('focus-sound-btn').style.display = '';
   document.getElementById('focus-wrap').classList.add('active');
 
   resetLiveState();
@@ -752,11 +839,45 @@ function clearFocus() {
   liveFocusNodeId = null;
   document.getElementById('focus-input').value = '';
   document.getElementById('focus-clear-btn').style.display = 'none';
+  document.getElementById('focus-sound-btn').style.display = 'none';
   document.getElementById('focus-wrap').classList.remove('active');
   document.getElementById('focus-dropdown').classList.remove('open');
   liveFocusLayer.clearLayers();
   renderBaseNodes(); // reincluye el nodo que estaba enfocado, sin tocar lo demás
   syncUrl();
+}
+
+// ─── Aviso sonoro (opcional, ligado al Modo Focus) ──────────────────────────
+let soundEnabled = false;
+let audioCtx = null;
+
+function ensureAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playAlertBeep() {
+  try {
+    const ctx = ensureAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.2);
+  } catch { /* audio no disponible en este navegador/contexto — se ignora */ }
+}
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  const btn = document.getElementById('focus-sound-btn');
+  btn.textContent = soundEnabled ? '🔊' : '🔇';
+  btn.classList.toggle('active', soundEnabled);
+  if (soundEnabled) ensureAudioCtx(); // el gesto del click habilita el audio
 }
 
 // ─── Línea de tiempo: barras de actividad + reproducción ───────────────────

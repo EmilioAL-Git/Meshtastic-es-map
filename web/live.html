@@ -25,9 +25,18 @@
   </div>
 
   <div class="stats-bar">
+    <div class="tl-group pf-group" id="portnum-filter-group">
+      <button class="tl-chip active" data-cat="position" onclick="togglePortnumFilter('position')" title="Posición">📍</button>
+      <button class="tl-chip active" data-cat="text" onclick="togglePortnumFilter('text')" title="Mensajes de texto">💬</button>
+      <button class="tl-chip active" data-cat="telemetry" onclick="togglePortnumFilter('telemetry')" title="Telemetría">📊</button>
+      <button class="tl-chip active" data-cat="nodeinfo" onclick="togglePortnumFilter('nodeinfo')" title="Info de nodo">ℹ️</button>
+      <button class="tl-chip active" data-cat="encrypted" onclick="togglePortnumFilter('encrypted')" title="Cifrado (no descifrable)">🔒</button>
+      <button class="tl-chip active" data-cat="other" onclick="togglePortnumFilter('other')" title="Otros tipos">•••</button>
+    </div>
     <div class="focus-wrap" id="focus-wrap">
       <input type="text" id="focus-input" class="search-input" placeholder="Enfocar nodo…" autocomplete="off"
              oninput="onFocusInput()" onkeydown="onFocusKey(event)" onfocus="onFocusInput()">
+      <button class="focus-sound-btn" id="focus-sound-btn" onclick="toggleSound()" title="Aviso sonoro" style="display:none">🔇</button>
       <button class="focus-clear-btn" id="focus-clear-btn" onclick="clearFocus()" title="Quitar foco" style="display:none">✕</button>
       <div class="search-dropdown" id="focus-dropdown"></div>
     </div>
@@ -109,7 +118,17 @@
     </div>
   </div>
   <div class="live-log" id="live-log">
-    <div class="live-log-empty" id="live-log-empty">Esperando paquetes…</div>
+    <div class="live-log-header">
+      <span>Paquetes de la sesión</span>
+      <div class="llh-actions">
+        <button onclick="exportSessionJSON()" title="Exportar como JSON">JSON</button>
+        <button onclick="exportSessionCSV()" title="Exportar como CSV">CSV</button>
+      </div>
+    </div>
+    <div class="live-log-top" id="live-log-top"></div>
+    <div id="live-log-rows">
+      <div class="live-log-empty" id="live-log-empty">Esperando paquetes…</div>
+    </div>
   </div>
 </div>
 

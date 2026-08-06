@@ -1432,6 +1432,24 @@ function positionLegendAboveTimeline() {
   legend.style.bottom = (barBottom + bar.offsetHeight + 10) + 'px';
 }
 
+// Un único cálculo tras cargar podía quedar mal en máquinas donde las
+// fuentes de Google Fonts (@import, bloqueante) tardan más en resolver:
+// la altura de .timeline-bar medida en ese instante no era la definitiva,
+// y como legend.style.bottom nunca se recalculaba, el hueco se quedaba
+// mal ajustado el resto de la sesión. Un ResizeObserver reacciona a
+// cualquier cambio real de tamaño de la barra (fuentes, wrap de
+// controles, resize de ventana...), no solo al resize de window.
+function initLegendTimelineOffset() {
+  const bar = document.getElementById('timeline-bar');
+  if (!bar) return;
+  if (window.ResizeObserver) {
+    new ResizeObserver(positionLegendAboveTimeline).observe(bar);
+  } else {
+    window.addEventListener('resize', positionLegendAboveTimeline);
+  }
+  positionLegendAboveTimeline();
+}
+
 async function bootLive() {
   try {
     const cfg = await fetch(API_BASE + '/data/config.json?t=' + Date.now()).then(r => r.ok ? r.json() : {});
@@ -1447,8 +1465,7 @@ async function bootLive() {
   try { await loadNodes(); } catch (e) { console.error(e); }
   connectLive();
   await initTimeline();
-  positionLegendAboveTimeline();
-  window.addEventListener('resize', positionLegendAboveTimeline);
+  initLegendTimelineOffset();
   updatePacketRateDisplay();
   setInterval(updatePacketRateDisplay, 2000);
 

@@ -1058,6 +1058,12 @@ async function initTimeline() {
   canvas.addEventListener('mouseleave', hideTimelineHover);
   window.addEventListener('resize', () => { drawTimeline(); drawTimelineAxis(); });
 
+  // La caja vive dentro de #map (el contenedor de Leaflet) — sin esto,
+  // cualquier click/arrastre sobre ella también movía el mapa por debajo.
+  const timelineBar = document.getElementById('timeline-bar');
+  L.DomEvent.disableClickPropagation(timelineBar);
+  L.DomEvent.disableScrollPropagation(timelineBar);
+
   timelineUntil = Math.floor(Date.now() / 1000);
   timelineSince = timelineUntil - timelineRangeS;
   await loadTimelineActivity();

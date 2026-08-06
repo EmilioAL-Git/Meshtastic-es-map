@@ -87,10 +87,11 @@
         <button class="tl-btn tl-play-btn" id="timeline-play-btn" onclick="toggleReplay()" title="Reproducir/pausar">▶</button>
 
         <div class="tl-group" id="timeline-speed-group">
+          <button class="tl-chip" data-speed="0.25" onclick="setReplaySpeed(0.25)">0.25x</button>
+          <button class="tl-chip" data-speed="0.5" onclick="setReplaySpeed(0.5)">0.5x</button>
           <button class="tl-chip active" data-speed="1" onclick="setReplaySpeed(1)">1x</button>
-          <button class="tl-chip" data-speed="2" onclick="setReplaySpeed(2)">2x</button>
+          <button class="tl-chip" data-speed="3" onclick="setReplaySpeed(3)">3x</button>
           <button class="tl-chip" data-speed="5" onclick="setReplaySpeed(5)">5x</button>
-          <button class="tl-chip" data-speed="10" onclick="setReplaySpeed(10)">10x</button>
         </div>
 
         <div class="tl-group" id="timeline-range-group">

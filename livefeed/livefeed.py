@@ -75,7 +75,11 @@ async def main():
     queue: asyncio.Queue = asyncio.Queue()
     correlator = Correlator(window_s=LIVE_CORRELATION_WINDOW_S)
     db_conn = storage.init_db(LIVEFEED_DB_PATH)
-    broadcaster = WsBroadcaster(get_packet_fn=lambda pid: storage.get_packet(db_conn, pid))
+    broadcaster = WsBroadcaster(
+        get_packet_fn=lambda pid: storage.get_packet(db_conn, pid),
+        activity_fn=lambda since, until, bucket: storage.activity_buckets(db_conn, since, until, bucket),
+        timeline_fn=lambda since, until: storage.list_range(db_conn, since, until),
+    )
 
     # El servidor WebSocket (y el endpoint HTTP GET /packet/<id> que
     # resuelve enlaces compartidos) arranca siempre, aunque el MQTT esté

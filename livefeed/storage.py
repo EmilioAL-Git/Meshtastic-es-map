@@ -35,6 +35,7 @@ def init_db(path: str) -> sqlite3.Connection:
         """
     )
     conn.execute("CREATE INDEX IF NOT EXISTS idx_packets_last_seen ON packets(last_seen)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_packets_first_seen ON packets(first_seen)")
     conn.commit()
     return conn
 
@@ -89,6 +90,46 @@ def get_packet(conn: sqlite3.Connection, packet_id: int) -> dict | None:
         "path_confidence": row[6],
         "stages": json.loads(row[7]),
     }
+
+
+def activity_buckets(conn: sqlite3.Connection, since: float, until: float, bucket_s: int) -> list[dict]:
+    """Recuento de paquetes por bucket de tiempo, para el histograma de la
+    línea de tiempo — agrupa por first_seen (cuándo se vio el paquete por
+    primera vez, no la última actividad)."""
+    rows = conn.execute(
+        """
+        SELECT CAST(first_seen / ? AS INTEGER) * ? AS bucket, COUNT(*)
+        FROM packets
+        WHERE first_seen >= ? AND first_seen <= ?
+        GROUP BY bucket
+        ORDER BY bucket
+        """,
+        (bucket_s, bucket_s, since, until),
+    ).fetchall()
+    return [{"t": row[0], "count": row[1]} for row in rows]
+
+
+def list_range(conn: sqlite3.Connection, since: float, until: float, limit: int = 1000) -> list[dict]:
+    """Paquetes vistos en un rango de tiempo, con sus etapas — para
+    reproducir la línea de tiempo. Ordenados por primera vez visto."""
+    rows = conn.execute(
+        """
+        SELECT packet_id, from_id, to_id, hop_start, channel, portnum, path_confidence, stages_json, first_seen
+        FROM packets
+        WHERE first_seen >= ? AND first_seen <= ?
+        ORDER BY first_seen ASC
+        LIMIT ?
+        """,
+        (since, until, limit),
+    ).fetchall()
+    return [
+        {
+            "packet_id": row[0], "from": row[1], "to": row[2], "hop_start": row[3],
+            "channel": row[4], "portnum": row[5], "path_confidence": row[6],
+            "stages": json.loads(row[7]), "first_seen": row[8],
+        }
+        for row in rows
+    ]
 
 
 def purge_old(conn: sqlite3.Connection, retention_days: float) -> int:

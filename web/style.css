@@ -958,6 +958,82 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   background: rgba(94,234,212,.1);
 }
 
+/* ── Línea de tiempo ── */
+.timeline-bar {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+}
+
+.timeline-canvas {
+  width: 100%;
+  height: 46px;
+  display: block;
+  cursor: pointer;
+}
+
+.timeline-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.tl-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.tl-btn:hover { border-color: var(--accent2); }
+
+.tl-play-btn { width: 26px; justify-content: center; padding: 4px; }
+.tl-play-btn.playing { border-color: var(--accent); color: var(--accent); }
+
+.tl-live-btn { margin-left: auto; color: var(--muted); }
+.tl-live-btn .live-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--muted);
+}
+.tl-live-btn.active { border-color: rgba(94,234,212,.4); color: var(--accent); }
+.tl-live-btn.active .live-dot {
+  background: #ef4444; box-shadow: 0 0 6px #ef4444;
+  animation: live-pulse 1.6s ease-in-out infinite;
+}
+
+.tl-group { display: flex; gap: 2px; }
+.tl-chip {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 3px 7px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.tl-group .tl-chip:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+.tl-group .tl-chip:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
+.tl-chip.active { border-color: var(--accent2); color: var(--accent2); background: rgba(125,211,252,.1); }
+
+.timeline-cursor-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 .live-log {
   width: 320px;
   flex-shrink: 0;
@@ -1857,4 +1933,14 @@ body.embed-mode .malconfig-table td:nth-child(3) { display: none; }
   }
 
   body.live-page .back-link span { display: none; }
+
+  /* ── live.html: controles de la línea de tiempo, en fila scrolleable ── */
+  .timeline-controls {
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .timeline-controls::-webkit-scrollbar { display: none; }
+  .timeline-cursor-label { display: none; }
+  .tl-live-btn { margin-left: 0; flex-shrink: 0; }
 }

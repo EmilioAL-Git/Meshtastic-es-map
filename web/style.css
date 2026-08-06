@@ -2225,8 +2225,12 @@ body.embed-mode .malconfig-table td:nth-child(3) { display: none; }
      primero Pausar + estado de conexión, luego filtros y foco, que se
      envuelven a otra línea si no caben en vez de desbordar. */
   body.live-page .stats-bar {
+    /* el .stats-bar genérico de arriba trae "flex: 1" (flex-basis:0%) para
+       el buscador de index.html — en el eje principal, flex-basis gana
+       siempre a width, así que un simple "width:100%" no bastaba para que
+       esta fila ocupara todo el ancho y bajara del logo. */
+    flex: 1 1 100%;
     order: 3;
-    width: 100%;
     margin-left: 0;
     flex-wrap: wrap;
     gap: 8px;

@@ -1,6 +1,14 @@
 // ─── Feed en directo: MQTT → WebSocket → animación en el mapa ─────────────────────
 
-let liveTracked = new Map();  // packet_id → { info, stages, legIndex, marker, halo, trails, color, expiring }
+// packet_id NO es identidad suficiente: es un entero de 32 bits que cada
+// nodo genera por su cuenta, sin garantía de unicidad en toda la malla
+// (el firmware solo evita repetirlo consigo mismo). Con tráfico EU_868 y
+// varios días de histórico, dos nodos distintos pueden coincidir por azar
+// — por eso todo se indexa por la pareja (packet_id, from), igual que hace
+// el propio firmware para deduplicar. pktKey() construye esa clave.
+function pktKey(packetId, from) { return packetId + ':' + (from || ''); }
+
+let liveTracked = new Map();  // pktKey → { info, stages, legIndex, marker, halo, trails, color, expiring }
 let liveLayer;                // L.layerGroup de marcadores/halos animados
 let liveTrailLayer;           // L.layerGroup de las líneas de recorrido (por debajo de los marcadores)
 let liveSiblingLayer;         // L.layerGroup de las líneas de "mismo salto oído por varios gateways"
@@ -11,7 +19,7 @@ let liveBackoffMs = 1000;
 let livePaused = false;
 let liveFocusNodeId = null;   // !xxxxxxxx del nodo enfocado, o null (sin filtro)
 let liveFocusLayer;           // L.layerGroup con el resaltado del nodo enfocado
-let currentDetailPacketId = null; // packet_id del desglose abierto ahora mismo, o null
+let currentDetailPacketId = null; // pktKey() del desglose abierto ahora mismo, o null
 const LIVE_BACKOFF_MAX_MS = 30000;
 const LIVE_LOG_MAX = 200;
 
@@ -67,12 +75,12 @@ function renderTopNodes() {
 // la cuenta atrás se siguen acumulando más — el "límite de 20" deja de
 // notarse porque en la práctica hay 20 + (todos los que cayeron en los
 // últimos TRAIL_GRACE_MS) a la vez en el mapa.
-let liveOrder = [];                      // packet_id en orden de llegada (packet_new)
-const pendingTrailRemovals = new Map();  // packet_id → timeoutId
+let liveOrder = [];                      // pktKey() en orden de llegada (packet_new)
+const pendingTrailRemovals = new Map();  // pktKey() → timeoutId
 const MAX_VISIBLE_PACKETS = 20;
 const TRAIL_GRACE_MS = 5000;
 
-// packet_id → { info, stages, path_confidence } — historial persistente
+// pktKey() → { info, stages, path_confidence } — historial persistente
 // para el desglose, independiente del ciclo de vida de la animación
 // (liveTracked se borra al expirar; esto se conserva mientras la fila
 // siga en la lista, hasta LIVE_LOG_MAX).
@@ -260,30 +268,31 @@ function enforceLiveWindow() {
 }
 
 function handleLiveEvent(event) {
+  const key = pktKey(event.packet_id, event.from);
   if (event.type === 'packet_new') {
     if (liveFocusNodeId && event.from !== liveFocusNodeId && event.to !== liveFocusNodeId) return;
     if (!activePortnumFilters.has(portnumCategory(event.portnum))) return;
-    liveTracked.set(event.packet_id, {
+    liveTracked.set(key, {
       info: event, stages: [], legIndex: 0,
       marker: null, halo: null, trails: [],
       color: packetColor(event.packet_id),
       expiring: false, animating: false,
     });
-    liveOrder.push(event.packet_id);
+    liveOrder.push(key);
     enforceLiveWindow();
     addLogRow(event);
     spawnOriginPing(event);
     if (!inReplayView) { recordNodeActivity(event.from); renderTopNodes(); }
     if (soundEnabled && liveFocusNodeId && !inReplayView) playAlertBeep();
   } else if (event.type === 'packet_stage') {
-    const tracked = liveTracked.get(event.packet_id);
+    const tracked = liveTracked.get(key);
     if (!tracked) return;
     const hadStages = tracked.stages.length;
     tracked.stages = event.stages;
     updateLogRow(event);
-    if (event.stages.length > hadStages) animateNextLeg(event.packet_id);
+    if (event.stages.length > hadStages) animateNextLeg(key);
   } else if (event.type === 'packet_expired') {
-    expirePacket(event.packet_id);
+    expirePacket(key);
   }
 }
 
@@ -343,7 +352,7 @@ function ensureMarker(tracked, atPos) {
     fillColor: tracked.color, fillOpacity: 1, interactive: true,
     bubblingMouseEvents: false,
   }).addTo(liveLayer);
-  tracked.marker.on('click', () => openPacketDetail(tracked.info.packet_id));
+  tracked.marker.on('click', () => openPacketDetail(pktKey(tracked.info.packet_id, tracked.info.from)));
   idlePulse(tracked);
 }
 
@@ -487,7 +496,8 @@ function expirePacket(packetId) {
 // ─── Sidebar de paquetes ────────────────────────────────────────────────────
 
 function addLogRow(event) {
-  livePacketLog.set(event.packet_id, { info: event, stages: [], path_confidence: event.path_confidence });
+  const key = pktKey(event.packet_id, event.from);
+  livePacketLog.set(key, { info: event, stages: [], path_confidence: event.path_confidence });
 
   const empty = document.getElementById('live-log-empty');
   if (empty) empty.remove();
@@ -495,26 +505,27 @@ function addLogRow(event) {
   const log = document.getElementById('live-log-rows');
   const row = document.createElement('div');
   row.className = 'live-log-row';
-  row.id = 'live-log-row-' + event.packet_id;
+  row.id = 'live-log-row-' + key;
   row.innerHTML = renderLogRow(event, { hop_start: event.hop_start, hops: 0, path_confidence: event.path_confidence });
-  row.addEventListener('click', () => openPacketDetail(event.packet_id));
+  row.addEventListener('click', () => openPacketDetail(key));
   log.insertBefore(row, log.firstChild);
 
   while (log.children.length > LIVE_LOG_MAX) {
     const last = log.lastChild;
-    const m = /^live-log-row-(\d+)$/.exec(last.id);
-    if (m) livePacketLog.delete(Number(m[1]));
+    const m = /^live-log-row-(.+)$/.exec(last.id);
+    if (m) livePacketLog.delete(m[1]);
     log.removeChild(last);
   }
 }
 
 function updateLogRow(stageEvent) {
-  const data = livePacketLog.get(stageEvent.packet_id);
+  const key = pktKey(stageEvent.packet_id, stageEvent.from);
+  const data = livePacketLog.get(key);
   if (data) { data.stages = stageEvent.stages; data.path_confidence = stageEvent.path_confidence; }
 
-  const row = document.getElementById('live-log-row-' + stageEvent.packet_id);
+  const row = document.getElementById('live-log-row-' + key);
   if (!row) return;
-  const tracked = liveTracked.get(stageEvent.packet_id);
+  const tracked = liveTracked.get(key);
   if (!tracked) return;
   row.innerHTML = renderLogRow(tracked.info, {
     hop_start: tracked.info.hop_start,
@@ -652,7 +663,10 @@ function renderDetailMiniMap(packetId) {
     return;
   }
 
-  const color = packetColor(packetId);
+  // packetColor() se hashea siempre sobre el packet_id numérico (igual que
+  // en el mapa grande y el log) — no sobre packetId aquí, que ya es la
+  // clave compuesta pktKey(), o el color no coincidiría con el resto.
+  const color = packetColor(data.info.packet_id);
   const latlngs = points.map(p => p.pos);
   const allPositions = [...latlngs];
   L.polyline(latlngs, { color, weight: 3, opacity: 0.8 }).addTo(detailMapLayer);
@@ -734,13 +748,21 @@ async function copyCurrentLink() {
 }
 
 async function loadSharedPacket(rawId) {
-  const packetId = Number(rawId);
+  // Formato nuevo "packetId:from" (ver pktKey); se acepta también un
+  // enlace viejo con solo el packetId — el backend hace un mejor esfuerzo
+  // si no le llega "from" (ver storage.get_packet).
+  const sep = rawId.indexOf(':');
+  const packetIdStr = sep === -1 ? rawId : rawId.slice(0, sep);
+  const fromId = sep === -1 ? null : rawId.slice(sep + 1);
+  const packetId = Number(packetIdStr);
   if (!Number.isFinite(packetId)) return;
   try {
-    const r = await fetch(`${API_BASE}/live-ws/packet/${packetId}`);
+    const qs = fromId ? `?from=${encodeURIComponent(fromId)}` : '';
+    const r = await fetch(`${API_BASE}/live-ws/packet/${packetId}${qs}`);
     if (!r.ok) { showToast('Ese paquete ya no está disponible (caducó)'); return; }
     const data = await r.json();
-    livePacketLog.set(data.packet_id, {
+    const key = pktKey(data.packet_id, data.from);
+    livePacketLog.set(key, {
       info: {
         packet_id: data.packet_id, from: data.from, to: data.to,
         hop_start: data.hop_start, channel: data.channel, portnum: data.portnum,
@@ -749,7 +771,7 @@ async function loadSharedPacket(rawId) {
       stages: data.stages,
       path_confidence: data.path_confidence,
     });
-    openPacketDetail(data.packet_id);
+    openPacketDetail(key);
   } catch {
     showToast('No se pudo cargar el paquete compartido');
   }
@@ -1054,7 +1076,7 @@ function buildReplayEventQueue() {
         run: () => handleLiveEvent({
           type: 'packet_new', packet_id: pkt.packet_id, from: pkt.from, to: pkt.to,
           hop_start: pkt.hop_start, channel: pkt.channel, portnum: pkt.portnum,
-          path_confidence: pkt.path_confidence,
+          text: pkt.text, path_confidence: pkt.path_confidence,
         }),
       });
     }
@@ -1065,7 +1087,7 @@ function buildReplayEventQueue() {
       events.push({
         time: stageTime,
         run: () => handleLiveEvent({
-          type: 'packet_stage', packet_id: pkt.packet_id,
+          type: 'packet_stage', packet_id: pkt.packet_id, from: pkt.from,
           path_confidence: pkt.path_confidence, stages: stagesSoFar,
         }),
       });

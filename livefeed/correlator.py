@@ -11,6 +11,16 @@ gateway_id a medida que el paquete salta por la malla. Agrupamos las
 una etapa de retransmisión, ya que decrementa en cada salto) para aproximar
 el camino real. Si alguna sighting trae relay_node (firmware reciente, nodo
 real que retransmitió), se prioriza sobre esta heurística.
+
+IMPORTANTE: packet_id es un entero de 32 bits que cada nodo genera por su
+cuenta — el firmware NO garantiza que sea único en toda la malla, solo evita
+repetirlo consigo mismo a corto plazo. La pareja (packet_id, from_node) es
+la que el propio firmware usa para deduplicar/evitar bucles, así que es la
+que usamos aquí como identidad real de un paquete — con tráfico EU_868 y
+varios días de retención, dos nodos distintos generando por azar el mismo
+packet_id no es tan raro (paradoja del cumpleaños: con ~350k paquetes en 7
+días, ~14-15 colisiones esperadas). Usar solo packet_id mezclaría paquetes
+de nodos distintos que compartieron número por casualidad.
 """
 
 from __future__ import annotations
@@ -67,6 +77,7 @@ class PacketState:
         return {
             "type": "packet_stage",
             "packet_id": self.packet_id,
+            "from": self.from_id,
             "path_confidence": self.path_confidence,
             "stages": [s.to_dict() for s in self.ordered_stages()],
         }
@@ -91,7 +102,9 @@ class Correlator:
     def __init__(self, window_s: float = 45.0, now_fn=time.monotonic):
         self.window_s = window_s
         self._now = now_fn
-        self._packets: dict[int, PacketState] = {}
+        # Clave (packet_id, from_id), no solo packet_id — ver docstring del
+        # módulo: packet_id no es globalmente único en la malla.
+        self._packets: dict[tuple[int, str | None], PacketState] = {}
 
     def ingest(self, event: dict) -> list[dict]:
         """Procesa una sighting saneada de mqtt_source.py.
@@ -102,21 +115,23 @@ class Correlator:
         packet_id = event["packet_id"]
         hop_limit = event["hop_limit"]
         gateway_id = event["gateway_id"]
+        from_id = event.get("from")
+        key = (packet_id, from_id)
 
         out: list[dict] = []
-        state = self._packets.get(packet_id)
+        state = self._packets.get(key)
         if state is None:
             state = PacketState(
                 packet_id=packet_id,
                 first_seen=self._now(),
-                from_id=event.get("from"),
+                from_id=from_id,
                 to_id=event.get("to"),
                 hop_start=event.get("hop_start"),
                 channel=event.get("channel"),
                 portnum=event.get("portnum"),
                 text=event.get("text"),
             )
-            self._packets[packet_id] = state
+            self._packets[key] = state
             out.append(state.new_event())
 
         stage = state.stages.get(hop_limit)
@@ -144,13 +159,16 @@ class Correlator:
     def expire(self) -> list[dict]:
         """Elimina paquetes más viejos que window_s. Devuelve eventos packet_expired."""
         now = self._now()
-        expired_ids = [
-            pid for pid, state in self._packets.items()
+        expired = [
+            (key, state) for key, state in self._packets.items()
             if now - state.first_seen > self.window_s
         ]
-        for pid in expired_ids:
-            del self._packets[pid]
-        return [{"type": "packet_expired", "packet_id": pid} for pid in expired_ids]
+        for key, _ in expired:
+            del self._packets[key]
+        return [
+            {"type": "packet_expired", "packet_id": state.packet_id, "from": state.from_id}
+            for _, state in expired
+        ]
 
     def __len__(self) -> int:
         return len(self._packets)

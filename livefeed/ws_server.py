@@ -7,7 +7,12 @@ datos — no procesa mensajes entrantes del cliente más allá de ping/pong
 También responde peticiones HTTP normales en el mismo puerto (vía
 process_request, interceptando antes del handshake de WebSocket):
 
-  GET /packet/<id>                        → un paquete guardado, por id
+  GET /packet/<id>?from=<from_id>          → un paquete guardado, por
+                                              (packet_id, from_id) — packet_id
+                                              solo no es identidad suficiente,
+                                              ver storage.py; "from" es
+                                              opcional por compatibilidad con
+                                              enlaces antiguos
   GET /activity?since=&until=&bucket=60    → recuento de paquetes por bucket,
                                               para el histograma de la línea de tiempo
   GET /timeline?since=&until=              → paquetes (con sus etapas) en ese
@@ -33,7 +38,7 @@ JSON_HEADERS = [("Content-Type", "application/json")]
 class WsBroadcaster:
     def __init__(
         self,
-        get_packet_fn: Callable[[int], dict | None] | None = None,
+        get_packet_fn: Callable[[int, str | None], dict | None] | None = None,
         activity_fn: Callable[[float, float, int], list] | None = None,
         timeline_fn: Callable[[float, float], list] | None = None,
     ):
@@ -75,14 +80,14 @@ class WsBroadcaster:
         params = parse_qs(parsed.query)
 
         if route.startswith("/packet/"):
-            return self._handle_packet(route)
+            return self._handle_packet(route, params)
         if route == "/activity":
             return self._handle_activity(params)
         if route == "/timeline":
             return self._handle_timeline(params)
         return None
 
-    def _handle_packet(self, route: str):
+    def _handle_packet(self, route: str, params: dict):
         if self._get_packet_fn is None:
             return (http.HTTPStatus.NOT_FOUND, JSON_HEADERS, b'{"error":"no disponible"}')
         raw_id = route[len("/packet/"):].strip("/")
@@ -90,7 +95,8 @@ class WsBroadcaster:
             packet_id = int(raw_id)
         except ValueError:
             return (http.HTTPStatus.BAD_REQUEST, JSON_HEADERS, b'{"error":"id de paquete invalido"}')
-        data = self._get_packet_fn(packet_id)
+        from_id = params.get("from", [None])[0]
+        data = self._get_packet_fn(packet_id, from_id)
         if data is None:
             return (http.HTTPStatus.NOT_FOUND, JSON_HEADERS, b'{"error":"no encontrado"}')
         return (http.HTTPStatus.OK, JSON_HEADERS, json.dumps(data).encode())

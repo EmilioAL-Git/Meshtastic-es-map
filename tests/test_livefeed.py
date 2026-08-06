@@ -216,7 +216,7 @@ class CorrelatorTests(unittest.TestCase):
         self.corr.ingest(self._event())
         self.clock = 100.0  # más que window_s=45
         expired = self.corr.expire()
-        self.assertEqual(expired, [{"type": "packet_expired", "packet_id": 42}])
+        self.assertEqual(expired, [{"type": "packet_expired", "packet_id": 42, "from": "!aabbccdd"}])
         self.assertEqual(len(self.corr), 0)
 
     def test_expiry_keeps_recent_packets(self):
@@ -229,6 +229,25 @@ class CorrelatorTests(unittest.TestCase):
         out = self.corr.ingest(self._event())
         for event in out:
             json.dumps(event)  # no debe lanzar
+
+    def test_same_packet_id_different_from_are_independent_packets(self):
+        """packet_id no es único en toda la malla — cada nodo lo genera por
+        su cuenta (32 bits). Dos nodos distintos pueden coincidir por azar;
+        la identidad real es (packet_id, from), igual que usa el firmware
+        para deduplicar/evitar bucles. Si se tratasen como el mismo paquete,
+        sus etapas se mezclarían entre sí."""
+        self.corr.ingest(self._event(packet_id=99, **{"from": "!aaaaaaaa"}, gateway_id="!11111111"))
+        # Mismo packet_id, nodo origen distinto → debe generar su propio packet_new
+        out_b = self.corr.ingest(self._event(packet_id=99, **{"from": "!bbbbbbbb"}, to="!ffffffff", gateway_id="!22222222"))
+        types_b = [e["type"] for e in out_b]
+        self.assertEqual(types_b, ["packet_new", "packet_stage"])
+        self.assertEqual(len(self.corr), 2)  # dos PacketState independientes, no uno fusionado
+
+        # Las etapas de cada uno no se contaminan entre sí
+        out_a2 = self.corr.ingest(self._event(packet_id=99, **{"from": "!aaaaaaaa"}, hop_limit=1, gateway_id="!33333333"))
+        stages_a = out_a2[-1]["stages"]
+        self.assertEqual(len(stages_a), 2)  # hop_limit 3 y 1 del nodo !aaaaaaaa
+        self.assertNotIn("!22222222", [gw for s in stages_a for gw in s["gateway_ids"]])
 
 
 if __name__ == "__main__":

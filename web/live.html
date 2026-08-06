@@ -83,7 +83,11 @@
 
 <!-- Línea de tiempo -->
 <div class="timeline-bar" id="timeline-bar">
-  <canvas class="timeline-canvas" id="timeline-canvas"></canvas>
+  <div class="timeline-canvas-wrap">
+    <canvas class="timeline-canvas" id="timeline-canvas"></canvas>
+    <div class="timeline-tooltip" id="timeline-tooltip"></div>
+  </div>
+  <div class="timeline-axis" id="timeline-axis"></div>
   <div class="timeline-controls">
     <button class="tl-btn tl-play-btn" id="timeline-play-btn" onclick="toggleReplay()" title="Reproducir/pausar">▶</button>
 

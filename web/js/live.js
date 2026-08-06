@@ -742,6 +742,26 @@ async function loadTimelineActivity() {
     timelineBuckets = [];
   }
   drawTimeline();
+  drawTimelineAxis();
+}
+
+function formatAxisTime(t) {
+  const d = new Date(t * 1000);
+  const time = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  if (timelineRangeS <= 43200) return time; // 1h/12h: solo hora
+  return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' }) + ' ' + time;
+}
+
+function drawTimelineAxis() {
+  const axis = document.getElementById('timeline-axis');
+  if (!axis) return;
+  const ticks = 5;
+  const labels = [];
+  for (let i = 0; i < ticks; i++) {
+    const t = timelineSince + (timelineUntil - timelineSince) * (i / (ticks - 1));
+    labels.push(`<span>${formatAxisTime(t)}</span>`);
+  }
+  axis.innerHTML = labels.join('');
 }
 
 function drawTimeline() {
@@ -939,10 +959,36 @@ function stopTimelineAutoRefresh() {
   if (timelineRefreshInterval) { clearInterval(timelineRefreshInterval); timelineRefreshInterval = null; }
 }
 
+function timelineBucketAt(t) {
+  const bucketSize = timelineBucketSize();
+  const bucketStart = Math.floor(t / bucketSize) * bucketSize;
+  return timelineBuckets.find(b => b.t === bucketStart);
+}
+
+function handleTimelineHover(e) {
+  const canvas = document.getElementById('timeline-canvas');
+  const tooltip = document.getElementById('timeline-tooltip');
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const t = timelineTimeFromEvent(e);
+  const bucket = timelineBucketAt(t);
+  tooltip.style.left = `${x}px`;
+  tooltip.style.display = 'block';
+  const label = formatAxisTime(Math.floor(t / timelineBucketSize()) * timelineBucketSize());
+  tooltip.textContent = `${label} — ${bucket ? bucket.count : 0} paquete${bucket && bucket.count === 1 ? '' : 's'}`;
+}
+
+function hideTimelineHover() {
+  const tooltip = document.getElementById('timeline-tooltip');
+  if (tooltip) tooltip.style.display = 'none';
+}
+
 async function initTimeline() {
   const canvas = document.getElementById('timeline-canvas');
   canvas.addEventListener('click', (e) => seekTimelineTo(timelineTimeFromEvent(e)));
-  window.addEventListener('resize', drawTimeline);
+  canvas.addEventListener('mousemove', handleTimelineHover);
+  canvas.addEventListener('mouseleave', hideTimelineHover);
+  window.addEventListener('resize', () => { drawTimeline(); drawTimelineAxis(); });
 
   timelineUntil = Math.floor(Date.now() / 1000);
   timelineSince = timelineUntil - timelineRangeS;

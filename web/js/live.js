@@ -627,7 +627,7 @@ function buildPacketPath(data) {
 function renderDetailMiniMap(packetId) {
   if (!detailMap) {
     detailMap = L.map('packet-detail-map', {
-      zoomControl: false,
+      zoomControl: true,
       attributionControl: false,
       scrollWheelZoom: false,
     });

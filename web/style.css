@@ -1354,13 +1354,29 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   font-size: 13px;
 }
 
+.pkt-detail-inner { max-width: 980px; }
+
+.pkt-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.15fr) minmax(320px, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
 .pkt-detail-map {
-  height: 220px;
+  height: 380px;
   margin: 14px 0;
   border-radius: var(--radius);
   overflow: hidden;
   background: var(--panel2);
   border: 1px solid var(--border);
+  position: sticky;
+  top: 14px;
+}
+
+@media (max-width: 760px) {
+  .pkt-detail-layout { grid-template-columns: 1fr; }
+  .pkt-detail-map { height: 240px; position: static; }
 }
 
 .malconfig-table {

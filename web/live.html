@@ -134,7 +134,7 @@
 
 <!-- Modal: desglose de paquete -->
 <div class="malconfig-modal" id="packet-detail-modal" onclick="if(event.target===this) closePacketDetail()">
-  <div class="malconfig-inner" style="max-width:640px">
+  <div class="malconfig-inner pkt-detail-inner">
     <div class="malconfig-header">
       <div class="malconfig-title">Desglose del paquete</div>
       <div class="malconfig-header-right">
@@ -142,7 +142,7 @@
         <button class="malconfig-close" onclick="closePacketDetail()" aria-label="Cerrar">✕</button>
       </div>
     </div>
-    <div class="malconfig-content">
+    <div class="malconfig-content pkt-detail-layout">
       <div id="packet-detail-map" class="pkt-detail-map"></div>
       <div id="packet-detail-tables"></div>
     </div>

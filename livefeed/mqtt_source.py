@@ -83,6 +83,7 @@ class MqttSource:
         topics: list[str],
         queue: asyncio.Queue,
         loop: asyncio.AbstractEventLoop,
+        client_id: str | None = None,
     ):
         import paho.mqtt.client as mqtt
 
@@ -90,8 +91,12 @@ class MqttSource:
         self._loop = loop
         self._topics = topics
 
+        # Algunos brokers de Meshtastic restringen el client_id por ACL
+        # (p.ej. debe coincidir con el usuario) — por defecto usamos el
+        # username como client_id si no se especifica otro explícitamente.
         self._client = mqtt.Client(
             callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
+            client_id=client_id or username or "",
         )
         if username:
             self._client.username_pw_set(username, password)

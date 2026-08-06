@@ -24,6 +24,7 @@ MQTT_HOST = os.environ.get("MQTT_BROKER_HOST", "")
 MQTT_PORT = int(os.environ.get("MQTT_BROKER_PORT", 8883))
 MQTT_USERNAME = os.environ.get("MQTT_USERNAME") or None
 MQTT_PASSWORD = os.environ.get("MQTT_PASSWORD") or None
+MQTT_CLIENT_ID = os.environ.get("MQTT_CLIENT_ID") or None
 MQTT_TLS = os.environ.get("MQTT_TLS", "true").lower() == "true"
 MQTT_TOPICS = [t.strip() for t in os.environ.get("MQTT_TOPICS", "").split(",") if t.strip()]
 LIVE_WS_HOST = os.environ.get("LIVE_WS_HOST", "0.0.0.0")
@@ -79,6 +80,7 @@ async def main():
         password=MQTT_PASSWORD,
         tls=MQTT_TLS,
         topics=MQTT_TOPICS,
+        client_id=MQTT_CLIENT_ID,
         queue=queue,
         loop=loop,
     )

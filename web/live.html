@@ -13,7 +13,7 @@
 <link rel="stylesheet" href="style.css?v=1.4.0"/>
 </head>
 
-<body>
+<body class="live-page">
 
 <!-- Header -->
 <header>
@@ -34,7 +34,15 @@
 
 <!-- Main -->
 <div class="main">
-  <div id="map"></div>
+  <div id="map">
+    <button class="live-log-toggle-btn" id="live-log-toggle-btn" onclick="toggleLiveLogPanel()" title="Paquetes">
+      <svg viewBox="0 0 16 16" fill="none">
+        <rect x="2" y="3" width="12" height="2" rx="1" fill="currentColor"/>
+        <rect x="2" y="7" width="12" height="2" rx="1" fill="currentColor"/>
+        <rect x="2" y="11" width="7" height="2" rx="1" fill="currentColor"/>
+      </svg>
+    </button>
+  </div>
   <div class="live-log" id="live-log">
     <div class="live-log-empty" id="live-log-empty">Esperando paquetes…</div>
   </div>

@@ -867,6 +867,31 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 .conn-badge.disabled { border-color: rgba(239,68,68,.35); color: var(--danger); }
 .conn-badge.disabled .conn-dot { background: var(--danger); }
 
+.live-log-toggle-btn {
+  display: none; /* solo visible en móvil, posicionado sobre el mapa */
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: all .15s;
+}
+.live-log-toggle-btn svg { width: 15px; height: 15px; }
+.live-log-toggle-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(94,234,212,.1);
+}
+
 .live-log {
   width: 320px;
   flex-shrink: 0;
@@ -1728,4 +1753,30 @@ body.embed-mode .malconfig-table td:nth-child(3) { display: none; }
   .filter-toggle-btn svg { width: 18px; height: 18px; }
 
   .noopt-label { display: none; }
+
+  /* ── live.html: log de paquetes como bottom sheet, no barra lateral ── */
+  body.live-page .live-log-toggle-btn { display: flex; }
+
+  body.live-page .live-log {
+    display: none;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: 45vh;
+    border-left: none;
+    border-top: 1px solid var(--border);
+    border-radius: 14px 14px 0 0;
+    box-shadow: var(--shadow);
+    z-index: 700;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  body.live-page .live-log.open {
+    display: block;
+    animation: slideUpMobile .25s ease;
+  }
+
+  body.live-page .back-link span { display: none; }
 }

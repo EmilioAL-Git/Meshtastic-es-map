@@ -313,6 +313,11 @@ function renderLogRow(info, { hops, path_confidence }) {
 
 // ─── Boot ───────────────────────────────────────────────────────────────────
 
+function toggleLiveLogPanel() {
+  document.getElementById('live-log').classList.toggle('open');
+  document.getElementById('live-log-toggle-btn').classList.toggle('active');
+}
+
 async function bootLive() {
   try {
     const cfg = await fetch(API_BASE + '/data/config.json?t=' + Date.now()).then(r => r.ok ? r.json() : {});

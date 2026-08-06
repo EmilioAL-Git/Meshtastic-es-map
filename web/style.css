@@ -1020,26 +1020,6 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   cursor: pointer;
 }
 
-.timeline-live-marker {
-  position: absolute;
-  right: 2px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  font-family: var(--mono);
-  font-size: 9px;
-  font-weight: 700;
-  color: #fca5a5;
-  pointer-events: none;
-}
-.timeline-live-marker .live-dot {
-  width: 5px; height: 5px; border-radius: 50%;
-  background: #ef4444; box-shadow: 0 0 5px #ef4444;
-  animation: live-pulse 1.6s ease-in-out infinite;
-}
-
 .timeline-tooltip {
   display: none;
   position: absolute;

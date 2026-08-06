@@ -375,7 +375,6 @@ function addLogRow(event) {
   const row = document.createElement('div');
   row.className = 'live-log-row';
   row.id = 'live-log-row-' + event.packet_id;
-  row.dataset.confidence = event.path_confidence === 'relay_node' ? 'relay' : 'heuristic';
   row.innerHTML = renderLogRow(event, { hop_start: event.hop_start, hops: 0, path_confidence: event.path_confidence });
   row.addEventListener('click', () => openPacketDetail(event.packet_id));
   log.insertBefore(row, log.firstChild);
@@ -396,7 +395,6 @@ function updateLogRow(stageEvent) {
   if (!row) return;
   const tracked = liveTracked.get(stageEvent.packet_id);
   if (!tracked) return;
-  row.dataset.confidence = stageEvent.path_confidence === 'relay_node' ? 'relay' : 'heuristic';
   row.innerHTML = renderLogRow(tracked.info, {
     hop_start: tracked.info.hop_start,
     hops: stageEvent.stages.length,
@@ -849,7 +847,7 @@ async function loadReplayPackets() {
   }
 }
 
-async function seekTimelineTo(t) {
+async function seekTimelineTo(t, { autoplay = true } = {}) {
   enterReplayView();
   stopReplayPlayback();
   replayCursorTime = t;
@@ -857,6 +855,7 @@ async function seekTimelineTo(t) {
   drawTimeline();
   resetLiveState();
   if (!replayPackets.length) await loadReplayPackets();
+  if (autoplay) startReplayPlayback();
 }
 
 function buildReplayEventQueue() {
@@ -904,17 +903,21 @@ function runNextReplayEvent() {
   }, delayMs);
 }
 
-async function toggleReplay() {
-  if (replayPlaying) { stopReplayPlayback(); return; }
-  enterReplayView();
-  if (replayCursorTime == null) replayCursorTime = timelineSince;
-  if (!replayPackets.length) await loadReplayPackets();
+function startReplayPlayback() {
   replayEventQueue = buildReplayEventQueue();
   replayPlaying = true;
   const btn = document.getElementById('timeline-play-btn');
   btn.textContent = '⏸';
   btn.classList.add('playing');
   runNextReplayEvent();
+}
+
+async function toggleReplay() {
+  if (replayPlaying) { stopReplayPlayback(); return; }
+  enterReplayView();
+  if (replayCursorTime == null) replayCursorTime = timelineSince;
+  if (!replayPackets.length) await loadReplayPackets();
+  startReplayPlayback();
 }
 
 function stopReplayPlayback() {
@@ -1081,7 +1084,7 @@ function togglePause() {
 
 // ─── Leyenda: capas activables/desactivables ───────────────────────────────
 
-const LIVE_LAYER_KEYS = ['nodes', 'focus', 'packets', 'trail', 'siblings', 'pings', 'conf-relay', 'conf-heuristic'];
+const LIVE_LAYER_KEYS = ['nodes', 'trail', 'siblings'];
 const LIVE_LAYER_KEY  = 'mesh_live_hidden_layers';
 const _savedHiddenLayers = (() => { try { return JSON.parse(localStorage.getItem(LIVE_LAYER_KEY)); } catch { return null; } })();
 const liveHiddenLayers = new Set(
@@ -1089,22 +1092,14 @@ const liveHiddenLayers = new Set(
 );
 
 function liveLayerGroupFor(key) {
-  return {
-    nodes: liveNodeLayer, focus: liveFocusLayer, packets: liveLayer,
-    trail: liveTrailLayer, siblings: liveSiblingLayer, pings: livePingLayer,
-  }[key];
+  return { nodes: liveNodeLayer, trail: liveTrailLayer, siblings: liveSiblingLayer }[key];
 }
 
 function applyLiveLayerVisibility(key) {
   const show = !liveHiddenLayers.has(key);
   const group = liveLayerGroupFor(key);
-  if (group) {
-    if (show) { if (!map.hasLayer(group)) group.addTo(map); }
-    else if (map.hasLayer(group)) map.removeLayer(group);
-    return;
-  }
-  if (key === 'conf-relay')     document.body.classList.toggle('hide-conf-relay', !show);
-  if (key === 'conf-heuristic') document.body.classList.toggle('hide-conf-heuristic', !show);
+  if (show) { if (!map.hasLayer(group)) group.addTo(map); }
+  else if (map.hasLayer(group)) map.removeLayer(group);
 }
 
 function applyAllLiveLayerVisibility() {

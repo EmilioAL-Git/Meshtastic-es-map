@@ -285,7 +285,9 @@ function expirePacket(packetId) {
   tracked.expiring = true;
   liveTracked.delete(packetId);
 
-  const layers = [...tracked.trails];
+  // En Modo Focus las líneas se quedan como historial permanente de la
+  // sesión — solo se desvanece el punto animado, no la ruta ya trazada.
+  const layers = liveFocusNodeId ? [] : [...tracked.trails];
   if (tracked.marker) layers.push(tracked.marker);
   if (tracked.halo) layers.push(tracked.halo);
   if (!layers.length) return;

@@ -402,9 +402,72 @@ function renderPacketDetail(packetId) {
     </table>`;
 }
 
+// ─── Mini-mapa del desglose ─────────────────────────────────────────────────
+
+let detailMap = null;
+let detailMapLayer = null;
+
+function buildPacketPath(data) {
+  // Mismo criterio que animateNextLeg: solo puntos con coordenadas
+  // conocidas, en orden — origen y luego cada etapa que sí resolvimos.
+  const points = [];
+  const originPos = nodeLatLng(data.info.from);
+  if (originPos) points.push({ pos: originPos, label: `${nodeLabel(data.info.from)} (origen)` });
+  for (const stage of data.stages) {
+    const pos = stagePosition(stage);
+    if (pos) {
+      points.push({ pos, label: `hop_limit ${stage.hop_limit} — ${stage.gateway_ids.map(nodeLabel).join(', ')}` });
+    }
+  }
+  return points;
+}
+
+function renderDetailMiniMap(packetId) {
+  if (!detailMap) {
+    detailMap = L.map('packet-detail-map', {
+      zoomControl: false,
+      attributionControl: false,
+      scrollWheelZoom: false,
+    });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19,
+    }).addTo(detailMap);
+    detailMapLayer = L.layerGroup().addTo(detailMap);
+  }
+  detailMapLayer.clearLayers();
+
+  const data = livePacketLog.get(packetId);
+  const points = data ? buildPacketPath(data) : [];
+
+  if (!points.length) {
+    detailMap.setView([MAP_LAT, MAP_LNG], MAP_ZOOM);
+    return;
+  }
+
+  const color = packetColor(packetId);
+  const latlngs = points.map(p => p.pos);
+  L.polyline(latlngs, { color, weight: 3, opacity: 0.8 }).addTo(detailMapLayer);
+  points.forEach((p, i) => {
+    L.circleMarker(p.pos, {
+      radius: i === 0 ? 7 : 5,
+      color: '#fff', weight: 1.5, fillColor: color, fillOpacity: 1,
+    }).bindTooltip(p.label, { direction: 'top' }).addTo(detailMapLayer);
+  });
+
+  if (latlngs.length === 1) {
+    detailMap.setView(latlngs[0], 13);
+  } else {
+    detailMap.fitBounds(L.latLngBounds(latlngs), { padding: [24, 24] });
+  }
+}
+
 function openPacketDetail(packetId) {
-  document.getElementById('packet-detail-content').innerHTML = renderPacketDetail(packetId);
+  document.getElementById('packet-detail-tables').innerHTML = renderPacketDetail(packetId);
   document.getElementById('packet-detail-modal').classList.add('open');
+  renderDetailMiniMap(packetId);
+  // El modal acaba de hacerse visible — Leaflet necesita recalcular el
+  // tamaño del contenedor una vez el navegador aplique el nuevo layout.
+  setTimeout(() => { if (detailMap) detailMap.invalidateSize(); }, 60);
 }
 
 function closePacketDetail() {

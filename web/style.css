@@ -1091,6 +1091,15 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   font-size: 13px;
 }
 
+.pkt-detail-map {
+  height: 220px;
+  margin: 14px 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+}
+
 .malconfig-table {
   width: 100%;
   min-width: 640px;

@@ -118,6 +118,22 @@ header {
 
 .leaflet-tile-pane { filter: saturate(.85); }
 
+.leaflet-tooltip {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+  box-shadow: var(--shadow);
+  padding: 6px 9px;
+}
+.leaflet-tooltip-top:before { border-top-color: var(--border); }
+.leaflet-tooltip-bottom:before { border-bottom-color: var(--border); }
+.leaflet-tooltip-left:before { border-left-color: var(--border); }
+.leaflet-tooltip-right:before { border-right-color: var(--border); }
+.node-tooltip strong { color: var(--accent); }
+
 /* ── Buscador en header ── */
 .search-wrap {
   position: relative;

@@ -57,6 +57,13 @@ function initLiveMap() {
   liveFocusLayer = L.layerGroup().addTo(map);
 }
 
+function nodeTooltipHtml(n) {
+  const name = escHtml(n.long_name || n.short_name || n.node_id);
+  const sub = [n.short_name, n.node_id].filter(Boolean).map(escHtml).join(' · ');
+  const meta = [n.role, n.hardware].filter(Boolean).map(escHtml).join(' · ');
+  return `<div class="node-tooltip"><strong>${name}</strong>${sub ? `<br>${sub}` : ''}${meta ? `<br>${meta}` : ''}</div>`;
+}
+
 function renderBaseNodes(dim) {
   liveNodeLayer.clearLayers();
   const color = dim ? '#334155' : C_OLD;
@@ -70,8 +77,9 @@ function renderBaseNodes(dim) {
       weight: 1,
       fillColor: color,
       fillOpacity: dim ? 0.35 : 0.6,
-      interactive: false,
-    }).addTo(liveNodeLayer);
+      interactive: true,
+    }).bindTooltip(nodeTooltipHtml(n), { direction: 'top', offset: [0, -3] })
+      .addTo(liveNodeLayer);
   }
 }
 

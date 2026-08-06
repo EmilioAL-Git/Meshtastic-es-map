@@ -1351,6 +1351,19 @@ function initLegendDrag() {
   handle.addEventListener('pointercancel', endDrag);
 }
 
+// La leyenda debe quedar lo más abajo posible sin tapar la línea de
+// tiempo — en vez de un hueco fijo adivinado (que sobraba o se quedaba
+// corto según cuánto envuelvan sus controles), se mide de verdad la
+// altura real de .timeline-bar y se apoya justo encima.
+function positionLegendAboveTimeline() {
+  const legend = document.getElementById('live-legend');
+  const bar = document.getElementById('timeline-bar');
+  if (!legend || !bar) return;
+  if (legend.style.top) return; // el usuario la ha arrastrado en esta sesión, no tocar
+  const barBottom = parseFloat(getComputedStyle(bar).bottom) || 0;
+  legend.style.bottom = (barBottom + bar.offsetHeight + 10) + 'px';
+}
+
 async function bootLive() {
   try {
     const cfg = await fetch(API_BASE + '/data/config.json?t=' + Date.now()).then(r => r.ok ? r.json() : {});
@@ -1364,7 +1377,9 @@ async function bootLive() {
   initLegendDrag();
   try { await loadNodes(); } catch (e) { console.error(e); }
   connectLive();
-  initTimeline();
+  await initTimeline();
+  positionLegendAboveTimeline();
+  window.addEventListener('resize', positionLegendAboveTimeline);
 
   const params = new URLSearchParams(location.search);
   const focusParam = params.get('focus');

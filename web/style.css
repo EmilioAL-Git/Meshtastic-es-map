@@ -533,7 +533,8 @@ header {
 }
 
 /* live.html tiene la barra de línea de tiempo pegada abajo del mapa —
-   la leyenda sube para no quedar tapada por ella */
+   valor de respaldo hasta que positionLegendAboveTimeline() (live.js)
+   mide la altura real de .timeline-bar y la coloca justo encima */
 body.live-page .legend { bottom: 130px; }
 
 .legend-title {

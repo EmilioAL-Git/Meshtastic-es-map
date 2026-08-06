@@ -173,6 +173,18 @@ function stagePosition(stage) {
   return null;
 }
 
+function stageSiblingLines(stage) {
+  // Cuando una misma etapa la oyen varios gateways a la vez, no solo se
+  // anima hacia el representativo (stagePosition) — también se traza un
+  // pequeño abanico hacia los demás que conozcamos, para que se vea que el
+  // paquete "salió por varios sitios" en ese salto. Usada tanto por el mapa
+  // grande como por el mini-mapa del desglose, para que no diverjan.
+  const positions = stage.gateway_ids.map(nodeLatLng).filter(Boolean);
+  if (positions.length < 2) return [];
+  const [rep, ...rest] = positions;
+  return rest.map(pos => [rep, pos]);
+}
+
 function spawnOriginPing(event) {
   const pos = nodeLatLng(event.from);
   if (!pos) return;
@@ -229,6 +241,16 @@ function drawTrailLeg(tracked, fromPos, toPos) {
   tracked.trails.push(line);
 }
 
+function drawStageSiblingLines(tracked, stage) {
+  for (const [a, b] of stageSiblingLines(stage)) {
+    const line = L.polyline([a, b], {
+      pane: 'livePane', color: tracked.color, weight: 1.5, opacity: 0.35,
+      dashArray: '3 4', interactive: false,
+    }).addTo(liveTrailLayer);
+    tracked.trails.push(line);
+  }
+}
+
 function animateNextLeg(packetId) {
   const tracked = liveTracked.get(packetId);
   // tracked.animating evita lanzar dos animaciones a la vez sobre el mismo
@@ -273,6 +295,7 @@ function animateNextLeg(packetId) {
 
   const fromPos = tracked.lastPos;
   tracked.lastPos = toPos;
+  drawStageSiblingLines(tracked, stages[tracked.legIndex]);
 
   ensureMarker(tracked, fromPos);
   tracked.animating = true;
@@ -482,7 +505,17 @@ function renderDetailMiniMap(packetId) {
 
   const color = packetColor(packetId);
   const latlngs = points.map(p => p.pos);
+  const allPositions = [...latlngs];
   L.polyline(latlngs, { color, weight: 3, opacity: 0.8 }).addTo(detailMapLayer);
+  for (const stage of data.stages) {
+    for (const [a, b] of stageSiblingLines(stage)) {
+      L.polyline([a, b], { color, weight: 1.5, opacity: 0.45, dashArray: '3 4' }).addTo(detailMapLayer);
+      L.circleMarker(b, {
+        radius: 4, color: '#fff', weight: 1, fillColor: color, fillOpacity: 0.7,
+      }).bindTooltip(`hop_limit ${stage.hop_limit} — también oído aquí`, { direction: 'top' }).addTo(detailMapLayer);
+      allPositions.push(b);
+    }
+  }
   points.forEach((p, i) => {
     L.circleMarker(p.pos, {
       radius: i === 0 ? 7 : 5,
@@ -490,10 +523,10 @@ function renderDetailMiniMap(packetId) {
     }).bindTooltip(p.label, { direction: 'top' }).addTo(detailMapLayer);
   });
 
-  if (latlngs.length === 1) {
-    detailMap.setView(latlngs[0], 13);
+  if (allPositions.length === 1) {
+    detailMap.setView(allPositions[0], 13);
   } else {
-    detailMap.fitBounds(L.latLngBounds(latlngs), { padding: [24, 24] });
+    detailMap.fitBounds(L.latLngBounds(allPositions), { padding: [24, 24] });
   }
 }
 

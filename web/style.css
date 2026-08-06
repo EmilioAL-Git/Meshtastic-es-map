@@ -970,6 +970,52 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 .conn-badge.disabled { border-color: rgba(239,68,68,.35); color: var(--danger); }
 .conn-badge.disabled .conn-dot { background: var(--danger); }
 
+.live-info-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  cursor: pointer;
+  transition: all .15s;
+}
+.live-info-btn:hover { color: var(--text); border-color: var(--accent2); }
+.live-info-btn svg { width: 14px; height: 14px; }
+
+.live-info-inner { max-width: 560px; }
+.live-info-content h4 {
+  margin: 16px 0 6px;
+  font-size: 12px;
+  font-family: var(--mono);
+  color: var(--accent2);
+}
+.live-info-content h4:first-child { margin-top: 0; }
+.live-info-content p {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+}
+.live-info-content code {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.live-info-content ul {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text);
+}
+
 .live-log-toggle-btn {
   display: none; /* solo visible en móvil, posicionado sobre el mapa */
   position: absolute;
@@ -2248,7 +2294,8 @@ body.embed-mode .malconfig-table td:nth-child(3) { display: none; }
   }
 
   body.live-page .live-pause-btn,
-  body.live-page .conn-badge { order: 1; }
+  body.live-page .conn-badge,
+  body.live-page .live-info-btn { order: 1; }
   body.live-page #pause-label { display: none; } /* solo icono, ahorra sitio */
 
   body.live-page #portnum-filter-group { display: none; }

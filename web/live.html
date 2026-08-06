@@ -69,6 +69,9 @@
       <span class="conn-dot"></span>
       <span id="conn-label">Conectando…</span>
     </div>
+    <button class="live-info-btn" id="live-info-btn" onclick="openLiveInfo()" title="Cómo funciona el directo">
+      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.3" stroke="currentColor" stroke-width="1.5"/><rect x="7.3" y="6.9" width="1.4" height="4.2" rx="0.5" fill="currentColor"/><circle cx="8" cy="4.9" r="0.9" fill="currentColor"/></svg>
+    </button>
   </div>
 </header>
 
@@ -163,6 +166,53 @@
     <div class="malconfig-content pkt-detail-layout">
       <div id="packet-detail-map" class="pkt-detail-map"></div>
       <div id="packet-detail-tables"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: cómo funciona el directo -->
+<div class="malconfig-modal" id="live-info-modal" onclick="if(event.target===this) closeLiveInfo()">
+  <div class="malconfig-inner live-info-inner">
+    <div class="malconfig-header">
+      <div class="malconfig-title">Cómo funciona el directo</div>
+      <div class="malconfig-header-right">
+        <button class="malconfig-close" onclick="closeLiveInfo()" aria-label="Cerrar">✕</button>
+      </div>
+    </div>
+    <div class="malconfig-content live-info-content">
+      <h4>Qué se ve aquí</h4>
+      <p>Esta página escucha en directo el broker MQTT de la red Meshtastic
+      España — <strong>no es solo España</strong>: el feed cubre toda la
+      malla EU_868, así que la mayoría de paquetes vienen de nodos y
+      gateways de otros países que no aparecen en el mapa (se muestran igual,
+      simplemente sin poder dibujar su origen si no lo conocemos).</p>
+
+      <h4>Cómo se reconstruye la ruta</h4>
+      <p>Un mismo paquete puede ser oído por varios gateways MQTT. Se
+      correla por su <code>packet_id</code> y se ordenan las apariciones por
+      <code>hop_limit</code> descendente para aproximar el camino salto a
+      salto. Si el firmware del nodo incluye el campo <code>relay_node</code>,
+      la ruta de ese salto se marca como <strong>confirmada</strong>; si no,
+      es una <strong>estimación</strong> basada en qué gateways oyeron cada
+      salto — con muchos gateways cerca puede no coincidir exactamente con
+      el camino real por el aire.</p>
+
+      <h4>Qué contenido se puede leer</h4>
+      <p>Solo se decodifica lo necesario para saber el <em>tipo</em> de
+      paquete. En canales sin contraseña propia (LongFast, MediumFast…) se
+      puede recuperar el tipo real e incluso el texto si es un mensaje
+      (<code>TEXT_MESSAGE_APP</code>) — es la única excepción. Un canal con
+      PSK propia se queda como <code>ENCRYPTED</code>, sin revelar nada de
+      su contenido.</p>
+
+      <h4>Limitaciones</h4>
+      <ul>
+        <li>No hay batería, SNR ni RSSI — ese dato no lo expone el feed.</li>
+        <li>La ruta sin <code>relay_node</code> es aproximada, no un traceroute real.</li>
+        <li>En el mapa solo se dibujan los últimos 20 paquetes en vuelo a la vez.</li>
+        <li>El histórico de la línea de tiempo guarda como mucho 7 días.</li>
+        <li>Depende de que el broker MQTT esté disponible en cada momento.</li>
+      </ul>
     </div>
   </div>
 </div>

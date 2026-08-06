@@ -696,6 +696,16 @@ function closePacketDetail() {
   syncUrl();
 }
 
+// ─── Modal: cómo funciona el directo ────────────────────────────────────────
+
+function openLiveInfo() {
+  document.getElementById('live-info-modal').classList.add('open');
+}
+
+function closeLiveInfo() {
+  document.getElementById('live-info-modal').classList.remove('open');
+}
+
 // ─── Enlaces compartibles (?focus=, ?packet=) ───────────────────────────────
 
 function syncUrl() {
@@ -1390,6 +1400,7 @@ async function bootLive() {
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     closePacketDetail();
+    closeLiveInfo();
     document.getElementById('focus-dropdown').classList.remove('open');
   });
 

@@ -1309,19 +1309,11 @@ function initLegendDrag() {
   const legend = document.getElementById('live-legend');
   const handle = document.getElementById('live-legend-handle');
   if (!legend || !handle) return;
-  const POS_KEY = 'mesh_live_legend_pos';
   const container = legend.parentElement;
 
-  try {
-    const pos = JSON.parse(localStorage.getItem(POS_KEY));
-    if (pos && Number.isFinite(pos.left) && Number.isFinite(pos.top)) {
-      legend.style.left = pos.left + 'px';
-      legend.style.top = pos.top + 'px';
-      legend.style.right = 'auto';
-      legend.style.bottom = 'auto';
-    }
-  } catch {}
-
+  // Sin persistencia entre sesiones a propósito: la posición inicial de
+  // cada carga es siempre la de por defecto (abajo a la derecha, ver CSS
+  // .legend) — arrastrarla solo vale para la sesión actual.
   let dragging = false, startX = 0, startY = 0, startLeft = 0, startTop = 0;
 
   handle.addEventListener('pointerdown', (e) => {
@@ -1354,11 +1346,6 @@ function initLegendDrag() {
     if (!dragging) return;
     dragging = false;
     legend.classList.remove('dragging');
-    try {
-      localStorage.setItem(POS_KEY, JSON.stringify({
-        left: parseFloat(legend.style.left), top: parseFloat(legend.style.top),
-      }));
-    } catch {}
   }
   handle.addEventListener('pointerup', endDrag);
   handle.addEventListener('pointercancel', endDrag);

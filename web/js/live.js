@@ -135,7 +135,7 @@ function handleLiveEvent(event) {
       info: event, stages: [], legIndex: 0,
       marker: null, halo: null, trails: [],
       color: packetColor(event.packet_id),
-      expiring: false,
+      expiring: false, animating: false,
     });
     addLogRow(event);
     spawnOriginPing(event);
@@ -221,7 +221,13 @@ function drawTrailLeg(tracked, fromPos, toPos) {
 
 function animateNextLeg(packetId) {
   const tracked = liveTracked.get(packetId);
-  if (!tracked || tracked.expiring) return;
+  // tracked.animating evita lanzar dos animaciones a la vez sobre el mismo
+  // marcador si llega una nueva etapa mientras el tramo anterior aún se
+  // está moviendo — si no, ambas escriben setLatLng() cada frame y el
+  // punto se ve "pasarse" de sitio, pisándose entre sí. El propio step()
+  // encadena la siguiente etapa pendiente al terminar, así que aquí basta
+  // con no hacer nada y dejar que continúe cuando le toque.
+  if (!tracked || tracked.expiring || tracked.animating) return;
   const stages = tracked.stages;
 
   // La posición de partida es siempre la última posición conocida en la
@@ -247,6 +253,7 @@ function animateNextLeg(packetId) {
   tracked.lastPos = toPos;
 
   ensureMarker(tracked, fromPos);
+  tracked.animating = true;
 
   const durationMs = 900;
   const start = performance.now();
@@ -263,6 +270,7 @@ function animateNextLeg(packetId) {
       requestAnimationFrame(step);
     } else {
       drawTrailLeg(tracked, fromPos, toPos);
+      tracked.animating = false;
       if (tracked.legIndex < stages.length - 1) animateNextLeg(packetId);
     }
   }

@@ -80,7 +80,7 @@ class MqttSource:
         username: str | None,
         password: str | None,
         tls: bool,
-        topic: str,
+        topics: list[str],
         queue: asyncio.Queue,
         loop: asyncio.AbstractEventLoop,
     ):
@@ -88,7 +88,7 @@ class MqttSource:
 
         self._queue = queue
         self._loop = loop
-        self._topic = topic
+        self._topics = topics
 
         self._client = mqtt.Client(
             callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
@@ -115,8 +115,9 @@ class MqttSource:
 
     def _on_connect(self, client, userdata, flags, reason_code, properties=None):
         if reason_code == 0 or getattr(reason_code, "value", 1) == 0:
-            log.info("Conectado a MQTT %s:%s, suscribiendo a %s", self._host, self._port, self._topic)
-            client.subscribe(self._topic)
+            log.info("Conectado a MQTT %s:%s, suscribiendo a %s", self._host, self._port, self._topics)
+            for topic in self._topics:
+                client.subscribe(topic)
         else:
             log.warning("Fallo de conexión MQTT: %s", reason_code)
 

@@ -25,7 +25,7 @@ MQTT_PORT = int(os.environ.get("MQTT_BROKER_PORT", 8883))
 MQTT_USERNAME = os.environ.get("MQTT_USERNAME") or None
 MQTT_PASSWORD = os.environ.get("MQTT_PASSWORD") or None
 MQTT_TLS = os.environ.get("MQTT_TLS", "true").lower() == "true"
-MQTT_TOPIC = os.environ.get("MQTT_TOPIC", "msh/ES/2/e/#")
+MQTT_TOPICS = [t.strip() for t in os.environ.get("MQTT_TOPICS", "").split(",") if t.strip()]
 LIVE_WS_HOST = os.environ.get("LIVE_WS_HOST", "0.0.0.0")
 LIVE_WS_PORT = int(os.environ.get("LIVE_WS_PORT", 8765))
 LIVE_CORRELATION_WINDOW_S = float(os.environ.get("LIVE_CORRELATION_WINDOW_S", 45))
@@ -65,8 +65,10 @@ async def main():
     log.info("Servidor WebSocket en %s:%s", LIVE_WS_HOST, LIVE_WS_PORT)
     await broadcaster.serve(LIVE_WS_HOST, LIVE_WS_PORT)
 
-    if not MQTT_HOST:
-        log.warning("MQTT_BROKER_HOST no está configurado. Feed en vivo desactivado (sin datos).")
+    if not MQTT_HOST or not MQTT_TOPICS:
+        log.warning(
+            "MQTT_BROKER_HOST o MQTT_TOPICS no están configurados. Feed en vivo desactivado (sin datos)."
+        )
         await asyncio.Event().wait()
         return
 
@@ -76,7 +78,7 @@ async def main():
         username=MQTT_USERNAME,
         password=MQTT_PASSWORD,
         tls=MQTT_TLS,
-        topic=MQTT_TOPIC,
+        topics=MQTT_TOPICS,
         queue=queue,
         loop=loop,
     )

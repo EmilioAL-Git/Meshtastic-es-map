@@ -31,10 +31,8 @@ function initLiveMap() {
 function renderBaseNodes() {
   liveNodeLayer.clearLayers();
   for (const n of allNodes) {
-    if (n.last_lat == null || n.last_long == null) continue;
-    const lat = n.last_lat / 1e7, lng = n.last_long / 1e7;
-    if (Math.abs(lat) < 0.5 && Math.abs(lng) < 0.5) continue; // null island
-    L.circleMarker([lat, lng], {
+    if (n.latitude == null || n.longitude == null) continue;
+    L.circleMarker([n.latitude, n.longitude], {
       pane: 'livePane',
       radius: 3,
       color: C_OLD,
@@ -57,10 +55,8 @@ async function loadNodes() {
 
 function nodeLatLng(nodeId) {
   const n = nodesById.get(nodeId);
-  if (!n || n.last_lat == null || n.last_long == null) return null;
-  const lat = n.last_lat / 1e7, lng = n.last_long / 1e7;
-  if (Math.abs(lat) < 0.5 && Math.abs(lng) < 0.5) return null;
-  return [lat, lng];
+  if (!n || n.latitude == null || n.longitude == null) return null;
+  return [n.latitude, n.longitude];
 }
 
 // ─── Conexión WebSocket ─────────────────────────────────────────────────────
@@ -198,11 +194,18 @@ function updateLogRow(stageEvent) {
   });
 }
 
+function nodeLabel(nodeId) {
+  if (!nodeId) return '?';
+  if (nodeId === '!ffffffff') return 'Todos';
+  const n = nodesById.get(nodeId);
+  return n && n.short_name ? `${escHtml(n.short_name)}` : escHtml(nodeId);
+}
+
 function renderLogRow(info, { hops, path_confidence }) {
   const confClass = path_confidence === 'relay_node' ? 'lr-conf-relay' : 'lr-conf-heuristic';
   const confLabel = path_confidence === 'relay_node' ? 'ruta confirmada' : 'ruta aproximada';
   return `
-    <div class="lr-route">${escHtml(info.from || '?')} → ${escHtml(info.to || '?')}</div>
+    <div class="lr-route">${nodeLabel(info.from)} → ${nodeLabel(info.to)}</div>
     <div class="lr-meta">
       <span>${hops} etapa${hops === 1 ? '' : 's'}</span>
       <span>${escHtml(info.portnum || '—')}</span>

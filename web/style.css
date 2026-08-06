@@ -847,6 +847,29 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 }
 .back-link:hover { color: var(--text); }
 
+.live-pause-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all .15s;
+}
+.live-pause-btn:hover { color: var(--text); border-color: var(--accent2); }
+.live-pause-btn svg { width: 13px; height: 13px; }
+.live-pause-btn.paused {
+  border-color: rgba(251,191,36,.4);
+  color: var(--warn);
+  background: rgba(251,191,36,.1);
+}
+
 .conn-badge {
   display: flex;
   align-items: center;
@@ -915,7 +938,10 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   font-family: var(--mono);
   font-size: 11px;
   animation: live-row-in .3s ease;
+  cursor: pointer;
+  transition: background .12s;
 }
+.live-log-row:hover { background: var(--panel2); }
 @keyframes live-row-in {
   from { background: rgba(94,234,212,.18); }
   to   { background: transparent; }

@@ -7,8 +7,15 @@ let livePingLayer;            // L.layerGroup de los pings de origen
 let liveNodeLayer;            // L.layerGroup de puntos base de nodos
 let liveWs = null;
 let liveBackoffMs = 1000;
+let livePaused = false;
 const LIVE_BACKOFF_MAX_MS = 30000;
 const LIVE_LOG_MAX = 200;
+
+// packet_id → { info, stages, path_confidence } — historial persistente
+// para el desglose, independiente del ciclo de vida de la animación
+// (liveTracked se borra al expirar; esto se conserva mientras la fila
+// siga en la lista, hasta LIVE_LOG_MAX).
+let livePacketLog = new Map();
 
 // Paleta para diferenciar paquetes simultáneos — cada packet_id se queda
 // siempre con el mismo color mientras esté en vuelo (hash estable).
@@ -101,6 +108,7 @@ function connectLive() {
   };
 
   liveWs.onmessage = (ev) => {
+    if (livePaused) return;
     let event;
     try { event = JSON.parse(ev.data); } catch { return; }
     handleLiveEvent(event);
@@ -180,8 +188,10 @@ function ensureMarker(tracked, atPos) {
   }).addTo(liveLayer);
   tracked.marker = L.circleMarker(atPos, {
     pane: 'livePane', radius: 5, color: '#fff', weight: 1.5,
-    fillColor: tracked.color, fillOpacity: 1, interactive: false,
+    fillColor: tracked.color, fillOpacity: 1, interactive: true,
+    bubblingMouseEvents: false,
   }).addTo(liveLayer);
+  tracked.marker.on('click', () => openPacketDetail(tracked.info.packet_id));
   idlePulse(tracked);
 }
 
@@ -284,6 +294,8 @@ function expirePacket(packetId) {
 // ─── Sidebar de paquetes ────────────────────────────────────────────────────
 
 function addLogRow(event) {
+  livePacketLog.set(event.packet_id, { info: event, stages: [], path_confidence: event.path_confidence });
+
   const empty = document.getElementById('live-log-empty');
   if (empty) empty.remove();
 
@@ -292,12 +304,21 @@ function addLogRow(event) {
   row.className = 'live-log-row';
   row.id = 'live-log-row-' + event.packet_id;
   row.innerHTML = renderLogRow(event, { hop_start: event.hop_start, hops: 0, path_confidence: event.path_confidence });
+  row.addEventListener('click', () => openPacketDetail(event.packet_id));
   log.insertBefore(row, log.firstChild);
 
-  while (log.children.length > LIVE_LOG_MAX) log.removeChild(log.lastChild);
+  while (log.children.length > LIVE_LOG_MAX) {
+    const last = log.lastChild;
+    const m = /^live-log-row-(\d+)$/.exec(last.id);
+    if (m) livePacketLog.delete(Number(m[1]));
+    log.removeChild(last);
+  }
 }
 
 function updateLogRow(stageEvent) {
+  const data = livePacketLog.get(stageEvent.packet_id);
+  if (data) { data.stages = stageEvent.stages; data.path_confidence = stageEvent.path_confidence; }
+
   const row = document.getElementById('live-log-row-' + stageEvent.packet_id);
   if (!row) return;
   const tracked = liveTracked.get(stageEvent.packet_id);
@@ -329,11 +350,83 @@ function renderLogRow(info, { hops, path_confidence }) {
     </div>`;
 }
 
+// ─── Desglose de paquete ────────────────────────────────────────────────────
+
+function formatTime(unixSeconds) {
+  if (!unixSeconds) return '—';
+  return new Date(unixSeconds * 1000).toLocaleTimeString('es-ES');
+}
+
+function nodeLabelFull(nodeId) {
+  if (!nodeId) return '—';
+  if (nodeId === '!ffffffff') return 'Todos (broadcast)';
+  const n = nodesById.get(nodeId);
+  return n && n.short_name
+    ? `${escHtml(n.short_name)} — ${escHtml(n.long_name || '')} (${escHtml(nodeId)})`
+    : escHtml(nodeId);
+}
+
+function renderPacketDetail(packetId) {
+  const data = livePacketLog.get(packetId);
+  if (!data) return '<p class="malconfig-empty">Sin datos de este paquete (se ha perdido del historial).</p>';
+  const { info, stages, path_confidence } = data;
+  const confLabel = path_confidence === 'relay_node'
+    ? 'Ruta confirmada — al menos una etapa trae el nodo real que retransmitió (relay_node)'
+    : 'Ruta aproximada — estimada por qué gateways oyeron cada etapa, sin relay_node';
+
+  const stagesRows = stages.length
+    ? stages.map((s, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${s.hop_limit}</td>
+        <td>${s.gateway_ids.map(nodeLabel).join(', ')}</td>
+        <td>${s.relay_node ? nodeLabel(s.relay_node) : '—'}</td>
+        <td>${formatTime(s.rx_time)}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="5">Sin etapas con coordenadas conocidas todavía</td></tr>';
+
+  return `
+    <table class="malconfig-table">
+      <tr><td>Packet ID</td><td>${info.packet_id}</td></tr>
+      <tr><td>Origen</td><td>${nodeLabelFull(info.from)}</td></tr>
+      <tr><td>Destino</td><td>${nodeLabelFull(info.to)}</td></tr>
+      <tr><td>hop_start</td><td>${info.hop_start ?? '—'}</td></tr>
+      <tr><td>Canal</td><td>${info.channel ?? '—'}</td></tr>
+      <tr><td>Tipo (portnum)</td><td>${escHtml(info.portnum || '—')}</td></tr>
+      <tr><td>Confianza de ruta</td><td>${confLabel}</td></tr>
+    </table>
+    <h4 style="margin:16px 0 8px;font-size:12px;color:var(--muted);font-family:var(--mono)">Etapas detectadas (${stages.length})</h4>
+    <table class="malconfig-table">
+      <thead><tr><th>#</th><th>hop_limit</th><th>Gateways que la oyeron</th><th>relay_node</th><th>Hora</th></tr></thead>
+      <tbody>${stagesRows}</tbody>
+    </table>`;
+}
+
+function openPacketDetail(packetId) {
+  document.getElementById('packet-detail-content').innerHTML = renderPacketDetail(packetId);
+  document.getElementById('packet-detail-modal').classList.add('open');
+}
+
+function closePacketDetail() {
+  document.getElementById('packet-detail-modal').classList.remove('open');
+}
+
 // ─── Boot ───────────────────────────────────────────────────────────────────
 
 function toggleLiveLogPanel() {
   document.getElementById('live-log').classList.toggle('open');
   document.getElementById('live-log-toggle-btn').classList.toggle('active');
+}
+
+function togglePause() {
+  livePaused = !livePaused;
+  const btn = document.getElementById('live-pause-btn');
+  const icon = document.getElementById('pause-icon');
+  btn.classList.toggle('paused', livePaused);
+  document.getElementById('pause-label').textContent = livePaused ? 'Reanudar' : 'Pausar';
+  icon.innerHTML = livePaused
+    ? '<path d="M4 3l9 5-9 5V3z" fill="currentColor"/>'
+    : '<rect x="4" y="3" width="3" height="10" rx="1" fill="currentColor"/><rect x="9" y="3" width="3" height="10" rx="1" fill="currentColor"/>';
 }
 
 async function bootLive() {
@@ -347,6 +440,10 @@ async function bootLive() {
   initLiveMap();
   try { await loadNodes(); } catch (e) { console.error(e); }
   connectLive();
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closePacketDetail();
+  });
 }
 
 document.addEventListener('DOMContentLoaded', bootLive);

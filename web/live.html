@@ -25,6 +25,13 @@
   </div>
 
   <div class="stats-bar">
+    <button class="live-pause-btn" id="live-pause-btn" onclick="togglePause()" title="Pausar/reanudar el feed">
+      <svg id="pause-icon" viewBox="0 0 16 16" fill="none">
+        <rect x="4" y="3" width="3" height="10" rx="1" fill="currentColor"/>
+        <rect x="9" y="3" width="3" height="10" rx="1" fill="currentColor"/>
+      </svg>
+      <span id="pause-label">Pausar</span>
+    </button>
     <div class="conn-badge" id="conn-badge">
       <span class="conn-dot"></span>
       <span id="conn-label">Conectando…</span>
@@ -45,6 +52,17 @@
   </div>
   <div class="live-log" id="live-log">
     <div class="live-log-empty" id="live-log-empty">Esperando paquetes…</div>
+  </div>
+</div>
+
+<!-- Modal: desglose de paquete -->
+<div class="malconfig-modal" id="packet-detail-modal" onclick="if(event.target===this) closePacketDetail()">
+  <div class="malconfig-inner" style="max-width:640px">
+    <div class="malconfig-header">
+      <div class="malconfig-title">Desglose del paquete</div>
+      <button class="malconfig-close" onclick="closePacketDetail()" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="malconfig-content" id="packet-detail-content"></div>
   </div>
 </div>
 

@@ -26,12 +26,30 @@
 
   <div class="stats-bar">
     <div class="tl-group pf-group" id="portnum-filter-group">
-      <button class="tl-chip active" data-cat="position" onclick="togglePortnumFilter('position')" title="Posición">📍</button>
-      <button class="tl-chip active" data-cat="text" onclick="togglePortnumFilter('text')" title="Mensajes de texto">💬</button>
-      <button class="tl-chip active" data-cat="telemetry" onclick="togglePortnumFilter('telemetry')" title="Telemetría">📊</button>
-      <button class="tl-chip active" data-cat="nodeinfo" onclick="togglePortnumFilter('nodeinfo')" title="Info de nodo">ℹ️</button>
-      <button class="tl-chip active" data-cat="encrypted" onclick="togglePortnumFilter('encrypted')" title="Cifrado (no descifrable)">🔒</button>
-      <button class="tl-chip active" data-cat="other" onclick="togglePortnumFilter('other')" title="Otros tipos">•••</button>
+      <button class="tl-chip active" data-cat="position" onclick="togglePortnumFilter('position')" title="Posición">
+        <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 14.2s5-4.3 5-8.2A5 5 0 0 0 3 6c0 3.9 5 8.2 5 8.2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="8" cy="6" r="1.7" stroke="currentColor" stroke-width="1.5"/></svg>
+        <span class="pf-label">Posición</span>
+      </button>
+      <button class="tl-chip active" data-cat="text" onclick="togglePortnumFilter('text')" title="Mensajes de texto">
+        <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="3" width="12" height="7.4" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M5 10.4v2.3l3-2.3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        <span class="pf-label">Mensajes</span>
+      </button>
+      <button class="tl-chip active" data-cat="telemetry" onclick="togglePortnumFilter('telemetry')" title="Telemetría">
+        <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="9" width="2.6" height="5" rx="0.6" fill="currentColor"/><rect x="6.7" y="6" width="2.6" height="8" rx="0.6" fill="currentColor"/><rect x="11.4" y="2.5" width="2.6" height="11.5" rx="0.6" fill="currentColor"/></svg>
+        <span class="pf-label">Telemetría</span>
+      </button>
+      <button class="tl-chip active" data-cat="nodeinfo" onclick="togglePortnumFilter('nodeinfo')" title="Info de nodo">
+        <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><rect x="7.3" y="6.9" width="1.4" height="4" rx="0.5" fill="currentColor"/><circle cx="8" cy="5" r="0.9" fill="currentColor"/></svg>
+        <span class="pf-label">Nodo</span>
+      </button>
+      <button class="tl-chip active" data-cat="encrypted" onclick="togglePortnumFilter('encrypted')" title="Cifrado (no descifrable)">
+        <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="10.3" r="1" fill="currentColor"/></svg>
+        <span class="pf-label">Cifrado</span>
+      </button>
+      <button class="tl-chip active" data-cat="other" onclick="togglePortnumFilter('other')" title="Otros tipos">
+        <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="3" cy="8" r="1.3" fill="currentColor"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="13" cy="8" r="1.3" fill="currentColor"/></svg>
+        <span class="pf-label">Otros</span>
+      </button>
     </div>
     <div class="focus-wrap" id="focus-wrap">
       <input type="text" id="focus-input" class="search-input" placeholder="Enfocar nodo…" autocomplete="off"

@@ -1109,8 +1109,18 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 .tl-chip.active { color: var(--accent2); background: rgba(125,211,252,.15); }
 
 .pf-group { flex-shrink: 0; }
-.pf-group .tl-chip { font-size: 13px; padding: 5px 8px; }
+.pf-group .tl-chip {
+  padding: 5px 9px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
 .pf-group .tl-chip:not(.active) { opacity: .3; }
+.pf-icon { width: 13px; height: 13px; flex-shrink: 0; }
+.pf-label {
+  font-family: var(--sans);
+  font-size: 11px;
+}
 
 .timeline-cursor-label {
   font-family: var(--mono);

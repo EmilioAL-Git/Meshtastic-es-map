@@ -15,10 +15,22 @@ _LIVEFEED_DIR = Path(__file__).resolve().parent.parent / "livefeed"
 sys.path.insert(0, str(_LIVEFEED_DIR))
 sys.path.insert(0, str(_LIVEFEED_DIR / "proto"))
 
-from meshtastic import mqtt_pb2, portnums_pb2  # noqa: E402
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes  # noqa: E402
+from meshtastic import mesh_pb2, mqtt_pb2, portnums_pb2  # noqa: E402
 
 import correlator  # noqa: E402
 import mqtt_source  # noqa: E402
+
+
+def encrypt_with_default_key(packet_id: int, from_id: int, plaintext: bytes) -> bytes:
+    """Cifra como lo haría el firmware en un canal sin PSK propia (AES-CTR
+    simétrico: la misma operación sirve para cifrar y descifrar en los tests)."""
+    nonce = (
+        packet_id.to_bytes(4, "little") + b"\x00" * 4
+        + from_id.to_bytes(4, "little") + b"\x00" * 4
+    )
+    encryptor = Cipher(algorithms.AES(mqtt_source.DEFAULT_CHANNEL_KEY), modes.CTR(nonce)).encryptor()
+    return encryptor.update(plaintext) + encryptor.finalize()
 
 
 def make_envelope(*, gateway_id="!11111111", packet_id=42, from_id=0xAABBCCDD,
@@ -64,8 +76,38 @@ class DecodeServiceEnvelopeTests(unittest.TestCase):
         self.assertNotIn("payload", event)
 
     def test_encrypted_packet_reports_portnum_unknown(self):
+        # Ciphertext arbitrario que no descifra a un Data protobuf válido con
+        # la PSK por defecto — simula un canal con PSK propia.
         event = mqtt_source.decode_service_envelope(make_envelope(encrypted=True))
         self.assertEqual(event["portnum"], "ENCRYPTED")
+
+    def test_encrypted_default_psk_reveals_real_portnum(self):
+        """Los canales sin PSK propia (LongFast, MediumFast...) usan una clave
+        pública documentada — se puede recuperar el portnum real, no solo
+        "ENCRYPTED", sin que eso implique leer canales privados de verdad."""
+        data = mesh_pb2.Data()
+        data.portnum = portnums_pb2.PortNum.POSITION_APP
+        data.payload = b"posicion secreta de un nodo"
+        packet_id, from_id = 555, 0xAABBCCDD
+        ciphertext = encrypt_with_default_key(packet_id, from_id, data.SerializeToString())
+
+        env = mqtt_pb2.ServiceEnvelope()
+        env.gateway_id = "!11111111"
+        env.packet.id = packet_id
+        setattr(env.packet, "from", from_id)
+        env.packet.to = 0xFFFFFFFF
+        env.packet.hop_limit = 3
+        env.packet.hop_start = 3
+        env.packet.encrypted = ciphertext
+
+        event = mqtt_source.decode_service_envelope(env.SerializeToString())
+        self.assertEqual(event["portnum"], "POSITION_APP")
+
+        # Guarda de regresión de privacidad: aunque se descifre para sacar el
+        # portnum, el contenido del mensaje no debe filtrarse nunca.
+        serialized = json.dumps(event)
+        self.assertNotIn("posicion secreta", serialized)
+        self.assertNotIn("payload", event)
 
     def test_relay_node_present(self):
         event = mqtt_source.decode_service_envelope(make_envelope(relay_node=0x11))

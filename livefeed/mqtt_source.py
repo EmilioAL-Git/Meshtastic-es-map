@@ -3,9 +3,10 @@ Cliente MQTT que decodifica paquetes ServiceEnvelope de Meshtastic y los
 entrega, ya saneados, a un asyncio.Queue.
 
 Importante (privacidad): esta función NUNCA lee ni reenvía
-`packet.decoded.payload` (el contenido del mensaje). Solo se extraen
-metadatos de enrutamiento. No añadir ese campo aquí sin revisar
-tests/test_livefeed.py, que falla si aparece.
+`packet.decoded.payload` ni el contenido del mensaje una vez descifrado.
+Solo se extraen metadatos de enrutamiento (incluido el portnum real, si se
+puede recuperar — ver try_decrypt_default_channel). No añadir el payload
+aquí sin revisar tests/test_livefeed.py, que falla si aparece.
 """
 
 from __future__ import annotations
@@ -18,12 +19,51 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent / "proto"))
 
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes  # noqa: E402
 from google.protobuf.message import DecodeError  # noqa: E402
-from meshtastic import mqtt_pb2, portnums_pb2  # noqa: E402
+from meshtastic import mesh_pb2, mqtt_pb2, portnums_pb2  # noqa: E402
 
 from correlator import format_node_id  # noqa: E402
 
 log = logging.getLogger("livefeed.mqtt_source")
+
+# PSK pública "por defecto" de Meshtastic (índice corto 1, lo que el cliente
+# manda como psk="AQ=="). No es un secreto: es la clave de fábrica
+# documentada que usan todos los canales sin PSK propia configurada
+# (LongFast, MediumFast, ShortFast/SFNarrow...). Un canal con PSK propia
+# simplemente no producirá un Data protobuf válido al "descifrar" con esta
+# clave, y se sigue reportando como ENCRYPTED — ver try_decrypt_default_channel.
+# Fuente: meshtastic/firmware, src/mesh/Channels.h (defaultpsk).
+DEFAULT_CHANNEL_KEY = bytes([
+    0xD4, 0xF1, 0xBB, 0x3A, 0x20, 0x29, 0x07, 0x59,
+    0xF0, 0xBC, 0xFF, 0xAB, 0xCF, 0x4E, 0x69, 0x01,
+])
+
+
+def try_decrypt_default_channel(packet_id: int, from_node: int, ciphertext: bytes) -> "mesh_pb2.Data | None":
+    """Intenta descifrar payload_variant=encrypted con la PSK por defecto.
+
+    AES-128-CTR con nonce de 16 bytes = packet_id (LE, 4) + ceros (4) +
+    from_node (LE, 4) + ceros (4) — igual que CryptoEngine::initNonce() del
+    firmware. Solo se usa para recuperar el portnum real; el payload
+    descifrado nunca se propaga fuera de esta función.
+    """
+    nonce = (
+        packet_id.to_bytes(4, "little")
+        + b"\x00\x00\x00\x00"
+        + from_node.to_bytes(4, "little", signed=False)
+        + b"\x00\x00\x00\x00"
+    )
+    decryptor = Cipher(algorithms.AES(DEFAULT_CHANNEL_KEY), modes.CTR(nonce)).decryptor()
+    plaintext = decryptor.update(ciphertext) + decryptor.finalize()
+
+    data = mesh_pb2.Data()
+    try:
+        data.ParseFromString(plaintext)
+        portnums_pb2.PortNum.Name(data.portnum)  # valida que sea un enum conocido
+    except (DecodeError, ValueError):
+        return None  # probablemente un canal con PSK propia, no el por defecto
+    return data
 
 
 def decode_service_envelope(payload: bytes) -> dict | None:
@@ -50,6 +90,9 @@ def decode_service_envelope(payload: bytes) -> dict | None:
             portnum = None
     elif variant == "encrypted":
         portnum = "ENCRYPTED"
+        data = try_decrypt_default_channel(packet.id, getattr(packet, "from"), packet.encrypted)
+        if data is not None:
+            portnum = portnums_pb2.PortNum.Name(data.portnum)
     else:
         portnum = None
 

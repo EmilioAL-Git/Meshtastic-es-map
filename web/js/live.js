@@ -15,6 +15,14 @@ let currentDetailPacketId = null; // packet_id del desglose abierto ahora mismo,
 const LIVE_BACKOFF_MAX_MS = 30000;
 const LIVE_LOG_MAX = 200;
 
+// Solo se dibujan en el mapa los últimos MAX_VISIBLE_PACKETS paquetes — el
+// que se sale de esa ventana arranca una cuenta atrás de TRAIL_GRACE_MS
+// antes de desvanecerse, en vez de desaparecer de golpe.
+let liveOrder = [];                      // packet_id en orden de llegada (packet_new)
+const pendingTrailRemovals = new Map();  // packet_id → timeoutId
+const MAX_VISIBLE_PACKETS = 20;
+const TRAIL_GRACE_MS = 30000;
+
 // packet_id → { info, stages, path_confidence } — historial persistente
 // para el desglose, independiente del ciclo de vida de la animación
 // (liveTracked se borra al expirar; esto se conserva mientras la fila
@@ -146,6 +154,18 @@ function connectLive() {
 
 // ─── Eventos de paquetes ────────────────────────────────────────────────────
 
+function enforceLiveWindow() {
+  while (liveOrder.length > MAX_VISIBLE_PACKETS) {
+    const oldId = liveOrder.shift();
+    if (pendingTrailRemovals.has(oldId) || !liveTracked.has(oldId)) continue;
+    const timer = setTimeout(() => {
+      pendingTrailRemovals.delete(oldId);
+      expirePacket(oldId);
+    }, TRAIL_GRACE_MS);
+    pendingTrailRemovals.set(oldId, timer);
+  }
+}
+
 function handleLiveEvent(event) {
   if (event.type === 'packet_new') {
     if (liveFocusNodeId && event.from !== liveFocusNodeId && event.to !== liveFocusNodeId) return;
@@ -155,6 +175,8 @@ function handleLiveEvent(event) {
       color: packetColor(event.packet_id),
       expiring: false, animating: false,
     });
+    liveOrder.push(event.packet_id);
+    enforceLiveWindow();
     addLogRow(event);
     spawnOriginPing(event);
   } else if (event.type === 'packet_stage') {
@@ -331,14 +353,17 @@ function animateNextLeg(packetId) {
 }
 
 function expirePacket(packetId) {
+  const timer = pendingTrailRemovals.get(packetId);
+  if (timer) { clearTimeout(timer); pendingTrailRemovals.delete(packetId); }
+  const orderIdx = liveOrder.indexOf(packetId);
+  if (orderIdx !== -1) liveOrder.splice(orderIdx, 1);
+
   const tracked = liveTracked.get(packetId);
   if (!tracked) return;
   tracked.expiring = true;
   liveTracked.delete(packetId);
 
-  // En Modo Focus las líneas se quedan como historial permanente de la
-  // sesión — solo se desvanece el punto animado, no la ruta ya trazada.
-  const layers = liveFocusNodeId ? [] : [...tracked.trails];
+  const layers = [...tracked.trails];
   if (tracked.marker) layers.push(tracked.marker);
   if (tracked.halo) layers.push(tracked.halo);
   if (!layers.length) return;
@@ -675,6 +700,9 @@ function resetLiveState() {
   }
   liveTracked.clear();
   livePacketLog.clear();
+  for (const timer of pendingTrailRemovals.values()) clearTimeout(timer);
+  pendingTrailRemovals.clear();
+  liveOrder = [];
   document.getElementById('live-log').innerHTML = '<div class="live-log-empty" id="live-log-empty">Esperando paquetes…</div>';
 }
 

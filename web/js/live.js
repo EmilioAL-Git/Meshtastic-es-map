@@ -628,6 +628,11 @@ function toggleLiveLogPanel() {
   document.getElementById('live-log-toggle-btn').classList.toggle('active');
 }
 
+function toggleLegend() {
+  document.getElementById('live-legend').classList.toggle('open');
+  document.getElementById('legend-toggle-btn').classList.toggle('active');
+}
+
 function togglePause() {
   livePaused = !livePaused;
   const btn = document.getElementById('live-pause-btn');

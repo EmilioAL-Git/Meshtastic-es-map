@@ -915,6 +915,12 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 }
 .live-log-row .lr-conf-relay { color: var(--accent); }
 .live-log-row .lr-conf-heuristic { color: var(--accent2); }
+.live-log-row .lr-swatch {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
 
 /* ── Modal mal configurados ── */
 .malconfig-modal {

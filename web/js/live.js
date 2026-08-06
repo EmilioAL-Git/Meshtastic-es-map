@@ -1,12 +1,29 @@
 // ─── Feed en vivo: MQTT → WebSocket → animación en el mapa ─────────────────────
 
-let liveTracked = new Map();  // packet_id → { stages: [], marker, legIndex }
-let liveLayer;                // L.layerGroup de marcadores animados
+let liveTracked = new Map();  // packet_id → { info, stages, legIndex, marker, halo, trails, color, expiring }
+let liveLayer;                // L.layerGroup de marcadores/halos animados
+let liveTrailLayer;           // L.layerGroup de las líneas de recorrido (por debajo de los marcadores)
+let livePingLayer;            // L.layerGroup de los pings de origen
 let liveNodeLayer;            // L.layerGroup de puntos base de nodos
 let liveWs = null;
 let liveBackoffMs = 1000;
 const LIVE_BACKOFF_MAX_MS = 30000;
 const LIVE_LOG_MAX = 200;
+
+// Paleta para diferenciar paquetes simultáneos — cada packet_id se queda
+// siempre con el mismo color mientras esté en vuelo (hash estable).
+const PACKET_COLORS = [
+  '#f97316', '#38bdf8', '#a78bfa', '#f472b6', '#4ade80',
+  '#facc15', '#fb7185', '#22d3ee', '#c084fc', '#84cc16',
+];
+function packetColor(packetId) {
+  let h = 0;
+  const s = String(packetId);
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return PACKET_COLORS[h % PACKET_COLORS.length];
+}
+
+function easeInOutQuad(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
 
 function initLiveMap() {
   map = L.map('map', {
@@ -24,8 +41,10 @@ function initLiveMap() {
   map.createPane('livePane');
   map.getPane('livePane').style.zIndex = 460;
 
-  liveLayer = L.layerGroup().addTo(map);
   liveNodeLayer = L.layerGroup().addTo(map);
+  liveTrailLayer = L.layerGroup().addTo(map);
+  liveLayer = L.layerGroup().addTo(map);
+  livePingLayer = L.layerGroup().addTo(map);
 }
 
 function renderBaseNodes() {
@@ -100,8 +119,14 @@ function connectLive() {
 
 function handleLiveEvent(event) {
   if (event.type === 'packet_new') {
-    liveTracked.set(event.packet_id, { info: event, stages: [], legIndex: 0, marker: null });
+    liveTracked.set(event.packet_id, {
+      info: event, stages: [], legIndex: 0,
+      marker: null, halo: null, trails: [],
+      color: packetColor(event.packet_id),
+      expiring: false,
+    });
     addLogRow(event);
+    spawnOriginPing(event);
   } else if (event.type === 'packet_stage') {
     const tracked = liveTracked.get(event.packet_id);
     if (!tracked) return;
@@ -110,9 +135,7 @@ function handleLiveEvent(event) {
     updateLogRow(event);
     if (event.stages.length > hadStages) animateNextLeg(event.packet_id);
   } else if (event.type === 'packet_expired') {
-    const tracked = liveTracked.get(event.packet_id);
-    if (tracked && tracked.marker) liveLayer.removeLayer(tracked.marker);
-    liveTracked.delete(event.packet_id);
+    expirePacket(event.packet_id);
   }
 }
 
@@ -123,9 +146,63 @@ function stagePosition(stage) {
   return gw ? nodeLatLng(gw) : null;
 }
 
+function spawnOriginPing(event) {
+  const pos = nodeLatLng(event.from);
+  if (!pos) return;
+  const color = packetColor(event.packet_id);
+  const ring = L.circleMarker(pos, {
+    pane: 'livePane', radius: 6, color, weight: 2,
+    fillOpacity: 0, interactive: false,
+  }).addTo(livePingLayer);
+
+  const durationMs = 900;
+  const start = performance.now();
+  function step(now) {
+    const t = Math.min(1, (now - start) / durationMs);
+    ring.setRadius(6 + t * 18);
+    ring.setStyle({ opacity: 1 - t });
+    if (t < 1) requestAnimationFrame(step);
+    else livePingLayer.removeLayer(ring);
+  }
+  requestAnimationFrame(step);
+}
+
+function ensureMarker(tracked, atPos) {
+  if (tracked.marker) return;
+  tracked.halo = L.circleMarker(atPos, {
+    pane: 'livePane', radius: 9, color: tracked.color, weight: 0,
+    fillColor: tracked.color, fillOpacity: 0.25, interactive: false,
+  }).addTo(liveLayer);
+  tracked.marker = L.circleMarker(atPos, {
+    pane: 'livePane', radius: 5, color: '#fff', weight: 1.5,
+    fillColor: tracked.color, fillOpacity: 1, interactive: false,
+  }).addTo(liveLayer);
+  idlePulse(tracked);
+}
+
+function idlePulse(tracked) {
+  // Halo respirando alrededor del marcador mientras el paquete sigue vivo.
+  function step(now) {
+    if (!tracked.marker || !tracked.halo) return;
+    const wave = Math.sin(now / 260);
+    tracked.halo.setRadius(9 + wave * 2.5);
+    tracked.halo.setStyle({ fillOpacity: 0.18 + (wave + 1) * 0.06 });
+    if (!tracked.expiring) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function drawTrailLeg(tracked, fromPos, toPos) {
+  const line = L.polyline([fromPos, toPos], {
+    pane: 'livePane', color: tracked.color, weight: 2.5, opacity: 0.55,
+    interactive: false,
+  }).addTo(liveTrailLayer);
+  tracked.trails.push(line);
+}
+
 function animateNextLeg(packetId) {
   const tracked = liveTracked.get(packetId);
-  if (!tracked) return;
+  if (!tracked || tracked.expiring) return;
   const stages = tracked.stages;
   if (tracked.legIndex >= stages.length - 1) return; // nada nuevo que animar aún
 
@@ -137,31 +214,51 @@ function animateNextLeg(packetId) {
 
   if (!fromPos || !toPos) { animateNextLeg(packetId); return; } // sin coords, salta a la siguiente etapa
 
-  if (!tracked.marker) {
-    tracked.marker = L.circleMarker(fromPos, {
-      pane: 'livePane',
-      radius: 5,
-      color: '#ef4444',
-      weight: 2,
-      fillColor: '#fbbf24',
-      fillOpacity: 0.9,
-      interactive: false,
-    }).addTo(liveLayer);
-  }
+  ensureMarker(tracked, fromPos);
 
-  const durationMs = 800;
+  const durationMs = 900;
   const start = performance.now();
 
   function step(now) {
+    if (tracked.expiring) return;
     const t = Math.min(1, (now - start) / durationMs);
-    const lat = fromPos[0] + (toPos[0] - fromPos[0]) * t;
-    const lng = fromPos[1] + (toPos[1] - fromPos[1]) * t;
-    if (tracked.marker) tracked.marker.setLatLng([lat, lng]);
+    const e = easeInOutQuad(t);
+    const lat = fromPos[0] + (toPos[0] - fromPos[0]) * e;
+    const lng = fromPos[1] + (toPos[1] - fromPos[1]) * e;
+    tracked.marker.setLatLng([lat, lng]);
+    tracked.halo.setLatLng([lat, lng]);
     if (t < 1) {
       requestAnimationFrame(step);
-    } else if (tracked.legIndex < stages.length - 1) {
-      animateNextLeg(packetId);
+    } else {
+      drawTrailLeg(tracked, fromPos, toPos);
+      if (tracked.legIndex < stages.length - 1) animateNextLeg(packetId);
     }
+  }
+  requestAnimationFrame(step);
+}
+
+function expirePacket(packetId) {
+  const tracked = liveTracked.get(packetId);
+  if (!tracked) return;
+  tracked.expiring = true;
+  liveTracked.delete(packetId);
+
+  const layers = [...tracked.trails];
+  if (tracked.marker) layers.push(tracked.marker);
+  if (tracked.halo) layers.push(tracked.halo);
+  if (!layers.length) return;
+
+  const durationMs = 700;
+  const start = performance.now();
+  function step(now) {
+    const t = Math.min(1, (now - start) / durationMs);
+    const opacity = 1 - t;
+    for (const l of layers) {
+      if (l instanceof L.Polyline) l.setStyle({ opacity: opacity * 0.55 });
+      else l.setStyle({ opacity, fillOpacity: opacity });
+    }
+    if (t < 1) requestAnimationFrame(step);
+    else layers.forEach(l => (liveLayer.hasLayer(l) ? liveLayer : liveTrailLayer).removeLayer(l));
   }
   requestAnimationFrame(step);
 }
@@ -204,8 +301,9 @@ function nodeLabel(nodeId) {
 function renderLogRow(info, { hops, path_confidence }) {
   const confClass = path_confidence === 'relay_node' ? 'lr-conf-relay' : 'lr-conf-heuristic';
   const confLabel = path_confidence === 'relay_node' ? 'ruta confirmada' : 'ruta aproximada';
+  const color = packetColor(info.packet_id);
   return `
-    <div class="lr-route">${nodeLabel(info.from)} → ${nodeLabel(info.to)}</div>
+    <div class="lr-route"><span class="lr-swatch" style="background:${color};box-shadow:0 0 5px ${color}"></span>${nodeLabel(info.from)} → ${nodeLabel(info.to)}</div>
     <div class="lr-meta">
       <span>${hops} etapa${hops === 1 ? '' : 's'}</span>
       <span>${escHtml(info.portnum || '—')}</span>

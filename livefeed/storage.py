@@ -116,7 +116,7 @@ def activity_buckets(conn: sqlite3.Connection, since: float, until: float, bucke
     return [{"t": row[0], "count": row[1]} for row in rows]
 
 
-def list_range(conn: sqlite3.Connection, since: float, until: float, limit: int = 1000) -> list[dict]:
+def list_range(conn: sqlite3.Connection, since: float, until: float, limit: int = 20000) -> list[dict]:
     """Paquetes vistos en un rango de tiempo, con sus etapas — para
     reproducir la línea de tiempo. Ordenados por primera vez visto."""
     rows = conn.execute(

@@ -2236,7 +2236,7 @@ body.embed-mode .malconfig-table td:nth-child(3) { display: none; }
   body.live-page .conn-badge { order: 1; }
   body.live-page #pause-label { display: none; } /* solo icono, ahorra sitio */
 
-  body.live-page #portnum-filter-group,
+  body.live-page #portnum-filter-group { display: none; }
   body.live-page .focus-wrap { order: 2; flex-shrink: 0; }
   body.live-page .focus-wrap .search-input { width: 120px; }
   body.live-page .focus-wrap .search-dropdown { width: min(260px, calc(100vw - 24px)); }

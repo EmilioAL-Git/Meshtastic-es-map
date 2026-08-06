@@ -836,6 +836,33 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 }
 
 /* ── Página live.html ── */
+.focus-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.focus-wrap .search-input {
+  width: 170px;
+  padding-right: 28px;
+}
+.focus-wrap .search-dropdown { left: 0; right: auto; width: 260px; }
+.focus-clear-btn {
+  position: absolute;
+  right: 8px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px;
+}
+.focus-clear-btn:hover { color: var(--text); }
+.focus-wrap.active .search-input {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .back-link {
   display: flex;
   align-items: center;

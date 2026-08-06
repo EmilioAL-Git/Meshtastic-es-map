@@ -8,6 +8,8 @@ let liveNodeLayer;            // L.layerGroup de puntos base de nodos
 let liveWs = null;
 let liveBackoffMs = 1000;
 let livePaused = false;
+let liveFocusNodeId = null;   // !xxxxxxxx del nodo enfocado, o null (sin filtro)
+let liveFocusLayer;           // L.layerGroup con el resaltado del nodo enfocado
 const LIVE_BACKOFF_MAX_MS = 30000;
 const LIVE_LOG_MAX = 200;
 
@@ -52,6 +54,7 @@ function initLiveMap() {
   liveTrailLayer = L.layerGroup().addTo(map);
   liveLayer = L.layerGroup().addTo(map);
   livePingLayer = L.layerGroup().addTo(map);
+  liveFocusLayer = L.layerGroup().addTo(map);
 }
 
 function renderBaseNodes() {
@@ -127,6 +130,7 @@ function connectLive() {
 
 function handleLiveEvent(event) {
   if (event.type === 'packet_new') {
+    if (liveFocusNodeId && event.from !== liveFocusNodeId && event.to !== liveFocusNodeId) return;
     liveTracked.set(event.packet_id, {
       info: event, stages: [], legIndex: 0,
       marker: null, halo: null, trails: [],
@@ -474,6 +478,115 @@ function closePacketDetail() {
   document.getElementById('packet-detail-modal').classList.remove('open');
 }
 
+// ─── Modo Focus: filtrar el feed a un solo nodo ─────────────────────────────
+
+function onFocusInput() {
+  const q = document.getElementById('focus-input').value.trim().toLowerCase();
+  const dd = document.getElementById('focus-dropdown');
+  searchIndex = -1;
+
+  if (!q) { dd.classList.remove('open'); return; }
+
+  const results = allNodes.filter(n => {
+    const longName = (n.long_name || '').toLowerCase();
+    const shortName = (n.short_name || '').toLowerCase();
+    const id = (n.node_id || '').toLowerCase();
+    return longName.includes(q) || shortName.includes(q) || id.includes(q);
+  }).slice(0, 8);
+
+  if (!results.length) {
+    dd.innerHTML = '<div class="search-no-results">Sin resultados</div>';
+    dd.classList.add('open');
+    return;
+  }
+
+  dd.innerHTML = results.map(n => `
+    <div class="search-result" data-id="${escHtml(n.node_id)}">
+      <div class="result-name">${escHtml(n.long_name || n.short_name || n.node_id)}</div>
+      <div class="result-meta">${escHtml(n.node_id)}</div>
+    </div>`).join('');
+
+  dd.querySelectorAll('.search-result').forEach(el => {
+    el.addEventListener('mousedown', () => setFocusNode(el.dataset.id));
+  });
+
+  dd.classList.add('open');
+}
+
+function onFocusKey(e) {
+  const dd = document.getElementById('focus-dropdown');
+  const items = dd.querySelectorAll('.search-result');
+  if (!dd.classList.contains('open') || !items.length) return;
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    searchIndex = Math.min(searchIndex + 1, items.length - 1);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    searchIndex = Math.max(searchIndex - 1, 0);
+  } else if (e.key === 'Enter' && searchIndex >= 0) {
+    e.preventDefault();
+    setFocusNode(items[searchIndex].dataset.id);
+  } else if (e.key === 'Escape') {
+    dd.classList.remove('open');
+    searchIndex = -1;
+    return;
+  }
+  items.forEach((el, i) => el.classList.toggle('active', i === searchIndex));
+}
+
+function resetLiveState() {
+  // Limpia todo lo que había en vuelo/en la lista — al enfocar un nodo
+  // queremos partir de cero, sin ruido de paquetes que ya no interesan.
+  for (const tracked of liveTracked.values()) {
+    if (tracked.marker) liveLayer.removeLayer(tracked.marker);
+    if (tracked.halo) liveLayer.removeLayer(tracked.halo);
+    tracked.trails.forEach(l => liveTrailLayer.removeLayer(l));
+  }
+  liveTracked.clear();
+  livePacketLog.clear();
+  document.getElementById('live-log').innerHTML = '<div class="live-log-empty" id="live-log-empty">Esperando paquetes…</div>';
+}
+
+function updateFocusHighlight() {
+  liveFocusLayer.clearLayers();
+  if (!liveFocusNodeId) return;
+  const pos = nodeLatLng(liveFocusNodeId);
+  if (!pos) return;
+  L.circleMarker(pos, {
+    pane: 'livePane', radius: 12, color: '#5eead4', weight: 2,
+    fillColor: '#5eead4', fillOpacity: 0.12, interactive: false,
+  }).addTo(liveFocusLayer);
+  L.circleMarker(pos, {
+    pane: 'livePane', radius: 6, color: '#fff', weight: 1.5,
+    fillColor: '#5eead4', fillOpacity: 1, interactive: false,
+  }).addTo(liveFocusLayer);
+}
+
+function setFocusNode(nodeId) {
+  liveFocusNodeId = nodeId;
+  const input = document.getElementById('focus-input');
+  input.value = nodeLabel(nodeId);
+  document.getElementById('focus-dropdown').classList.remove('open');
+  document.getElementById('focus-clear-btn').style.display = '';
+  document.getElementById('focus-wrap').classList.add('active');
+
+  resetLiveState();
+  updateFocusHighlight();
+
+  const pos = nodeLatLng(nodeId);
+  if (pos) map.setView(pos, Math.max(map.getZoom(), 11));
+}
+
+function clearFocus() {
+  liveFocusNodeId = null;
+  document.getElementById('focus-input').value = '';
+  document.getElementById('focus-clear-btn').style.display = 'none';
+  document.getElementById('focus-wrap').classList.remove('active');
+  document.getElementById('focus-dropdown').classList.remove('open');
+  liveFocusLayer.clearLayers();
+}
+
 // ─── Boot ───────────────────────────────────────────────────────────────────
 
 function toggleLiveLogPanel() {
@@ -505,7 +618,15 @@ async function bootLive() {
   connectLive();
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closePacketDetail();
+    if (e.key !== 'Escape') return;
+    closePacketDetail();
+    document.getElementById('focus-dropdown').classList.remove('open');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!document.getElementById('focus-wrap').contains(e.target)) {
+      document.getElementById('focus-dropdown').classList.remove('open');
+    }
   });
 }
 

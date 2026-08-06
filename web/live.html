@@ -25,6 +25,12 @@
   </div>
 
   <div class="stats-bar">
+    <div class="focus-wrap" id="focus-wrap">
+      <input type="text" id="focus-input" class="search-input" placeholder="Enfocar nodo…" autocomplete="off"
+             oninput="onFocusInput()" onkeydown="onFocusKey(event)" onfocus="onFocusInput()">
+      <button class="focus-clear-btn" id="focus-clear-btn" onclick="clearFocus()" title="Quitar foco" style="display:none">✕</button>
+      <div class="search-dropdown" id="focus-dropdown"></div>
+    </div>
     <button class="live-pause-btn" id="live-pause-btn" onclick="togglePause()" title="Pausar/reanudar el feed">
       <svg id="pause-icon" viewBox="0 0 16 16" fill="none">
         <rect x="4" y="3" width="3" height="10" rx="1" fill="currentColor"/>

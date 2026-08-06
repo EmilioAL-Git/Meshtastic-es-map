@@ -48,6 +48,10 @@ function initLiveMap() {
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
   }).addTo(map);
 
+  // La barra de línea de tiempo ocupa la parte de abajo del mapa — el
+  // aviso de atribución de Leaflet (bottom-right por defecto) se sube.
+  map.attributionControl.setPosition('topright');
+
   map.createPane('livePane');
   map.getPane('livePane').style.zIndex = 460;
 

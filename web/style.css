@@ -2242,7 +2242,7 @@ body.embed-mode .malconfig-table td:nth-child(3) { display: none; }
 
   body.live-page #portnum-filter-group { display: none; }
   body.live-page .focus-wrap { order: 2; flex-shrink: 0; }
-  body.live-page .focus-wrap .search-input { width: 120px; }
+  body.live-page .focus-wrap .search-input { width: 160px; }
   body.live-page .focus-wrap .search-dropdown { width: min(260px, calc(100vw - 24px)); }
 
   /* live.html no tiene nada que enseñar en la leyenda de "edges" del mapa

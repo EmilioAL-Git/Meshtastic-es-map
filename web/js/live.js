@@ -141,9 +141,14 @@ function handleLiveEvent(event) {
 
 function stagePosition(stage) {
   // Varios gateways pueden compartir etapa (oyeron la misma transmisión) —
-  // se usa el primero como posición representativa.
-  const gw = stage.gateway_ids[0];
-  return gw ? nodeLatLng(gw) : null;
+  // se prueban todos hasta encontrar uno que conozcamos (muchos gateways
+  // del feed EU_868/LORA_24 no son nodos españoles rastreados por nuestro
+  // mapa, así que limitarse al primero perdía casi todos los saltos).
+  for (const gw of stage.gateway_ids) {
+    const pos = nodeLatLng(gw);
+    if (pos) return pos;
+  }
+  return null;
 }
 
 function spawnOriginPing(event) {
@@ -204,15 +209,28 @@ function animateNextLeg(packetId) {
   const tracked = liveTracked.get(packetId);
   if (!tracked || tracked.expiring) return;
   const stages = tracked.stages;
-  if (tracked.legIndex >= stages.length - 1) return; // nada nuevo que animar aún
 
-  const fromPos = tracked.legIndex === 0
-    ? (nodeLatLng(tracked.info.from) || stagePosition(stages[0]))
-    : stagePosition(stages[tracked.legIndex]);
-  const toPos = stagePosition(stages[tracked.legIndex + 1]);
-  tracked.legIndex++;
+  // La posición de partida es siempre la última posición conocida en la
+  // que el marcador se dibujó de verdad — nunca se recalcula desde una
+  // etapa intermedia sin coordenadas, o el "salto" se perdía por completo.
+  if (!tracked.lastPos) {
+    tracked.lastPos = nodeLatLng(tracked.info.from) || stagePosition(stages[0]);
+    if (!tracked.lastPos) return; // aún no hay ninguna posición conocida
+  }
 
-  if (!fromPos || !toPos) { animateNextLeg(packetId); return; } // sin coords, salta a la siguiente etapa
+  // Avanza etapa a etapa hasta encontrar la siguiente con coordenadas
+  // conocidas; las intermedias sin coordenadas se saltan sin animar pero
+  // sin perder la posición de partida real.
+  let toPos = null;
+  while (tracked.legIndex < stages.length - 1) {
+    toPos = stagePosition(stages[tracked.legIndex + 1]);
+    tracked.legIndex++;
+    if (toPos) break;
+  }
+  if (!toPos) return; // no queda ninguna etapa nueva con coordenadas
+
+  const fromPos = tracked.lastPos;
+  tracked.lastPos = toPos;
 
   ensureMarker(tracked, fromPos);
 

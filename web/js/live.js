@@ -305,7 +305,7 @@ function renderLogRow(info, { hops, path_confidence }) {
   return `
     <div class="lr-route"><span class="lr-swatch" style="background:${color};box-shadow:0 0 5px ${color}"></span>${nodeLabel(info.from)} → ${nodeLabel(info.to)}</div>
     <div class="lr-meta">
-      <span>${hops} etapa${hops === 1 ? '' : 's'}</span>
+      <span>${hops} salto${hops === 1 ? '' : 's'}</span>
       <span>${escHtml(info.portnum || '—')}</span>
       <span class="${confClass}">${confLabel}</span>
     </div>`;

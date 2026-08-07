@@ -152,7 +152,7 @@ function renderTopNodes() {
 // últimos TRAIL_GRACE_MS) a la vez en el mapa.
 let liveOrder = [];                      // pktKey() en orden de llegada (packet_new)
 const pendingTrailRemovals = new Map();  // pktKey() → timeoutId
-const MAX_VISIBLE_PACKETS = 20;
+const MAX_VISIBLE_PACKETS = 40;
 const TRAIL_GRACE_MS = 5000;
 
 // pktKey() → { info, stages, path_confidence } — historial persistente
@@ -360,6 +360,7 @@ function handleLiveEvent(event) {
       // que llega el packet_stage correspondiente.
       isTraceroute: false, traceField: null, traceDrawn: 0, traceLastHops: 0,
       traceUnknown: false, laneOffset: null,
+      traceHopsSeen: -1, traceIncludeDest: false, traceFinalTimer: null,
     });
     liveOrder.push(key);
     enforceLiveWindow();
@@ -452,10 +453,15 @@ function hopCountFor(tracked) {
   return tracked.legIndex + 1;
 }
 
-function markerIconHtml(color, hops, isOrigin, isUnknown) {
+// free (opcional): { free, certain } de detectFreeHops() — añade una
+// insignia de rayo al marcador del salto cuando es "gratis" (no decrementó
+// hop_limit). "certain" (con evidencia real de hop_limit) se pinta sólido;
+// sin ella, solo inferido por el rol del nodo, se pinta en contorno.
+function markerIconHtml(color, hops, isOrigin, isUnknown, free) {
   const cls = ['pkt-marker-icon'];
   if (isOrigin) cls.push('pkt-marker-origin');
   if (isUnknown) cls.push('pkt-marker-unknown');
+  if (free && free.free) cls.push(free.certain ? 'pkt-marker-free-certain' : 'pkt-marker-free');
   const label = isUnknown ? '?' : hops;
   return `<div class="${cls.join(' ')}" style="background:${color}"><span class="pkt-marker-num">${label}</span></div>`;
 }
@@ -497,13 +503,13 @@ function ensureMarker(tracked, atPos) {
 // el mini-mapa del desglose, que sí dibuja un círculo fijo por salto). Se
 // añade a tracked.trails para que expirePacket/resetLiveState lo limpien
 // igual que el resto del rastro.
-function dropHopMarker(tracked, pos, point, isOrigin) {
+function dropHopMarker(tracked, pos, point, isOrigin, free) {
   const size = isOrigin ? 22 : 16;
   const marker = L.marker(pos, {
     pane: 'livePane', interactive: false,
     icon: L.divIcon({
       className: 'pkt-marker-wrap',
-      html: markerIconHtml(tracked.color, point.hops, isOrigin, point.unknown),
+      html: markerIconHtml(tracked.color, point.hops, isOrigin, point.unknown, free),
       iconSize: [size, size],
       iconAnchor: [size / 2, size / 2],
     }),
@@ -657,17 +663,6 @@ function drawTraceSegment(layerGroup, from, to, color, extraOpts = {}) {
   return [lines.glow, lines.line, lines.flow, arrow];
 }
 
-function drawTrailLeg(tracked, fromPos, toPos) {
-  // Los tramos de traceroute confirmado los dibuja advanceTraceroute()
-  // directamente con drawTraceSegment() — esta función solo la usan ya
-  // paquetes en modo heurístico (gateway_ids oídos), nunca traceroute.
-  const line = L.polyline([fromPos, toPos], {
-    pane: 'livePane', color: tracked.color, weight: 2.5, opacity: 0.55,
-    interactive: false,
-  }).addTo(liveTrailLayer);
-  tracked.trails.push(line);
-}
-
 function drawStageSiblingLines(tracked, stage) {
   for (const [a, b] of stageSiblingLines(stage)) {
     const line = L.polyline([a, b], {
@@ -728,6 +723,18 @@ function animateNextLeg(packetId) {
   updateMarkerHops(tracked);
   tracked.animating = true;
 
+  // La línea se crea ya (longitud cero, en fromPos) y se va estirando cada
+  // frame hasta la posición actual del marcador — igual que hace
+  // advanceTraceroute() — en vez de aparecer de golpe cuando el tramo
+  // termina. Se mete en tracked.trails desde ya para que si el paquete
+  // expira a mitad de tramo, el trozo dibujado hasta ese momento también
+  // se recoja en el fade-out de expirePacket().
+  const line = L.polyline([fromPos, fromPos], {
+    pane: 'livePane', color: tracked.color, weight: 2.5, opacity: 0.55,
+    interactive: false,
+  }).addTo(liveTrailLayer);
+  tracked.trails.push(line);
+
   const durationMs = 900 * packetAnimSlowdown();
   const start = performance.now();
 
@@ -739,10 +746,10 @@ function animateNextLeg(packetId) {
     const lng = fromPos[1] + (toPos[1] - fromPos[1]) * e;
     tracked.marker.setLatLng([lat, lng]);
     tracked.halo.setLatLng([lat, lng]);
+    line.setLatLngs([fromPos, [lat, lng]]);
     if (t < 1) {
       requestAnimationFrame(step);
     } else {
-      drawTrailLeg(tracked, fromPos, toPos);
       tracked.animating = false;
       if (tracked.legIndex < stages.length - 1) animateNextLeg(packetId);
     }
@@ -776,18 +783,27 @@ function advanceTraceroute(packetId) {
   // dibujado desde cero) si la base realmente cambia.
   const hasRouteBack = !!(tracked.info.route_back && tracked.info.route_back.length);
   const wantField = hasRouteBack ? 'route_back' : 'route';
+  const hops = tracked.info[wantField] || [];
+  const hopsChanged = hops.length !== tracked.traceHopsSeen;
+  // Si ya habíamos dado el destino por bueno (traceIncludeDest, ver más
+  // abajo) y ahora resulta que llega un salto real nuevo, ese destino
+  // especulativo ha quedado invalidado — su posición en la lista de ids ya
+  // no es la misma. Se trata igual que un cambio de base de route a
+  // route_back: reset completo y se vuelve a dibujar desde el origen.
+  const invalidatedFinal = hopsChanged && tracked.traceIncludeDest;
 
-  if (!tracked.isTraceroute || tracked.traceField !== wantField) {
-    // Primera confirmación de traceroute, o cambio de base a mitad de
-    // camino: cualquier rastro ya dibujado (heurística de gateways, o la
-    // base anterior) no tiene por qué coincidir con la base nueva — se
-    // borra y se retoma desde el origen con los saltos confirmados.
+  if (!tracked.isTraceroute || tracked.traceField !== wantField || invalidatedFinal) {
+    // Primera confirmación de traceroute, cambio de base a mitad de
+    // camino, o destino invalidado: cualquier rastro ya dibujado no tiene
+    // por qué coincidir con lo que toca dibujar ahora — se borra y se
+    // retoma desde el origen con los saltos confirmados.
     tracked.trails.forEach(l => { liveTrailLayer.removeLayer(l); liveSiblingLayer.removeLayer(l); });
     tracked.trails = [];
     tracked.isTraceroute = true;
     tracked.traceField = wantField;
     tracked.traceDrawn = 0;
     tracked.lastPos = null;
+    tracked.traceIncludeDest = false;
     // Vector de carril fijo para TODO el paquete (ver laneOffsetVector) —
     // se calcula una vez con el origen/destino reales (no con los extremos
     // de "points", que de momento solo llegan hasta el último salto
@@ -799,29 +815,31 @@ function advanceTraceroute(packetId) {
       : null;
   }
 
-  const hops = tracked.info[tracked.traceField] || [];
+  // "to" (destino) NO se añade a la lista de ids hasta que llevamos 2
+  // minutos sin que lleguen saltos nuevos — no hay una señal fiable de
+  // "ya está completo": hop_start NO es un tope real, los saltos entre
+  // nodos ROUTER no lo decrementan, así que route puede acabar teniendo
+  // más entradas que hop_start. Un traceroute puede tardar más de 60s en
+  // completarse con huecos de varios segundos entre saltos (normal en
+  // LoRa), así que la espera es larga a propósito. Si durante esos 2 min
+  // llega un salto real, se invalida (invalidatedFinal arriba) y se
+  // reinicia el plazo desde cero.
+  if (hopsChanged) {
+    tracked.traceHopsSeen = hops.length;
+    if (tracked.traceFinalTimer) clearTimeout(tracked.traceFinalTimer);
+    tracked.traceFinalTimer = setTimeout(() => {
+      tracked.traceFinalTimer = null;
+      tracked.traceIncludeDest = true;
+      advanceTraceroute(packetId);
+    }, 120000);
+  }
 
-  // "to" (destino) SOLO se añade a la lista de ids cuando hops ya alcanzó
-  // hop_start (el máximo nº de saltos posible) — la única señal REAL de
-  // que ya no puede llegar ningún salto más. Un traceroute puede tardar
-  // perfectamente más de 60s en completarse con huecos de varios segundos
-  // entre saltos reales (normal en LoRa), así que cualquier temporizador
-  // de "llevamos N segundos sin novedades → debe haber terminado" da
-  // falsos positivos: se probó con un margen de 2s y, en cuanto llegaba el
-  // siguiente salto real tras el hueco, invalidaba el destino ya dibujado
-  // y el dibujado se quedaba atascado sin ponerse al día (los índices ya
-  // no cuadraban). Sin esa señal fiable, mejor no adivinar nunca: el
-  // rastro en el mapa grande se queda en el último salto CONFIRMADO — si
-  // hops nunca llega a hop_start (lo normal, hop_start es el máximo, no la
-  // longitud real), el tramo final hacia el destino solo se ve en el
-  // desglose del paquete, que sí recalcula en frío con los datos ya
-  // completos.
-  const includeDest = tracked.info.hop_start != null && hops.length >= tracked.info.hop_start;
-  const ids = [tracked.info.from, ...hops, ...(includeDest ? [tracked.info.to] : [])];
+  const ids = [tracked.info.from, ...hops, ...(tracked.traceIncludeDest ? [tracked.info.to] : [])];
   const points = buildSequencedPath(
     ids,
     (id) => nodeLabel(id),
   );
+  const freeHops = detectFreeHops(hops, tracked.stages, tracked.info.hop_start);
 
   if (points.length <= tracked.traceDrawn) return; // nada nuevo confirmado todavía
 
@@ -830,22 +848,26 @@ function advanceTraceroute(packetId) {
     tracked.traceDrawn = 1;
     tracked.traceLastHops = points[0].hops;
     tracked.traceUnknown = !!points[0].unknown;
-    const originDraw = applyLaneOffset(points[0].pos, tracked.laneOffset);
-    ensureMarker(tracked, originDraw);
+    // El marcador y el "dedo" de salto van en la posición REAL del nodo
+    // (igual que el mini-mapa del desglose) — solo las líneas se desplazan
+    // con el carril, si no los puntos del mapa grande no coincidían con
+    // los del mini-mapa ni con el marker real del nodo en el mapa base.
+    ensureMarker(tracked, points[0].pos);
     updateMarkerHops(tracked);
-    dropHopMarker(tracked, originDraw, points[0], true);
+    dropHopMarker(tracked, points[0].pos, points[0], true, freeHops.get(points[0].id));
     if (points.length <= tracked.traceDrawn) return;
   }
 
   const target = points[tracked.traceDrawn];
   const toPos = target.pos;
-  // fromDraw/toDraw (con el carril aplicado) son lo que se anima y se
-  // dibuja; tracked.lastPos se queda en coordenadas reales para que el
-  // siguiente tramo encadene desde la posición real, no desde la desviada.
-  const fromDraw = applyLaneOffset(tracked.lastPos, tracked.laneOffset);
+  const fromPos = tracked.lastPos;
+  // fromDraw/toDraw (con el carril aplicado) son solo para las LÍNEAS, que
+  // sí se desplazan para separar ida/vuelta cuando coinciden; el marcador y
+  // los "dedos" de salto siguen la posición real (fromPos/toPos).
+  const fromDraw = applyLaneOffset(fromPos, tracked.laneOffset);
   const toDraw = applyLaneOffset(toPos, tracked.laneOffset);
   tracked.animating = true;
-  ensureMarker(tracked, fromDraw);
+  ensureMarker(tracked, fromPos);
 
   // La línea se crea ya (longitud cero, en fromDraw) y se va estirando cada
   // frame hasta la posición actual del marcador — no se dibuja de golpe al
@@ -865,17 +887,18 @@ function advanceTraceroute(packetId) {
     if (tracked.expiring) return;
     const t = Math.min(1, (now - start) / durationMs);
     const e = easeInOutQuad(t);
-    const lat = fromDraw[0] + (toDraw[0] - fromDraw[0]) * e;
-    const lng = fromDraw[1] + (toDraw[1] - fromDraw[1]) * e;
-    const curPos = [lat, lng];
+    const curPos = [
+      fromPos[0] + (toPos[0] - fromPos[0]) * e,
+      fromPos[1] + (toPos[1] - fromPos[1]) * e,
+    ];
     tracked.marker.setLatLng(curPos);
     tracked.halo.setLatLng(curPos);
-    updateTraceLines(growLines, fromDraw, curPos);
+    updateTraceLines(growLines, fromDraw, applyLaneOffset(curPos, tracked.laneOffset));
     if (t < 1) {
       requestAnimationFrame(step);
     } else {
       tracked.trails.push(createTraceArrow(liveTrailLayer, fromDraw, toDraw, tracked.color, { pane: 'livePane' }));
-      dropHopMarker(tracked, toDraw, target, false);
+      dropHopMarker(tracked, toPos, target, false, freeHops.get(target.id));
       tracked.lastPos = toPos;
       tracked.traceDrawn++;
       tracked.traceLastHops = target.hops;
@@ -898,6 +921,7 @@ function expirePacket(packetId) {
   if (!tracked) return;
   tracked.expiring = true;
   liveTracked.delete(packetId);
+  if (tracked.traceFinalTimer) { clearTimeout(tracked.traceFinalTimer); tracked.traceFinalTimer = null; }
 
   const layers = [...tracked.trails];
   if (tracked.halo) layers.push(tracked.halo);
@@ -1042,6 +1066,41 @@ function estimateReachedNodes(data) {
   return ids;
 }
 
+// Detecta saltos "gratis" (que no decrementan hop_limit) entre nodos
+// ROUTER/ROUTER_CLIENT/REPEATER — combina dos fuentes:
+//  1) Evidencia empírica: el hop_limit real visto en los "stages" (la
+//     heurística de gateways, que sí registra hop_limit por sighting). Se
+//     cruza con route/route_back por relay_node — OJO: relay_node en el
+//     protobuf de Meshtastic es solo el ÚLTIMO BYTE del node_id (por eso
+//     stages trae cosas como "!000000dd"), no el id completo, así que el
+//     cruce se hace comparando ese único byte contra cada id de la ruta.
+//  2) Si no hay evidencia directa para un salto, se infiere por el rol del
+//     nodo que retransmite (ROUTER/ROUTER_CLIENT/REPEATER) — no es una
+//     confirmación real, solo una suposición razonable.
+// Devuelve un Map node_id → { free, certain }. hopIds no debe incluir el
+// origen (el primer salto real es el primer elemento).
+function detectFreeHops(hopIds, stages, hopStart) {
+  const hopLimitByLastByte = new Map();
+  for (const s of stages) {
+    if (s.relay_node) hopLimitByLastByte.set(s.relay_node.slice(-2).toLowerCase(), s.hop_limit);
+  }
+  const result = new Map();
+  let prevHopLimit = hopStart;
+  for (const id of hopIds) {
+    const hl = hopLimitByLastByte.get(id.slice(-2).toLowerCase());
+    const n = nodesById.get(id);
+    const roleFree = !!(n && isRouter(n));
+    if (hl != null && prevHopLimit != null) {
+      result.set(id, { free: hl >= prevHopLimit, certain: true });
+      prevHopLimit = hl;
+    } else {
+      result.set(id, { free: roleFree, certain: false });
+      if (hl != null) prevHopLimit = hl;
+    }
+  }
+  return result;
+}
+
 function renderPacketDetail(packetId) {
   const data = livePacketLog.get(packetId);
   if (!data) return '<p class="malconfig-empty">Sin datos de este paquete (se ha perdido del historial).</p>';
@@ -1055,15 +1114,22 @@ function renderPacketDetail(packetId) {
   const reachedCount = estimateReachedNodes(data).size;
 
   const traceIds = isTraceroute ? traceRouteIds(data) : null;
+  const freeHops = isTraceroute ? detectFreeHops(traceIds.slice(1), stages, info.hop_start) : null;
   const hopsHtml = isTraceroute
     ? traceIds.map((id, i) => {
         const known = !!nodeLatLng(id);
         const roleLabel = i === 0 ? 'origen' : i === traceIds.length - 1 ? 'destino' : `salto ${i}`;
+        const free = i > 0 ? freeHops.get(id) : null;
+        const freeBadge = free && free.free
+          ? (free.certain
+            ? '<span class="pkt-hop-free certain" title="Confirmado: el hop_limit no bajó en este salto (visto en los stages de gateways)">⚡ sin coste</span>'
+            : '<span class="pkt-hop-free" title="Inferido por el rol del nodo (ROUTER/REPEATER) — sin confirmar con hop_limit real">⚡ posible sin coste</span>')
+          : '';
         return `
         <div class="pkt-hop">
           <div class="pkt-hop-num">${i}</div>
           <div class="pkt-hop-body">
-            <div class="pkt-hop-meta"><span>${roleLabel}</span></div>
+            <div class="pkt-hop-meta"><span>${roleLabel}</span>${freeBadge}</div>
             <div class="pkt-hop-gateways">
               <span class="pkt-gw-chip${known ? ' relay' : ' unknown'}">${known ? '🔗' : '❓'} ${nodeLabel(id)}</span>
             </div>
@@ -1105,7 +1171,7 @@ function renderPacketDetail(packetId) {
     </table>
     <h4 class="pkt-hops-title">
       Saltos detectados (${isTraceroute ? traceIds.length : stages.length})
-      <span class="pkt-hops-hint">${isTraceroute ? '🔗 = posición conocida · ❓ = nodo real, posición desconocida' : '🔗 = relay_node confirmado en ese salto'}</span>
+      <span class="pkt-hops-hint">${isTraceroute ? '🔗 = posición conocida · ❓ = nodo real, posición desconocida · ⚡ = salto sin coste (router)' : '🔗 = relay_node confirmado en ese salto'}</span>
     </h4>
     <div class="pkt-hops">${hopsHtml}</div>`;
 }
@@ -1219,6 +1285,7 @@ function renderDetailMiniMap(packetId) {
   // en el mapa grande y el log) — no sobre packetId aquí, que ya es la
   // clave compuesta pktKey(), o el color no coincidiría con el resto.
   const isTraceroute = (data.info.route && data.info.route.length) || (data.info.route_back && data.info.route_back.length);
+  const freeHops = isTraceroute ? detectFreeHops(traceRouteIds(data).slice(1), data.stages, data.info.hop_start) : null;
   const color = packetColor(data.info.packet_id);
   const latlngs = points.map(p => p.pos);
   const allPositions = [...latlngs];
@@ -1244,15 +1311,19 @@ function renderDetailMiniMap(packetId) {
   points.forEach((p, i) => {
     const isOrigin = i === 0;
     const size = isOrigin ? 24 : 18;
+    const free = freeHops && !isOrigin ? freeHops.get(p.id) : null;
+    const freeLabel = free && free.free
+      ? (free.certain ? ' · ⚡ sin coste (confirmado)' : ' · ⚡ posible sin coste (router)')
+      : '';
     L.marker(p.pos, {
       icon: L.divIcon({
         className: 'pkt-marker-wrap',
-        html: markerIconHtml(color, p.hops ?? i, isOrigin, p.unknown),
+        html: markerIconHtml(color, p.hops ?? i, isOrigin, p.unknown, free),
         iconSize: [size, size],
         iconAnchor: [size / 2, size / 2],
       }),
       interactive: true,
-    }).bindTooltip(p.label, { direction: 'top' }).addTo(detailMapLayer);
+    }).bindTooltip(p.label + freeLabel, { direction: 'top' }).addTo(detailMapLayer);
   });
 
   if (allPositions.length === 1) {
@@ -1410,6 +1481,7 @@ function resetLiveState() {
     if (tracked.marker) liveLayer.removeLayer(tracked.marker);
     if (tracked.halo) liveLayer.removeLayer(tracked.halo);
     tracked.trails.forEach(l => { liveTrailLayer.removeLayer(l); liveSiblingLayer.removeLayer(l); });
+    if (tracked.traceFinalTimer) clearTimeout(tracked.traceFinalTimer);
   }
   liveTracked.clear();
   livePacketLog.clear();

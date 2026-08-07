@@ -1238,6 +1238,27 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 .pf-row .pf-check { color: var(--accent2); font-size: 12px; visibility: hidden; }
 .pf-row.active .pf-check { visibility: visible; }
 
+.pf-bulk-row {
+  display: flex;
+  gap: 4px;
+  padding: 2px 2px 6px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.pf-bulk-btn {
+  flex: 1;
+  padding: 5px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all .15s;
+}
+.pf-bulk-btn:hover { color: var(--text); border-color: var(--accent2); }
+
 .timeline-cursor-label {
   font-family: var(--mono);
   font-size: 11px;
@@ -1657,22 +1678,26 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 }
 .pkt-marker-unknown .pkt-marker-num { font-size: 11px; }
 
-.pkt-route-glow { filter: blur(4px); }
-.pkt-route-flow {
-  animation: pkt-route-flow-move .6s linear infinite;
-  filter: drop-shadow(0 0 3px rgba(255,255,255,.9));
-}
+.pkt-route-flow { animation: pkt-route-flow-move .6s linear infinite; }
 @keyframes pkt-route-flow-move {
-  to { stroke-dashoffset: -24; }
+  to { stroke-dashoffset: -20; } /* 2 ciclos del patrón 4 6 (longitud 10), bucle sin salto */
 }
-.pkt-route-arrow-wrap { background: none; border: none; }
+/* La flecha es un triángulo por border-trick con caja 0x0 — sin centrarla
+   en el wrapper (que sí tiene tamaño, vía iconSize) cae en su esquina
+   superior izquierda y se ve desplazada respecto a la línea real. */
+.pkt-route-arrow-wrap {
+  background: none;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .pkt-route-arrow {
   width: 0;
   height: 0;
   border-top: 5px solid transparent;
   border-bottom: 5px solid transparent;
   border-left: 8px solid currentColor;
-  filter: drop-shadow(0 0 2px rgba(0,0,0,.7));
 }
 
 .pkt-detail-map {

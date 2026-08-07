@@ -8,10 +8,16 @@
 // el propio firmware para deduplicar. pktKey() construye esa clave.
 function pktKey(packetId, from) { return packetId + ':' + (from || ''); }
 
-let liveTracked = new Map();  // pktKey → { info, stages, legIndex, marker, halo, trails, color, expiring }
+let liveTracked = new Map();  // pktKey → { info, stages, legIndex, marker, halo, trails, color, expiring, pathConfidence }
 let liveLayer;                // L.layerGroup de marcadores/halos animados
 let liveTrailLayer;           // L.layerGroup de las líneas de recorrido (por debajo de los marcadores)
 let liveSiblingLayer;         // L.layerGroup de las líneas de "mismo salto oído por varios gateways"
+// El mapa grande usa preferCanvas:true (rendimiento con muchos nodos), pero
+// Canvas pinta todo en un único <canvas> sin nodos DOM por trazo — no hay
+// nada a lo que engancharle una clase CSS ni una animación. Los tramos de
+// traceroute confirmado fuerzan este renderer SVG propio (mismo pane) para
+// poder animarlos con CSS igual que en el mini-mapa del desglose.
+let liveTraceRenderer;
 let livePingLayer;            // L.layerGroup de los pings de origen
 let liveNodeLayer;            // L.layerGroup de puntos base de nodos
 let liveWs = null;
@@ -28,10 +34,8 @@ const LIVE_LOG_MAX = 200;
 // menos comunes bajo un "otros" salvo que de verdad no tengamos fila
 // dedicada para él (portnums muy raros/experimentales, o sin decodificar).
 const KNOWN_PORTNUMS = [
-  'POSITION_APP', 'TEXT_MESSAGE_APP', 'TEXT_MESSAGE_COMPRESSED_APP', 'TELEMETRY_APP',
-  'NODEINFO_APP', 'WAYPOINT_APP', 'ROUTING_APP', 'TRACEROUTE_APP', 'NEIGHBORINFO_APP',
-  'ADMIN_APP', 'REMOTE_HARDWARE_APP', 'DETECTION_SENSOR_APP', 'RANGE_TEST_APP',
-  'STORE_FORWARD_APP', 'MAP_REPORT_APP', 'ALERT_APP', 'KEY_VERIFICATION_APP', 'PAXCOUNTER_APP',
+  'POSITION_APP', 'TEXT_MESSAGE_APP', 'TELEMETRY_APP', 'NODEINFO_APP', 'WAYPOINT_APP',
+  'TRACEROUTE_APP', 'NEIGHBORINFO_APP', 'RANGE_TEST_APP', 'MAP_REPORT_APP',
 ];
 function portnumCategory(portnum) {
   if (!portnum) return 'OTHER';
@@ -76,6 +80,21 @@ function togglePortnumFilter(cat) {
   const btn = document.querySelector(`#portnum-filter-panel [data-cat="${cat}"]`);
   if (btn) btn.classList.toggle('active', activePortnumFilters.has(cat));
   updatePortnumFilterCount();
+}
+
+function savePortnumFiltersAndSync() {
+  try { localStorage.setItem(PORTNUM_FILTER_KEY, JSON.stringify([...activePortnumFilters])); } catch {}
+  syncPortnumFilterButtons();
+}
+
+function selectAllPortnumFilters() {
+  activePortnumFilters = new Set(ALL_PORTNUM_CATS);
+  savePortnumFiltersAndSync();
+}
+
+function clearAllPortnumFilters() {
+  activePortnumFilters = new Set();
+  savePortnumFiltersAndSync();
 }
 
 function togglePortnumFilterPanel() {
@@ -221,6 +240,7 @@ function initLiveMap() {
 
   map.createPane('livePane');
   map.getPane('livePane').style.zIndex = 460;
+  liveTraceRenderer = L.svg({ pane: 'livePane' });
 
   liveNodeLayer = L.layerGroup().addTo(map);
   liveTrailLayer = L.layerGroup().addTo(map);
@@ -332,7 +352,14 @@ function handleLiveEvent(event) {
       info: event, stages: [], legIndex: 0,
       marker: null, halo: null, trails: [],
       color: packetColor(event.packet_id),
-      expiring: false, animating: false,
+      expiring: false, animating: false, pathConfidence: event.path_confidence,
+      // Estado de la animación por ruta confirmada de traceroute — ver
+      // advanceTraceroute(). isTraceroute empieza en false a propósito
+      // aunque path_confidence ya sea 'traceroute' desde el primer evento:
+      // el primer stage con new_event()/route no dispara animación hasta
+      // que llega el packet_stage correspondiente.
+      isTraceroute: false, traceField: null, traceDrawn: 0, traceLastHops: 0,
+      traceUnknown: false, laneOffset: null,
     });
     liveOrder.push(key);
     enforceLiveWindow();
@@ -345,8 +372,18 @@ function handleLiveEvent(event) {
     if (!tracked) return;
     const hadStages = tracked.stages.length;
     tracked.stages = event.stages;
+    tracked.pathConfidence = event.path_confidence;
+    tracked.info.route = event.route;
+    tracked.info.route_back = event.route_back;
     updateLogRow(event);
-    if (event.stages.length > hadStages) animateNextLeg(key);
+    // Una vez el paquete se confirma como traceroute (route/route_back del
+    // propio firmware, salto a salto real) dejamos de animar por la
+    // heurística de gateways — no coincide con la ruta real y confundía
+    // más que ayudaba (ver conversación: el mapa grande no encajaba con el
+    // desglose). advanceTraceroute() dibuja solo lo confirmado hasta ahora
+    // y se re-invoca según route/route_back se van completando.
+    if (tracked.pathConfidence === 'traceroute') advanceTraceroute(key);
+    else if (event.stages.length > hadStages) animateNextLeg(key);
   } else if (event.type === 'packet_expired') {
     expirePacket(key);
   }
@@ -403,6 +440,10 @@ function spawnOriginPing(event) {
 // no arrancar en hop_start si faltan las primeras por falta de
 // cobertura MQTT, ver modal de info).
 function hopCountFor(tracked) {
+  // En modo traceroute el nº de salto es el índice dentro de la ruta
+  // confirmada (igual numeración que el mini-mapa del desglose), no la
+  // heurística de hop_start - hop_limit de abajo.
+  if (tracked.isTraceroute) return tracked.traceLastHops;
   if (tracked.legIndex < 0) return 0;
   const stage = tracked.stages[tracked.legIndex];
   if (stage && tracked.info.hop_start != null) {
@@ -421,8 +462,11 @@ function markerIconHtml(color, hops, isOrigin, isUnknown) {
 
 function updateMarkerHops(tracked) {
   const el = tracked.marker && tracked.marker.getElement();
-  const numEl = el && el.querySelector('.pkt-marker-num');
-  if (numEl) numEl.textContent = hopCountFor(tracked);
+  if (!el) return;
+  const numEl = el.querySelector('.pkt-marker-num');
+  if (numEl) numEl.textContent = tracked.traceUnknown ? '?' : hopCountFor(tracked);
+  const iconEl = el.querySelector('.pkt-marker-icon');
+  if (iconEl) iconEl.classList.toggle('pkt-marker-unknown', !!tracked.traceUnknown);
 }
 
 function ensureMarker(tracked, atPos) {
@@ -446,6 +490,27 @@ function ensureMarker(tracked, atPos) {
   idlePulse(tracked);
 }
 
+// Dedo persistente en un salto ya confirmado de un traceroute — el
+// marcador "en movimiento" (ensureMarker/tracked.marker) es uno solo y se
+// reutiliza salto a salto, así que sin esto el número de cada salto
+// desaparecía en cuanto el paquete avanzaba al siguiente (igual que hace
+// el mini-mapa del desglose, que sí dibuja un círculo fijo por salto). Se
+// añade a tracked.trails para que expirePacket/resetLiveState lo limpien
+// igual que el resto del rastro.
+function dropHopMarker(tracked, pos, point, isOrigin) {
+  const size = isOrigin ? 22 : 16;
+  const marker = L.marker(pos, {
+    pane: 'livePane', interactive: false,
+    icon: L.divIcon({
+      className: 'pkt-marker-wrap',
+      html: markerIconHtml(tracked.color, point.hops, isOrigin, point.unknown),
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+    }),
+  }).addTo(liveTrailLayer);
+  tracked.trails.push(marker);
+}
+
 function idlePulse(tracked) {
   // Halo respirando alrededor del marcador mientras el paquete sigue vivo.
   function step(now) {
@@ -458,7 +523,144 @@ function idlePulse(tracked) {
   requestAnimationFrame(step);
 }
 
+// Vector de desplazamiento FIJO para todo un paquete (no por tramo): un
+// único (latOff, lngOff), perpendicular al rumbo general origen→destino,
+// que se suma tal cual a cada punto de la ruta. Calcularlo por tramo
+// individual (rumbo propio de cada salto) rompía la continuidad en cada
+// zigzag — dos saltos consecutivos con rumbos distintos se desplazaban en
+// direcciones distintas y el punto que deberían compartir dejaba de
+// coincidir, dando líneas "cortadas" en cada vértice. Con un vector fijo
+// toda la ruta se traslada en bloque: sigue siendo exactamente la misma
+// forma, solo que corrida a un lado — y como el rumbo general se invierte
+// entre ida y vuelta, cada una cae a un lado distinto sin tocarse.
+function laneOffsetVector(from, to, meters) {
+  if (!meters || !from || !to) return null;
+  const lat0 = (from[0] + to[0]) / 2 * Math.PI / 180;
+  const kx = Math.cos(lat0) || 1e-6; // escala aprox longitud→distancia real a esta latitud
+  const dx = (to[1] - from[1]) * kx;
+  const dy = to[0] - from[0];
+  const len = Math.hypot(dx, dy);
+  if (!len) return null;
+  const ux = dy / len, uy = -dx / len; // perpendicular a la derecha de (dx,dy)
+  const degPerMeter = 1 / 111320; // aprox, grados de latitud por metro
+  return {
+    lat: uy * meters * degPerMeter,
+    lng: (ux * meters * degPerMeter) / kx,
+  };
+}
+
+function applyLaneOffset(pos, offset) {
+  return offset ? [pos[0] + offset.lat, pos[1] + offset.lng] : pos;
+}
+
+// Metros reales que ocupa un pixel de pantalla a una latitud y zoom dados
+// (fórmula estándar de Web Mercator) — para que laneOffsetVector separe los
+// carriles una distancia constante EN PANTALLA sea cual sea el zoom, en vez
+// de una distancia fija en metros que a poco zoom sería invisible.
+function metersPerPixelAt(lat, zoom) {
+  return 40075016.686 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoom + 8);
+}
+
+// Las 3 líneas visuales (halo + sólida + guion animado) de un tramo, más un
+// hit-stroke invisible opcional más ancho para poder pinchar la línea sin
+// puntería milimétrica — creadas en un punto (longitud cero) para poder ir
+// estirándolas frame a frame mientras el marcador se anima — ver
+// updateTraceLines()/advanceTraceroute(). El mini-mapa del desglose no
+// anima, así que las crea y las estira en el mismo instante (ver
+// drawTraceSegment más abajo) y sin onClick (ya está dentro del propio
+// desglose, no hace falta).
+//
+// onClick (opcional): OJO con esto — CLAUDE.md documenta que un hit line
+// invisible de las edges del mapa base "siempre ganaba" a los marcadores
+// alrededor pese al z-index de panes, y hubo que quitarlo. Aquí se acepta
+// ese mismo riesgo a propósito porque el hit-stroke es temporal (el tramo
+// desaparece a los pocos segundos, no es un elemento permanente del mapa
+// como las edges) y va en su propio pane 'livePane' por encima de todo lo
+// demás — si tapa el click de un nodo base un instante, se resuelve solo.
+function createTraceLines(layerGroup, at, color, extraOpts = {}) {
+  const { onClick, ...restOpts } = extraOpts;
+  const base = { interactive: false, ...restOpts };
+  const glow = L.polyline([at, at], { ...base, color, weight: 8, opacity: 0.22 }).addTo(layerGroup);
+  const line = L.polyline([at, at], { ...base, color, weight: 3.5, opacity: 1 }).addTo(layerGroup);
+  // dashArray es en pixels fijos, no escala con el zoom — con un hueco de
+  // 10px se veía bien en el mini-mapa (ruta entera encogida a un área
+  // pequeña) pero en el mapa grande, a su zoom habitual bastante más
+  // cercano, esos huecos se repetían muchas más veces a lo largo de la
+  // línea y se leían como cortes reales en vez de un flujo animado.
+  const flow = L.polyline([at, at], {
+    ...base, color: '#fff', weight: 1.8, opacity: 0.9, dashArray: '4 6', className: 'pkt-route-flow',
+  }).addTo(layerGroup);
+  let hit = null;
+  if (onClick) {
+    hit = L.polyline([at, at], {
+      ...restOpts, interactive: true, bubblingMouseEvents: false,
+      color: '#000', opacity: 0, weight: 14,
+    }).addTo(layerGroup);
+    hit.on('click', onClick);
+  }
+  return { glow, line, flow, hit };
+}
+
+function updateTraceLines(lines, from, to) {
+  lines.glow.setLatLngs([from, to]);
+  lines.line.setLatLngs([from, to]);
+  lines.flow.setLatLngs([from, to]);
+  if (lines.hit) lines.hit.setLatLngs([from, to]);
+}
+
+// El rumbo de la flecha se calcula con lat/lng planas (sin pasar por
+// latLngToLayerPoint) a propósito: el mini-mapa se acaba de crear con
+// L.map() y aún no tiene centro/zoom asignado en el momento en que
+// renderDetailMiniMap dibuja la ruta (el fitBounds llega después) — pedirle
+// la proyección de pixel antes de tener vista lanza "Set map center and
+// zoom first". No hay rotación del mapa en este proyecto, así que lat/lng
+// planas dan el mismo ángulo en pantalla que la proyección real.
+function createTraceArrow(layerGroup, from, to, color, extraOpts = {}) {
+  const mid = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2];
+  const latCorrection = Math.cos(mid[0] * Math.PI / 180);
+  const dx = (to[1] - from[1]) * latCorrection;
+  const dy = -(to[0] - from[0]); // lat crece hacia arriba, y de pantalla hacia abajo
+  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+  return L.marker(mid, {
+    // Ojo: no pasar "pane: undefined" — aunque no haya pane explícito, la
+    // propia clave sobrescribiría el default interno de Leaflet
+    // ('markerPane') con undefined y _initIcon revienta al hacer
+    // appendChild sobre un pane inexistente. Solo se incluye si hay valor.
+    ...(extraOpts.pane ? { pane: extraOpts.pane } : {}),
+    interactive: false,
+    icon: L.divIcon({
+      className: 'pkt-route-arrow-wrap',
+      // El triángulo es una caja 0x0 (border-trick) que solo "existe" hacia
+      // +x (a la derecha) — sin el translateX(-4px) su centro visual queda
+      // 4px por delante del punto de anclaje real. Va DESPUÉS de rotate()
+      // en la lista para que se aplique en coordenadas locales (antes de
+      // rotar) y la corrección apunte siempre "hacia atrás" en el sentido
+      // de la flecha, sea cual sea el ángulo.
+      html: `<div class="pkt-route-arrow" style="border-left-color:${color};transform:rotate(${angle}deg) translateX(-4px)"></div>`,
+      iconSize: [14, 14],
+      iconAnchor: [7, 7],
+    }),
+  }).addTo(layerGroup);
+}
+
+// Traza un tramo de ruta completo de una vez (sin animar): halo + línea
+// sólida + guion animado + flecha. Usada por el mini-mapa del desglose, que
+// dibuja la ruta entera de golpe. El mapa grande (tramos de traceroute en
+// directo) usa createTraceLines/updateTraceLines/createTraceArrow por
+// separado para poder ir estirando la línea mientras el marcador se anima
+// — ver advanceTraceroute(). Devuelve las capas creadas para limpiarlas
+// luego.
+function drawTraceSegment(layerGroup, from, to, color, extraOpts = {}) {
+  const lines = createTraceLines(layerGroup, from, color, extraOpts);
+  updateTraceLines(lines, from, to);
+  const arrow = createTraceArrow(layerGroup, from, to, color, extraOpts);
+  return [lines.glow, lines.line, lines.flow, arrow];
+}
+
 function drawTrailLeg(tracked, fromPos, toPos) {
+  // Los tramos de traceroute confirmado los dibuja advanceTraceroute()
+  // directamente con drawTraceSegment() — esta función solo la usan ya
+  // paquetes en modo heurístico (gateway_ids oídos), nunca traceroute.
   const line = L.polyline([fromPos, toPos], {
     pane: 'livePane', color: tracked.color, weight: 2.5, opacity: 0.55,
     interactive: false,
@@ -548,6 +750,144 @@ function animateNextLeg(packetId) {
   requestAnimationFrame(step);
 }
 
+// Anima el marcador por la ruta REAL de un traceroute (route/route_back del
+// propio firmware), no por la heurística de gateway_ids oídos — esa
+// heurística puede tomar atajos geográficos que no son el camino RF real y
+// no coincidía con lo que se ve en el mini-mapa del desglose (mismo bug
+// que motivó esto). route/route_back llegan incompletos y se van
+// completando salto a salto en sucesivos packet_stage — cada llamada aquí
+// dibuja/anima solo el tramo nuevo confirmado desde la última vez.
+function advanceTraceroute(packetId) {
+  const tracked = liveTracked.get(packetId);
+  if (!tracked || tracked.expiring || tracked.animating) return;
+
+  // traceRouteIds()/traceRoutePath() (usadas por el mini-mapa) recalculan
+  // SIEMPRE en frío y prefieren route_back en cuanto tiene algo — correcto
+  // para un render final. Pero aquí el dibujado es incremental: route
+  // suele llegar ya completo desde el primer sighting (es la ruta de ida,
+  // copiada tal cual en el paquete de respuesta), mientras que route_back
+  // es la que de verdad se va completando salto a salto PARA ESTE paquete.
+  // Si dejásemos que la base cambiara de "route" a "route_back" a mitad de
+  // animación (en cuanto route_back consigue su primer salto), traceDrawn
+  // seguiría contando posiciones de una lista que ya no es la que se está
+  // usando — el mapa grande acababa mostrando un camino truncado/roto que
+  // no coincidía con el mini-mapa (que sí recalcula en frío). Por eso aquí
+  // se fija una única base por paquete y solo se cambia (reiniciando el
+  // dibujado desde cero) si la base realmente cambia.
+  const hasRouteBack = !!(tracked.info.route_back && tracked.info.route_back.length);
+  const wantField = hasRouteBack ? 'route_back' : 'route';
+
+  if (!tracked.isTraceroute || tracked.traceField !== wantField) {
+    // Primera confirmación de traceroute, o cambio de base a mitad de
+    // camino: cualquier rastro ya dibujado (heurística de gateways, o la
+    // base anterior) no tiene por qué coincidir con la base nueva — se
+    // borra y se retoma desde el origen con los saltos confirmados.
+    tracked.trails.forEach(l => { liveTrailLayer.removeLayer(l); liveSiblingLayer.removeLayer(l); });
+    tracked.trails = [];
+    tracked.isTraceroute = true;
+    tracked.traceField = wantField;
+    tracked.traceDrawn = 0;
+    tracked.lastPos = null;
+    // Vector de carril fijo para TODO el paquete (ver laneOffsetVector) —
+    // se calcula una vez con el origen/destino reales (no con los extremos
+    // de "points", que de momento solo llegan hasta el último salto
+    // confirmado) para que no cambie a medio dibujar.
+    const originPos = nodeLatLng(tracked.info.from);
+    const destPos = nodeLatLng(tracked.info.to);
+    tracked.laneOffset = (originPos && destPos)
+      ? laneOffsetVector(originPos, destPos, metersPerPixelAt(originPos[0], map.getZoom()) * 7)
+      : null;
+  }
+
+  const hops = tracked.info[tracked.traceField] || [];
+
+  // "to" (destino) SOLO se añade a la lista de ids cuando hops ya alcanzó
+  // hop_start (el máximo nº de saltos posible) — la única señal REAL de
+  // que ya no puede llegar ningún salto más. Un traceroute puede tardar
+  // perfectamente más de 60s en completarse con huecos de varios segundos
+  // entre saltos reales (normal en LoRa), así que cualquier temporizador
+  // de "llevamos N segundos sin novedades → debe haber terminado" da
+  // falsos positivos: se probó con un margen de 2s y, en cuanto llegaba el
+  // siguiente salto real tras el hueco, invalidaba el destino ya dibujado
+  // y el dibujado se quedaba atascado sin ponerse al día (los índices ya
+  // no cuadraban). Sin esa señal fiable, mejor no adivinar nunca: el
+  // rastro en el mapa grande se queda en el último salto CONFIRMADO — si
+  // hops nunca llega a hop_start (lo normal, hop_start es el máximo, no la
+  // longitud real), el tramo final hacia el destino solo se ve en el
+  // desglose del paquete, que sí recalcula en frío con los datos ya
+  // completos.
+  const includeDest = tracked.info.hop_start != null && hops.length >= tracked.info.hop_start;
+  const ids = [tracked.info.from, ...hops, ...(includeDest ? [tracked.info.to] : [])];
+  const points = buildSequencedPath(
+    ids,
+    (id) => nodeLabel(id),
+  );
+
+  if (points.length <= tracked.traceDrawn) return; // nada nuevo confirmado todavía
+
+  if (!tracked.lastPos) {
+    tracked.lastPos = points[0].pos;
+    tracked.traceDrawn = 1;
+    tracked.traceLastHops = points[0].hops;
+    tracked.traceUnknown = !!points[0].unknown;
+    const originDraw = applyLaneOffset(points[0].pos, tracked.laneOffset);
+    ensureMarker(tracked, originDraw);
+    updateMarkerHops(tracked);
+    dropHopMarker(tracked, originDraw, points[0], true);
+    if (points.length <= tracked.traceDrawn) return;
+  }
+
+  const target = points[tracked.traceDrawn];
+  const toPos = target.pos;
+  // fromDraw/toDraw (con el carril aplicado) son lo que se anima y se
+  // dibuja; tracked.lastPos se queda en coordenadas reales para que el
+  // siguiente tramo encadene desde la posición real, no desde la desviada.
+  const fromDraw = applyLaneOffset(tracked.lastPos, tracked.laneOffset);
+  const toDraw = applyLaneOffset(toPos, tracked.laneOffset);
+  tracked.animating = true;
+  ensureMarker(tracked, fromDraw);
+
+  // La línea se crea ya (longitud cero, en fromDraw) y se va estirando cada
+  // frame hasta la posición actual del marcador — no se dibuja de golpe al
+  // llegar. Se mete en tracked.trails desde ya (no solo al terminar) para
+  // que si el paquete expira a mitad de tramo, el trozo dibujado hasta ese
+  // momento también se recoja en el fade-out de expirePacket().
+  const growLines = createTraceLines(liveTrailLayer, fromDraw, tracked.color, {
+    pane: 'livePane', renderer: liveTraceRenderer,
+    onClick: () => openPacketDetail(pktKey(tracked.info.packet_id, tracked.info.from)),
+  });
+  tracked.trails.push(growLines.glow, growLines.line, growLines.flow, growLines.hit);
+
+  const durationMs = 900 * packetAnimSlowdown();
+  const start = performance.now();
+
+  function step(now) {
+    if (tracked.expiring) return;
+    const t = Math.min(1, (now - start) / durationMs);
+    const e = easeInOutQuad(t);
+    const lat = fromDraw[0] + (toDraw[0] - fromDraw[0]) * e;
+    const lng = fromDraw[1] + (toDraw[1] - fromDraw[1]) * e;
+    const curPos = [lat, lng];
+    tracked.marker.setLatLng(curPos);
+    tracked.halo.setLatLng(curPos);
+    updateTraceLines(growLines, fromDraw, curPos);
+    if (t < 1) {
+      requestAnimationFrame(step);
+    } else {
+      tracked.trails.push(createTraceArrow(liveTrailLayer, fromDraw, toDraw, tracked.color, { pane: 'livePane' }));
+      dropHopMarker(tracked, toDraw, target, false);
+      tracked.lastPos = toPos;
+      tracked.traceDrawn++;
+      tracked.traceLastHops = target.hops;
+      tracked.traceUnknown = !!target.unknown;
+      updateMarkerHops(tracked);
+      tracked.animating = false;
+      if (tracked.traceDrawn < points.length) advanceTraceroute(packetId);
+    }
+  }
+  requestAnimationFrame(step);
+}
+
 function expirePacket(packetId) {
   const timer = pendingTrailRemovals.get(packetId);
   if (timer) { clearTimeout(timer); pendingTrailRemovals.delete(packetId); }
@@ -574,6 +914,13 @@ function expirePacket(packetId) {
     const opacity = 1 - t;
     for (const l of layers) {
       if (l instanceof L.Polyline) l.setStyle({ opacity: opacity * 0.55 });
+      else if (l instanceof L.Marker) {
+        // Las flechas de dirección de un tramo de traceroute son L.Marker
+        // (divIcon), no L.Path — no tienen .setStyle(), su opacidad se anima
+        // igual que tracked.marker: tocando el elemento DOM directamente.
+        const el = l.getElement();
+        if (el) el.style.opacity = opacity;
+      }
       else l.setStyle({ opacity, fillOpacity: opacity });
     }
     if (markerEl) markerEl.style.opacity = opacity;
@@ -838,37 +1185,11 @@ function buildPacketPath(data) {
   return points;
 }
 
-// Dibuja la ruta exacta de un traceroute con más fuerza visual que una
-// polyline plana: halo de resplandor debajo, línea sólida encima, y un
-// guion animado que "fluye" salto a salto en el sentido del recorrido —
-// más una flecha por tramo — para que de un vistazo se note que es una
-// ruta confirmada, no la heurística aproximada del resto de paquetes.
+// Dibuja la ruta exacta de un traceroute en el mini-mapa del desglose,
+// tramo a tramo, con el mismo estilo que el mapa grande (drawTraceSegment).
 function drawTraceroutePath(latlngs, color) {
-  L.polyline(latlngs, {
-    color, weight: 10, opacity: 0.18, className: 'pkt-route-glow', interactive: false,
-  }).addTo(detailMapLayer);
-  L.polyline(latlngs, {
-    color, weight: 3.5, opacity: 0.95, interactive: false,
-  }).addTo(detailMapLayer);
-  L.polyline(latlngs, {
-    color: '#fff', weight: 2, opacity: 0.85, dashArray: '1 11',
-    className: 'pkt-route-flow', interactive: false,
-  }).addTo(detailMapLayer);
-
   for (let i = 0; i < latlngs.length - 1; i++) {
-    const a = detailMap.latLngToLayerPoint(latlngs[i]);
-    const b = detailMap.latLngToLayerPoint(latlngs[i + 1]);
-    const mid = detailMap.layerPointToLatLng(L.point((a.x + b.x) / 2, (a.y + b.y) / 2));
-    const angle = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
-    L.marker(mid, {
-      icon: L.divIcon({
-        className: 'pkt-route-arrow-wrap',
-        html: `<div class="pkt-route-arrow" style="border-left-color:${color};transform:rotate(${angle}deg)"></div>`,
-        iconSize: [14, 14],
-        iconAnchor: [7, 7],
-      }),
-      interactive: false,
-    }).addTo(detailMapLayer);
+    drawTraceSegment(detailMapLayer, latlngs[i], latlngs[i + 1], color);
   }
 }
 

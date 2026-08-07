@@ -391,9 +391,12 @@ function hopCountFor(tracked) {
   return tracked.legIndex + 1;
 }
 
-function markerIconHtml(color, hops, isOrigin) {
-  const cls = isOrigin ? 'pkt-marker-icon pkt-marker-origin' : 'pkt-marker-icon';
-  return `<div class="${cls}" style="background:${color}"><span class="pkt-marker-num">${hops}</span></div>`;
+function markerIconHtml(color, hops, isOrigin, isUnknown) {
+  const cls = ['pkt-marker-icon'];
+  if (isOrigin) cls.push('pkt-marker-origin');
+  if (isUnknown) cls.push('pkt-marker-unknown');
+  const label = isUnknown ? '?' : hops;
+  return `<div class="${cls.join(' ')}" style="background:${color}"><span class="pkt-marker-num">${label}</span></div>`;
 }
 
 function updateMarkerHops(tracked) {
@@ -596,7 +599,14 @@ function addLogRow(event) {
 function updateLogRow(stageEvent) {
   const key = pktKey(stageEvent.packet_id, stageEvent.from);
   const data = livePacketLog.get(key);
-  if (data) { data.stages = stageEvent.stages; data.path_confidence = stageEvent.path_confidence; }
+  if (data) {
+    data.stages = stageEvent.stages;
+    data.path_confidence = stageEvent.path_confidence;
+    // route/route_back de un traceroute se van completando en sucesivas
+    // etapas — se actualizan en info para que buildPacketPath() las vea.
+    if (stageEvent.route) data.info.route = stageEvent.route;
+    if (stageEvent.route_back) data.info.route_back = stageEvent.route_back;
+  }
 
   const row = document.getElementById('live-log-row-' + key);
   if (!row) return;
@@ -617,8 +627,10 @@ function nodeLabel(nodeId) {
 }
 
 function renderLogRow(info, { hops, path_confidence }) {
-  const confClass = path_confidence === 'relay_node' ? 'lr-conf-relay' : 'lr-conf-heuristic';
-  const confLabel = path_confidence === 'relay_node' ? 'ruta confirmada' : 'ruta aproximada';
+  const confClass = path_confidence === 'traceroute' ? 'lr-conf-traceroute'
+    : path_confidence === 'relay_node' ? 'lr-conf-relay' : 'lr-conf-heuristic';
+  const confLabel = path_confidence === 'traceroute' ? 'ruta exacta (traceroute)'
+    : path_confidence === 'relay_node' ? 'ruta confirmada' : 'ruta aproximada';
   const color = packetColor(info.packet_id);
   const textHtml = info.text
     ? `<div class="lr-text">💬 “${escHtml(info.text)}”</div>`
@@ -667,27 +679,46 @@ function renderPacketDetail(packetId) {
   const data = livePacketLog.get(packetId);
   if (!data) return '<p class="malconfig-empty">Sin datos de este paquete (se ha perdido del historial).</p>';
   const { info, stages, path_confidence } = data;
-  const confLabel = path_confidence === 'relay_node'
-    ? 'Ruta confirmada — al menos un salto trae el nodo real que retransmitió (relay_node)'
-    : 'Ruta aproximada — estimada por qué gateways oyeron cada salto, sin relay_node';
+  const isTraceroute = path_confidence === 'traceroute';
+  const confLabel = isTraceroute
+    ? 'Ruta exacta — registrada por el propio traceroute, salto a salto real (no es una aproximación)'
+    : path_confidence === 'relay_node'
+      ? 'Ruta confirmada — al menos un salto trae el nodo real que retransmitió (relay_node)'
+      : 'Ruta aproximada — estimada por qué gateways oyeron cada salto, sin relay_node';
   const reachedCount = estimateReachedNodes(data).size;
 
-  const hopsHtml = stages.length
-    ? stages.map((s, i) => `
-      <div class="pkt-hop">
-        <div class="pkt-hop-num">${i + 1}</div>
-        <div class="pkt-hop-body">
-          <div class="pkt-hop-meta">
-            <span>hop_limit ${s.hop_limit}</span>
-            <span>${formatTime(s.rx_time)}</span>
+  const traceIds = isTraceroute ? traceRouteIds(data) : null;
+  const hopsHtml = isTraceroute
+    ? traceIds.map((id, i) => {
+        const known = !!nodeLatLng(id);
+        const roleLabel = i === 0 ? 'origen' : i === traceIds.length - 1 ? 'destino' : `salto ${i}`;
+        return `
+        <div class="pkt-hop">
+          <div class="pkt-hop-num">${i}</div>
+          <div class="pkt-hop-body">
+            <div class="pkt-hop-meta"><span>${roleLabel}</span></div>
+            <div class="pkt-hop-gateways">
+              <span class="pkt-gw-chip${known ? ' relay' : ' unknown'}">${known ? '🔗' : '❓'} ${nodeLabel(id)}</span>
+            </div>
           </div>
-          <div class="pkt-hop-gateways">
-            ${s.gateway_ids.map(gw => `<span class="pkt-gw-chip${gw === s.relay_node ? ' relay' : ''}">${gw === s.relay_node ? '🔗 ' : ''}${nodeLabel(gw)}</span>`).join('')}
-            ${s.relay_node && !s.gateway_ids.includes(s.relay_node) ? `<span class="pkt-gw-chip relay">🔗 ${nodeLabel(s.relay_node)}</span>` : ''}
+        </div>`;
+      }).join('')
+    : (stages.length
+      ? stages.map((s, i) => `
+        <div class="pkt-hop">
+          <div class="pkt-hop-num">${i + 1}</div>
+          <div class="pkt-hop-body">
+            <div class="pkt-hop-meta">
+              <span>hop_limit ${s.hop_limit}</span>
+              <span>${formatTime(s.rx_time)}</span>
+            </div>
+            <div class="pkt-hop-gateways">
+              ${s.gateway_ids.map(gw => `<span class="pkt-gw-chip${gw === s.relay_node ? ' relay' : ''}">${gw === s.relay_node ? '🔗 ' : ''}${nodeLabel(gw)}</span>`).join('')}
+              ${s.relay_node && !s.gateway_ids.includes(s.relay_node) ? `<span class="pkt-gw-chip relay">🔗 ${nodeLabel(s.relay_node)}</span>` : ''}
+            </div>
           </div>
-        </div>
-      </div>`).join('')
-    : '<p class="pkt-hop-empty">Sin saltos con coordenadas conocidas todavía</p>';
+        </div>`).join('')
+      : '<p class="pkt-hop-empty">Sin saltos con coordenadas conocidas todavía</p>');
 
   const textRow = info.text
     ? `<tr><td>Mensaje</td><td>💬 “${escHtml(info.text)}”</td></tr>`
@@ -706,8 +737,8 @@ function renderPacketDetail(packetId) {
       <tr><td>Nodos alcanzados</td><td>~${reachedCount} <span class="pkt-reached-hint" title="Cota mínima: solo cuenta nodos que son gateway MQTT (los únicos visibles desde aquí). El alcance real puede ser mayor.">(aprox.)</span></td></tr>
     </table>
     <h4 class="pkt-hops-title">
-      Saltos detectados (${stages.length})
-      <span class="pkt-hops-hint">🔗 = relay_node confirmado en ese salto</span>
+      Saltos detectados (${isTraceroute ? traceIds.length : stages.length})
+      <span class="pkt-hops-hint">${isTraceroute ? '🔗 = posición conocida · ❓ = nodo real, posición desconocida' : '🔗 = relay_node confirmado en ese salto'}</span>
     </h4>
     <div class="pkt-hops">${hopsHtml}</div>`;
 }
@@ -717,9 +748,63 @@ function renderPacketDetail(packetId) {
 let detailMap = null;
 let detailMapLayer = null;
 
+// Un traceroute trae la lista exacta de node_id que retransmitieron el
+// paquete (RouteDiscovery.route/route_back) — no todos tendrán posición
+// conocida en nodes.json. En vez de saltárnoslos sin más (perdiendo el
+// hueco), se interpola su posición a medio camino entre el salto
+// conocido anterior y el siguiente, y se marcan como "unknown" para que
+// el marcador dibuje un "?" en vez de fingir precisión que no tenemos.
+function buildSequencedPath(ids, labelFor) {
+  const positions = ids.map(id => nodeLatLng(id));
+  const points = [];
+  for (let i = 0; i < ids.length; i++) {
+    if (positions[i]) {
+      points.push({ pos: positions[i], label: labelFor(ids[i], i), hops: i, unknown: false, id: ids[i] });
+      continue;
+    }
+    let prevIdx = -1;
+    for (let j = i - 1; j >= 0; j--) { if (positions[j]) { prevIdx = j; break; } }
+    let nextIdx = -1;
+    for (let j = i + 1; j < ids.length; j++) { if (positions[j]) { nextIdx = j; break; } }
+    if (prevIdx === -1 || nextIdx === -1) continue; // sin referencia a ambos lados, no se puede ni interpolar
+    const t = (i - prevIdx) / (nextIdx - prevIdx);
+    const a = positions[prevIdx], b = positions[nextIdx];
+    points.push({
+      pos: [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t],
+      label: `${labelFor(ids[i], i)} — posición desconocida`,
+      hops: i,
+      unknown: true,
+      id: ids[i],
+    });
+  }
+  return points;
+}
+
+function traceRouteIds(data) {
+  // route_back es el camino de ESTE paquete si es la respuesta (va
+  // completándose salto a salto según se retransmite de vuelta); route
+  // es el camino ya completo de la solicitud original — se usa route
+  // solo cuando route_back todavía no tiene nada.
+  const hops = (data.info.route_back && data.info.route_back.length) ? data.info.route_back : (data.info.route || []);
+  return [data.info.from, ...hops, data.info.to];
+}
+
+function traceroutePath(data) {
+  const ids = traceRouteIds(data);
+  return buildSequencedPath(ids, (id, i) => {
+    if (i === 0) return `${nodeLabel(id)} (origen)`;
+    if (i === ids.length - 1) return `${nodeLabel(id)} (destino)`;
+    return `${nodeLabel(id)} — salto ${i} (traceroute)`;
+  });
+}
+
 function buildPacketPath(data) {
-  // Mismo criterio que animateNextLeg: solo puntos con coordenadas
-  // conocidas, en orden — origen y luego cada etapa que sí resolvimos.
+  const isTraceroute = (data.info.route && data.info.route.length) || (data.info.route_back && data.info.route_back.length);
+  if (isTraceroute) return traceroutePath(data);
+
+  // Sin traceroute: mismo criterio que animateNextLeg — solo puntos con
+  // coordenadas conocidas, en orden, origen y luego cada etapa que sí
+  // resolvimos (aproximación por heurística de gateways).
   const points = [];
   const originPos = nodeLatLng(data.info.from);
   if (originPos) points.push({ pos: originPos, label: `${nodeLabel(data.info.from)} (origen)`, hops: 0 });
@@ -758,17 +843,23 @@ function renderDetailMiniMap(packetId) {
   // packetColor() se hashea siempre sobre el packet_id numérico (igual que
   // en el mapa grande y el log) — no sobre packetId aquí, que ya es la
   // clave compuesta pktKey(), o el color no coincidiría con el resto.
+  const isTraceroute = (data.info.route && data.info.route.length) || (data.info.route_back && data.info.route_back.length);
   const color = packetColor(data.info.packet_id);
   const latlngs = points.map(p => p.pos);
   const allPositions = [...latlngs];
   L.polyline(latlngs, { color, weight: 3, opacity: 0.8 }).addTo(detailMapLayer);
-  for (const stage of data.stages) {
-    for (const [a, b] of stageSiblingLines(stage)) {
-      L.polyline([a, b], { color, weight: 1.5, opacity: 0.45, dashArray: '3 4' }).addTo(detailMapLayer);
-      L.circleMarker(b, {
-        radius: 4, color: '#fff', weight: 1, fillColor: color, fillOpacity: 0.7,
-      }).bindTooltip(`hop_limit ${stage.hop_limit} — también oído aquí`, { direction: 'top' }).addTo(detailMapLayer);
-      allPositions.push(b);
+  // Las líneas de "mismo salto oído por otro gateway" son de la heurística
+  // de gateways — con un traceroute la ruta ya es exacta, mezclar ambos
+  // modelos en el mismo mini-mapa solo confunde.
+  if (!isTraceroute) {
+    for (const stage of data.stages) {
+      for (const [a, b] of stageSiblingLines(stage)) {
+        L.polyline([a, b], { color, weight: 1.5, opacity: 0.45, dashArray: '3 4' }).addTo(detailMapLayer);
+        L.circleMarker(b, {
+          radius: 4, color: '#fff', weight: 1, fillColor: color, fillOpacity: 0.7,
+        }).bindTooltip(`hop_limit ${stage.hop_limit} — también oído aquí`, { direction: 'top' }).addTo(detailMapLayer);
+        allPositions.push(b);
+      }
     }
   }
   points.forEach((p, i) => {
@@ -777,7 +868,7 @@ function renderDetailMiniMap(packetId) {
     L.marker(p.pos, {
       icon: L.divIcon({
         className: 'pkt-marker-wrap',
-        html: markerIconHtml(color, p.hops ?? i, isOrigin),
+        html: markerIconHtml(color, p.hops ?? i, isOrigin, p.unknown),
         iconSize: [size, size],
         iconAnchor: [size / 2, size / 2],
       }),
@@ -865,7 +956,7 @@ async function loadSharedPacket(rawId) {
       info: {
         packet_id: data.packet_id, from: data.from, to: data.to,
         hop_start: data.hop_start, channel: data.channel, portnum: data.portnum,
-        text: data.text,
+        text: data.text, route: data.route, route_back: data.route_back,
       },
       stages: data.stages,
       path_confidence: data.path_confidence,
@@ -1175,7 +1266,8 @@ function buildReplayEventQueue() {
         run: () => handleLiveEvent({
           type: 'packet_new', packet_id: pkt.packet_id, from: pkt.from, to: pkt.to,
           hop_start: pkt.hop_start, channel: pkt.channel, portnum: pkt.portnum,
-          text: pkt.text, path_confidence: pkt.path_confidence,
+          text: pkt.text, route: pkt.route, route_back: pkt.route_back,
+          path_confidence: pkt.path_confidence,
         }),
       });
     }
@@ -1188,6 +1280,7 @@ function buildReplayEventQueue() {
         run: () => handleLiveEvent({
           type: 'packet_stage', packet_id: pkt.packet_id, from: pkt.from,
           path_confidence: pkt.path_confidence, stages: stagesSoFar,
+          route: pkt.route, route_back: pkt.route_back,
         }),
       });
     }

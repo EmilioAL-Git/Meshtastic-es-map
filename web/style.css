@@ -1298,6 +1298,7 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 }
 .live-log-row .lr-conf-relay { color: var(--accent); }
 .live-log-row .lr-conf-heuristic { color: var(--accent2); }
+.live-log-row .lr-conf-traceroute { color: #facc15; font-weight: 700; }
 .live-log-row .lr-swatch {
   width: 7px;
   height: 7px;
@@ -1546,6 +1547,10 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   color: var(--accent);
   background: rgba(94,234,212,.08);
 }
+.pkt-gw-chip.unknown {
+  border-style: dashed;
+  color: var(--muted);
+}
 
 .pkt-hop-empty {
   color: var(--muted);
@@ -1586,6 +1591,14 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   line-height: 1;
 }
 .pkt-marker-origin .pkt-marker-num { font-size: 11px; }
+/* Nodo real de un traceroute cuya posición no conocemos — interpolada a
+   medio camino entre el salto anterior y el siguiente que sí conocemos,
+   marcada con "?" y borde discontinuo para no fingir precisión. */
+.pkt-marker-icon.pkt-marker-unknown {
+  border-style: dashed;
+  opacity: .85;
+}
+.pkt-marker-unknown .pkt-marker-num { font-size: 11px; }
 
 .pkt-detail-map {
   height: 380px;

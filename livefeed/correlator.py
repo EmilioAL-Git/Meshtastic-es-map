@@ -61,10 +61,17 @@ class PacketState:
     channel: int | None
     portnum: str | None
     text: str | None = None
+    route: list[str] = field(default_factory=list)
+    route_back: list[str] = field(default_factory=list)
     stages: dict[int, StageInfo] = field(default_factory=dict)
 
     @property
     def path_confidence(self) -> str:
+        # Un traceroute trae la ruta real, registrada por el propio
+        # firmware salto a salto — más fiable que relay_node (que solo
+        # confirma UN salto) o la heurística de gateways.
+        if self.route or self.route_back:
+            return "traceroute"
         if any(s.relay_node for s in self.stages.values()):
             return "relay_node"
         return "gateway_heuristic"
@@ -80,6 +87,8 @@ class PacketState:
             "from": self.from_id,
             "path_confidence": self.path_confidence,
             "stages": [s.to_dict() for s in self.ordered_stages()],
+            "route": self.route,
+            "route_back": self.route_back,
         }
 
     def new_event(self) -> dict:
@@ -92,6 +101,8 @@ class PacketState:
             "channel": self.channel,
             "portnum": self.portnum,
             "text": self.text,
+            "route": self.route,
+            "route_back": self.route_back,
             "path_confidence": self.path_confidence,
         }
 
@@ -130,9 +141,25 @@ class Correlator:
                 channel=event.get("channel"),
                 portnum=event.get("portnum"),
                 text=event.get("text"),
+                route=event.get("route") or [],
+                route_back=event.get("route_back") or [],
             )
             self._packets[key] = state
             out.append(state.new_event())
+
+        # route/route_back de un traceroute se van completando salto a
+        # salto en sucesivas retransmisiones del mismo paquete_id+from —
+        # cada sighting nueva puede traer una lista más larga que la
+        # anterior; nos quedamos con la más completa vista hasta ahora.
+        route_changed = False
+        new_route = event.get("route") or []
+        if len(new_route) > len(state.route):
+            state.route = new_route
+            route_changed = True
+        new_route_back = event.get("route_back") or []
+        if len(new_route_back) > len(state.route_back):
+            state.route_back = new_route_back
+            route_changed = True
 
         stage = state.stages.get(hop_limit)
         if stage is None:
@@ -151,7 +178,7 @@ class Correlator:
             stage.relay_node = relay_node
             changed = True
 
-        if changed:
+        if changed or route_changed:
             out.append(state.stage_event())
 
         return out

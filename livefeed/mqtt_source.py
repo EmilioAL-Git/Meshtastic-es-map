@@ -10,6 +10,11 @@ es un mensaje de texto, se incluye su contenido en el campo "text". Un
 canal con PSK propia sigue sin poder descifrarse, así que su texto nunca
 se expone. Cualquier otro portnum (posición, telemetría...) nunca lleva
 "text". Ver tests/test_livefeed.py para las garantías exactas.
+
+TRACEROUTE_APP es distinto: su payload (RouteDiscovery) es en sí mismo
+una lista de node_id que retransmitieron el paquete — metadato de
+enrutamiento, no contenido, igual que gateway_id o relay_node — así que
+se decodifica siempre que el portnum lo permita (ver _decode_traceroute).
 """
 
 from __future__ import annotations
@@ -80,6 +85,25 @@ def _safe_text(payload: bytes) -> str | None:
     return text or None
 
 
+def _decode_traceroute(payload: bytes) -> tuple[list[str], list[str]] | None:
+    """Decodifica un payload de TRACEROUTE_APP como RouteDiscovery.
+
+    A diferencia de un mensaje de texto, esto sigue siendo metadato de
+    enrutamiento puro — una lista de node_id que retransmitieron el
+    paquete, igual que gateway_id o relay_node — no contenido. route_back
+    (route en una respuesta) es la lista que de verdad interesa para
+    dibujar el camino real de ESTE paquete; route por sí solo en una
+    respuesta es el camino ya completado de la solicitud original."""
+    rd = mesh_pb2.RouteDiscovery()
+    try:
+        rd.ParseFromString(payload)
+    except DecodeError:
+        return None
+    route = [format_node_id(n) for n in rd.route]
+    route_back = [format_node_id(n) for n in rd.route_back]
+    return route, route_back
+
+
 def decode_service_envelope(payload: bytes) -> dict | None:
     """Decodifica un ServiceEnvelope protobuf a un dict saneado.
 
@@ -98,6 +122,8 @@ def decode_service_envelope(payload: bytes) -> dict | None:
 
     variant = packet.WhichOneof("payload_variant")
     text = None
+    route: list[str] = []
+    route_back: list[str] = []
     if variant == "decoded":
         try:
             portnum = portnums_pb2.PortNum.Name(packet.decoded.portnum)
@@ -105,6 +131,10 @@ def decode_service_envelope(payload: bytes) -> dict | None:
             portnum = None
         if packet.decoded.portnum == portnums_pb2.PortNum.TEXT_MESSAGE_APP:
             text = _safe_text(packet.decoded.payload)
+        elif packet.decoded.portnum == portnums_pb2.PortNum.TRACEROUTE_APP:
+            decoded_route = _decode_traceroute(packet.decoded.payload)
+            if decoded_route is not None:
+                route, route_back = decoded_route
     elif variant == "encrypted":
         portnum = "ENCRYPTED"
         data = try_decrypt_default_channel(packet.id, getattr(packet, "from"), packet.encrypted)
@@ -112,6 +142,10 @@ def decode_service_envelope(payload: bytes) -> dict | None:
             portnum = portnums_pb2.PortNum.Name(data.portnum)
             if data.portnum == portnums_pb2.PortNum.TEXT_MESSAGE_APP:
                 text = _safe_text(data.payload)
+            elif data.portnum == portnums_pb2.PortNum.TRACEROUTE_APP:
+                decoded_route = _decode_traceroute(data.payload)
+                if decoded_route is not None:
+                    route, route_back = decoded_route
     else:
         portnum = None
 
@@ -126,6 +160,8 @@ def decode_service_envelope(payload: bytes) -> dict | None:
         "channel": packet.channel or None,
         "portnum": portnum,
         "text": text,
+        "route": route,
+        "route_back": route_back,
         "gateway_id": envelope.gateway_id or None,
         "rx_time": rx_time,
         "relay_node": format_node_id(packet.relay_node) if packet.relay_node else None,

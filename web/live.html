@@ -108,6 +108,7 @@
       </div>
       <div class="legend-item"><div class="legend-dot" style="background:transparent;border:2px solid #38bdf8"></div> Origen del paquete (anillo)</div>
       <hr class="legend-sep">
+      <div class="legend-item"><span style="color:#facc15">●</span> Ruta exacta (traceroute real)</div>
       <div class="legend-item"><span style="color:var(--accent)">●</span> Ruta confirmada (relay_node real)</div>
       <div class="legend-item"><span style="color:var(--accent2)">●</span> Ruta aproximada (heurística de gateways)</div>
       </div>
@@ -217,11 +218,18 @@
       (<code>TEXT_MESSAGE_APP</code>) — es la única excepción. Un canal con
       PSK propia se queda como <code>ENCRYPTED</code>, sin revelar nada de
       su contenido.</p>
+      <p>Un <code>TRACEROUTE_APP</code> es distinto: su contenido es en sí
+      mismo la lista de nodos por los que pasó — metadato de enrutamiento,
+      no un mensaje — así que cuando alguien lanza un traceroute se
+      muestra la ruta <strong>exacta</strong> registrada por el propio
+      firmware, no la aproximación habitual. Si algún nodo de esa lista no
+      tiene posición conocida, se marca con "❓" en vez de dibujarlo donde
+      no toca.</p>
 
       <h4>Limitaciones</h4>
       <ul>
         <li>La mayoría de saltos reales no se ven: solo se registran los que pasan por un nodo con MQTT activado.</li>
-        <li>La ruta sin <code>relay_node</code> es aproximada, no un traceroute real.</li>
+        <li>La ruta sin <code>relay_node</code> ni traceroute es aproximada, estimada por qué gateways oyeron cada salto.</li>
         <li>En el mapa solo se dibujan los últimos 20 paquetes en vuelo a la vez.</li>
         <li>El histórico de la línea de tiempo guarda 7 días.</li>
       </ul>

@@ -163,6 +163,61 @@ class DecodeServiceEnvelopeTests(unittest.TestCase):
         env.gateway_id = "!11111111"
         self.assertIsNone(mqtt_source.decode_service_envelope(env.SerializeToString()))
 
+    def test_traceroute_decodes_route(self):
+        """RouteDiscovery.route/route_back es metadato de enrutamiento (la
+        lista de node_id que retransmitieron), no contenido — se decodifica
+        siempre, igual que gateway_id o relay_node."""
+        rd = mesh_pb2.RouteDiscovery()
+        rd.route.extend([0x11111111, 0x22222222])
+        rd.route_back.extend([0x33333333])
+
+        env = mqtt_pb2.ServiceEnvelope()
+        env.gateway_id = "!11111111"
+        env.packet.id = 900
+        setattr(env.packet, "from", 0xAABBCCDD)
+        env.packet.to = 0xFFFFFFFF
+        env.packet.hop_limit = 3
+        env.packet.hop_start = 3
+        env.packet.decoded.portnum = portnums_pb2.PortNum.TRACEROUTE_APP
+        env.packet.decoded.payload = rd.SerializeToString()
+
+        event = mqtt_source.decode_service_envelope(env.SerializeToString())
+        self.assertEqual(event["portnum"], "TRACEROUTE_APP")
+        self.assertEqual(event["route"], ["!11111111", "!22222222"])
+        self.assertEqual(event["route_back"], ["!33333333"])
+        self.assertIsNone(event["text"])  # sigue sin exponer contenido de mensaje
+
+    def test_non_traceroute_never_has_route(self):
+        event = mqtt_source.decode_service_envelope(
+            make_envelope(portnum=portnums_pb2.PortNum.POSITION_APP)
+        )
+        self.assertEqual(event["route"], [])
+        self.assertEqual(event["route_back"], [])
+
+    def test_encrypted_default_psk_traceroute_decodes_route(self):
+        """Igual que con TEXT_MESSAGE_APP: en un canal sin PSK propia se
+        puede descifrar con la clave pública y recuperar la ruta real."""
+        rd = mesh_pb2.RouteDiscovery()
+        rd.route_back.extend([0x44444444, 0x55555555])
+        data = mesh_pb2.Data()
+        data.portnum = portnums_pb2.PortNum.TRACEROUTE_APP
+        data.payload = rd.SerializeToString()
+        packet_id, from_id = 901, 0xAABBCCDD
+        ciphertext = encrypt_with_default_key(packet_id, from_id, data.SerializeToString())
+
+        env = mqtt_pb2.ServiceEnvelope()
+        env.gateway_id = "!11111111"
+        env.packet.id = packet_id
+        setattr(env.packet, "from", from_id)
+        env.packet.to = 0xFFFFFFFF
+        env.packet.hop_limit = 3
+        env.packet.hop_start = 3
+        env.packet.encrypted = ciphertext
+
+        event = mqtt_source.decode_service_envelope(env.SerializeToString())
+        self.assertEqual(event["portnum"], "TRACEROUTE_APP")
+        self.assertEqual(event["route_back"], ["!44444444", "!55555555"])
+
 
 class CorrelatorTests(unittest.TestCase):
     def setUp(self):
@@ -248,6 +303,30 @@ class CorrelatorTests(unittest.TestCase):
         stages_a = out_a2[-1]["stages"]
         self.assertEqual(len(stages_a), 2)  # hop_limit 3 y 1 del nodo !aaaaaaaa
         self.assertNotIn("!22222222", [gw for s in stages_a for gw in s["gateway_ids"]])
+
+    def test_traceroute_path_confidence_beats_relay_node(self):
+        """Un traceroute es más fiable que relay_node (que solo confirma un
+        salto) — path_confidence debe reflejarlo aunque también haya
+        relay_node en alguna etapa."""
+        out = self.corr.ingest(self._event(relay_node="!00000011", route=["!aaaaaaaa"], route_back=[]))
+        self.assertEqual(out[0]["path_confidence"], "traceroute")
+        self.assertEqual(out[-1]["path_confidence"], "traceroute")
+
+    def test_route_back_grows_across_sightings(self):
+        """route_back de una respuesta de traceroute se completa salto a
+        salto en sucesivas retransmisiones — nos quedamos con la más larga
+        vista hasta ahora, nunca con una más corta que sustituya a una ya
+        más completa."""
+        out1 = self.corr.ingest(self._event(route_back=["!aaaaaaaa"]))
+        self.assertEqual(out1[-1]["route_back"], ["!aaaaaaaa"])
+
+        out2 = self.corr.ingest(self._event(gateway_id="!22222222", route_back=["!aaaaaaaa", "!bbbbbbbb"]))
+        self.assertEqual(out2[-1]["route_back"], ["!aaaaaaaa", "!bbbbbbbb"])
+
+        # Una sighting posterior con route_back más corta (p.ej. otro
+        # gateway que solo vio el tramo inicial) no debe pisar la más larga.
+        out3 = self.corr.ingest(self._event(gateway_id="!33333333", route_back=["!aaaaaaaa"]))
+        self.assertEqual(out3[-1]["route_back"], ["!aaaaaaaa", "!bbbbbbbb"])
 
 
 if __name__ == "__main__":

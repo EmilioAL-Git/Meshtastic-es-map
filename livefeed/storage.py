@@ -6,7 +6,9 @@ siga funcionando más allá de la ventana de correlación en memoria de
 Correlator (LIVE_CORRELATION_WINDOW_S, segundos) — aquí se guardan
 durante LIVEFEED_RETENTION_DAYS (días). Solo metadatos de enrutamiento,
 salvo el texto de TEXT_MESSAGE_APP cuando es descifrable (ver
-mqtt_source.py) — es la única excepción, acotada a ese portnum.
+mqtt_source.py) — es la única excepción, acotada a ese portnum. route/
+route_back (de TRACEROUTE_APP) sí son metadato puro, como gateway_id o
+relay_node — la lista de node_id que retransmitieron el paquete.
 
 La clave primaria es (packet_id, from_id), no solo packet_id — ver el
 docstring de correlator.py: packet_id es un entero de 32 bits que cada
@@ -32,6 +34,8 @@ _PACKETS_SCHEMA = """
         channel INTEGER,
         portnum TEXT,
         text TEXT,
+        route_json TEXT NOT NULL DEFAULT '[]',
+        route_back_json TEXT NOT NULL DEFAULT '[]',
         path_confidence TEXT,
         stages_json TEXT NOT NULL DEFAULT '[]',
         first_seen REAL NOT NULL,
@@ -39,6 +43,15 @@ _PACKETS_SCHEMA = """
         PRIMARY KEY (packet_id, from_id)
     )
 """
+
+# Columnas añadidas tras la migración a PK compuesta — ALTER TABLE ADD
+# COLUMN idempotente, igual que se hizo en su día con "text", para no
+# tener que reconstruir la tabla otra vez en bases de datos que ya
+# tienen la PK compuesta.
+_ADDED_COLUMNS = (
+    "route_json TEXT NOT NULL DEFAULT '[]'",
+    "route_back_json TEXT NOT NULL DEFAULT '[]'",
+)
 
 
 def _migrate_composite_key(conn: sqlite3.Connection) -> None:
@@ -74,6 +87,11 @@ def init_db(path: str) -> sqlite3.Connection:
     conn.execute("PRAGMA journal_mode=WAL")
     _migrate_composite_key(conn)
     conn.execute(_PACKETS_SCHEMA.replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS"))
+    for col_def in _ADDED_COLUMNS:
+        try:
+            conn.execute(f"ALTER TABLE packets ADD COLUMN {col_def}")
+        except sqlite3.OperationalError:
+            pass  # ya existe
     conn.execute("CREATE INDEX IF NOT EXISTS idx_packets_last_seen ON packets(last_seen)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_packets_first_seen ON packets(first_seen)")
     conn.commit()
@@ -86,26 +104,34 @@ def record_event(conn: sqlite3.Connection, event: dict) -> None:
         conn.execute(
             """
             INSERT INTO packets
-                (packet_id, from_id, to_id, hop_start, channel, portnum, text, path_confidence, stages_json, first_seen, last_seen)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, ?)
+                (packet_id, from_id, to_id, hop_start, channel, portnum, text, route_json, route_back_json, path_confidence, stages_json, first_seen, last_seen)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', ?, ?)
             ON CONFLICT(packet_id, from_id) DO UPDATE SET
                 to_id = excluded.to_id,
                 hop_start = excluded.hop_start,
                 channel = excluded.channel,
                 portnum = excluded.portnum,
                 text = excluded.text,
+                route_json = excluded.route_json,
+                route_back_json = excluded.route_back_json,
                 path_confidence = excluded.path_confidence,
                 last_seen = excluded.last_seen
             """,
             (
                 event["packet_id"], event["from"], event["to"], event["hop_start"],
-                event["channel"], event["portnum"], event.get("text"), event["path_confidence"], now, now,
+                event["channel"], event["portnum"], event.get("text"),
+                json.dumps(event.get("route") or []), json.dumps(event.get("route_back") or []),
+                event["path_confidence"], now, now,
             ),
         )
     elif event["type"] == "packet_stage":
         conn.execute(
-            "UPDATE packets SET stages_json = ?, path_confidence = ?, last_seen = ? WHERE packet_id = ? AND from_id = ?",
-            (json.dumps(event["stages"]), event["path_confidence"], now, event["packet_id"], event["from"]),
+            "UPDATE packets SET stages_json = ?, route_json = ?, route_back_json = ?, path_confidence = ?, last_seen = ? WHERE packet_id = ? AND from_id = ?",
+            (
+                json.dumps(event["stages"]),
+                json.dumps(event.get("route") or []), json.dumps(event.get("route_back") or []),
+                event["path_confidence"], now, event["packet_id"], event["from"],
+            ),
         )
     else:
         return
@@ -115,7 +141,7 @@ def record_event(conn: sqlite3.Connection, event: dict) -> None:
 def get_packet(conn: sqlite3.Connection, packet_id: int, from_id: str | None = None) -> dict | None:
     if from_id is not None:
         row = conn.execute(
-            "SELECT packet_id, from_id, to_id, hop_start, channel, portnum, path_confidence, stages_json, text "
+            "SELECT packet_id, from_id, to_id, hop_start, channel, portnum, path_confidence, stages_json, text, route_json, route_back_json "
             "FROM packets WHERE packet_id = ? AND from_id = ?",
             (packet_id, from_id),
         ).fetchone()
@@ -124,7 +150,7 @@ def get_packet(conn: sqlite3.Connection, packet_id: int, from_id: str | None = N
         # URL): si packet_id no colisiona, resuelve igual; si colisiona,
         # se queda con el visto más recientemente en vez de fallar.
         row = conn.execute(
-            "SELECT packet_id, from_id, to_id, hop_start, channel, portnum, path_confidence, stages_json, text "
+            "SELECT packet_id, from_id, to_id, hop_start, channel, portnum, path_confidence, stages_json, text, route_json, route_back_json "
             "FROM packets WHERE packet_id = ? ORDER BY last_seen DESC LIMIT 1",
             (packet_id,),
         ).fetchone()
@@ -140,6 +166,8 @@ def get_packet(conn: sqlite3.Connection, packet_id: int, from_id: str | None = N
         "path_confidence": row[6],
         "stages": json.loads(row[7]),
         "text": row[8],
+        "route": json.loads(row[9]),
+        "route_back": json.loads(row[10]),
     }
 
 
@@ -165,7 +193,7 @@ def list_range(conn: sqlite3.Connection, since: float, until: float, limit: int 
     reproducir la línea de tiempo. Ordenados por primera vez visto."""
     rows = conn.execute(
         """
-        SELECT packet_id, from_id, to_id, hop_start, channel, portnum, path_confidence, stages_json, first_seen, text
+        SELECT packet_id, from_id, to_id, hop_start, channel, portnum, path_confidence, stages_json, first_seen, text, route_json, route_back_json
         FROM packets
         WHERE first_seen >= ? AND first_seen <= ?
         ORDER BY first_seen ASC
@@ -178,6 +206,7 @@ def list_range(conn: sqlite3.Connection, since: float, until: float, limit: int 
             "packet_id": row[0], "from": row[1], "to": row[2], "hop_start": row[3],
             "channel": row[4], "portnum": row[5], "path_confidence": row[6],
             "stages": json.loads(row[7]), "first_seen": row[8], "text": row[9],
+            "route": json.loads(row[10]), "route_back": json.loads(row[11]),
         }
         for row in rows
     ]

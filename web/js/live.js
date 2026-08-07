@@ -377,15 +377,45 @@ function spawnOriginPing(event) {
   requestAnimationFrame(step);
 }
 
+// Nº de saltos reales desde el origen hasta la etapa que el marcador
+// tiene alcanzada ahora mismo — hop_start menos el hop_limit de esa
+// etapa, no solo el índice dentro de las etapas conocidas (que podría
+// no arrancar en hop_start si faltan las primeras por falta de
+// cobertura MQTT, ver modal de info).
+function hopCountFor(tracked) {
+  if (tracked.legIndex < 0) return 0;
+  const stage = tracked.stages[tracked.legIndex];
+  if (stage && tracked.info.hop_start != null) {
+    return Math.max(0, tracked.info.hop_start - stage.hop_limit);
+  }
+  return tracked.legIndex + 1;
+}
+
+function markerIconHtml(color, hops) {
+  return `<div class="pkt-marker-icon" style="background:${color}"><span class="pkt-marker-num">${hops}</span></div>`;
+}
+
+function updateMarkerHops(tracked) {
+  const el = tracked.marker && tracked.marker.getElement();
+  const numEl = el && el.querySelector('.pkt-marker-num');
+  if (numEl) numEl.textContent = hopCountFor(tracked);
+}
+
 function ensureMarker(tracked, atPos) {
   if (tracked.marker) return;
   tracked.halo = L.circleMarker(atPos, {
     pane: 'livePane', radius: 9, color: tracked.color, weight: 0,
     fillColor: tracked.color, fillOpacity: 0.25, interactive: false,
   }).addTo(liveLayer);
-  tracked.marker = L.circleMarker(atPos, {
-    pane: 'livePane', radius: 5, color: '#fff', weight: 1.5,
-    fillColor: tracked.color, fillOpacity: 1, interactive: true,
+  tracked.marker = L.marker(atPos, {
+    pane: 'livePane',
+    icon: L.divIcon({
+      className: 'pkt-marker-wrap',
+      html: markerIconHtml(tracked.color, hopCountFor(tracked)),
+      iconSize: [18, 18],
+      iconAnchor: [9, 9],
+    }),
+    interactive: true,
     bubblingMouseEvents: false,
   }).addTo(liveLayer);
   tracked.marker.on('click', () => openPacketDetail(pktKey(tracked.info.packet_id, tracked.info.from)));
@@ -469,6 +499,7 @@ function animateNextLeg(packetId) {
   drawStageSiblingLines(tracked, stages[tracked.legIndex]);
 
   ensureMarker(tracked, fromPos);
+  updateMarkerHops(tracked);
   tracked.animating = true;
 
   const durationMs = 900 * packetAnimSlowdown();
@@ -505,9 +536,12 @@ function expirePacket(packetId) {
   liveTracked.delete(packetId);
 
   const layers = [...tracked.trails];
-  if (tracked.marker) layers.push(tracked.marker);
   if (tracked.halo) layers.push(tracked.halo);
-  if (!layers.length) return;
+  // tracked.marker es un L.Marker (divIcon, para poder mostrar el nº de
+  // saltos) — no es un Path, no tiene .setStyle(); su opacidad se anima
+  // tocando el estilo del elemento DOM directamente.
+  const markerEl = tracked.marker && tracked.marker.getElement();
+  if (!layers.length && !markerEl) return;
 
   const durationMs = 700;
   const start = performance.now();
@@ -518,13 +552,17 @@ function expirePacket(packetId) {
       if (l instanceof L.Polyline) l.setStyle({ opacity: opacity * 0.55 });
       else l.setStyle({ opacity, fillOpacity: opacity });
     }
+    if (markerEl) markerEl.style.opacity = opacity;
     if (t < 1) requestAnimationFrame(step);
-    else layers.forEach(l => {
-      const owner = liveLayer.hasLayer(l) ? liveLayer
-        : liveSiblingLayer.hasLayer(l) ? liveSiblingLayer
-        : liveTrailLayer;
-      owner.removeLayer(l);
-    });
+    else {
+      layers.forEach(l => {
+        const owner = liveLayer.hasLayer(l) ? liveLayer
+          : liveSiblingLayer.hasLayer(l) ? liveSiblingLayer
+          : liveTrailLayer;
+        owner.removeLayer(l);
+      });
+      if (tracked.marker) liveLayer.removeLayer(tracked.marker);
+    }
   }
   requestAnimationFrame(step);
 }
@@ -1371,63 +1409,34 @@ function toggleLiveLayer(key) {
   syncLiveLegendToggles();
 }
 
-// ─── Leyenda: arrastrable ───────────────────────────────────────────────────
+// ─── Leyenda: colapsable ────────────────────────────────────────────────────
 
-function initLegendDrag() {
+const LEGEND_COLLAPSE_KEY = 'mesh_live_legend_collapsed';
+
+function toggleLiveLegendCollapse() {
   const legend = document.getElementById('live-legend');
-  const handle = document.getElementById('live-legend-handle');
-  if (!legend || !handle) return;
-  const container = legend.parentElement;
-
-  // Sin persistencia entre sesiones a propósito: la posición inicial de
-  // cada carga es siempre la de por defecto (abajo a la derecha, ver CSS
-  // .legend) — arrastrarla solo vale para la sesión actual.
-  let dragging = false, startX = 0, startY = 0, startLeft = 0, startTop = 0;
-
-  handle.addEventListener('pointerdown', (e) => {
-    dragging = true;
-    handle.setPointerCapture(e.pointerId);
-    const rect = legend.getBoundingClientRect();
-    const containerRect = container.getBoundingClientRect();
-    startLeft = rect.left - containerRect.left;
-    startTop = rect.top - containerRect.top;
-    startX = e.clientX;
-    startY = e.clientY;
-    legend.classList.add('dragging');
-    e.preventDefault();
-  });
-
-  handle.addEventListener('pointermove', (e) => {
-    if (!dragging) return;
-    const containerRect = container.getBoundingClientRect();
-    let left = startLeft + (e.clientX - startX);
-    let top = startTop + (e.clientY - startY);
-    left = Math.max(0, Math.min(left, containerRect.width - legend.offsetWidth));
-    top = Math.max(0, Math.min(top, containerRect.height - legend.offsetHeight));
-    legend.style.left = left + 'px';
-    legend.style.top = top + 'px';
-    legend.style.right = 'auto';
-    legend.style.bottom = 'auto';
-  });
-
-  function endDrag(e) {
-    if (!dragging) return;
-    dragging = false;
-    legend.classList.remove('dragging');
-  }
-  handle.addEventListener('pointerup', endDrag);
-  handle.addEventListener('pointercancel', endDrag);
+  if (!legend) return;
+  const collapsed = legend.classList.toggle('collapsed');
+  try { localStorage.setItem(LEGEND_COLLAPSE_KEY, collapsed ? '1' : '0'); } catch {}
+  positionLegendAboveTimeline();
 }
 
-// La leyenda debe quedar lo más abajo posible sin tapar la línea de
-// tiempo — en vez de un hueco fijo adivinado (que sobraba o se quedaba
-// corto según cuánto envuelvan sus controles), se mide de verdad la
-// altura real de .timeline-bar y se apoya justo encima.
+function initLegendCollapse() {
+  const legend = document.getElementById('live-legend');
+  if (!legend) return;
+  let collapsed = false;
+  try { collapsed = localStorage.getItem(LEGEND_COLLAPSE_KEY) === '1'; } catch {}
+  legend.classList.toggle('collapsed', collapsed);
+}
+
+// La leyenda queda fija abajo a la derecha, apoyada justo encima de la
+// línea de tiempo — en vez de un hueco fijo adivinado (que sobraba o se
+// quedaba corto según cuánto envuelvan sus controles), se mide de verdad
+// la altura real de .timeline-bar.
 function positionLegendAboveTimeline() {
   const legend = document.getElementById('live-legend');
   const bar = document.getElementById('timeline-bar');
   if (!legend || !bar) return;
-  if (legend.style.top) return; // el usuario la ha arrastrado en esta sesión, no tocar
   const barBottom = parseFloat(getComputedStyle(bar).bottom) || 0;
   legend.style.bottom = (barBottom + bar.offsetHeight + 10) + 'px';
 }
@@ -1461,7 +1470,7 @@ async function bootLive() {
   initLiveMap();
   syncLiveLegendToggles();
   syncPortnumFilterButtons();
-  initLegendDrag();
+  initLegendCollapse();
   try { await loadNodes(); } catch (e) { console.error(e); }
   connectLive();
   await initTimeline();

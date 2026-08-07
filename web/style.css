@@ -589,24 +589,22 @@ body.live-page .legend { bottom: 130px; }
   text-decoration: line-through;
 }
 
-.legend-title.drag-handle,
-#live-legend-handle {
-  cursor: move;
+.legend-collapse-toggle {
+  cursor: pointer;
   user-select: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
 }
-.legend-drag-hint {
-  opacity: .5;
-  letter-spacing: 0;
-  font-size: 12px;
+.legend-collapse-chevron {
+  opacity: .6;
+  font-size: 10px;
+  transition: transform .15s;
 }
-.legend.dragging {
-  opacity: .85;
-  box-shadow: var(--shadow);
-}
+.legend.collapsed .legend-collapse-chevron { transform: rotate(-90deg); }
+.legend.collapsed .legend-title { margin-bottom: 0; }
+.legend.collapsed .legend-body { display: none; }
 
 /* ── Empty state ── */
 .empty-state {
@@ -1546,6 +1544,27 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   color: var(--muted);
   font-size: 12px;
   margin: 4px 0 0;
+}
+
+/* Marcador de paquete en el mapa grande: círculo de color con el nº de
+   saltos recorridos dentro — antes era un circleMarker SVG sin texto. */
+.pkt-marker-wrap { background: none; border: none; }
+.pkt-marker-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid #fff;
+  box-shadow: 0 0 4px rgba(0,0,0,.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pkt-marker-num {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: #0b0f1a;
+  line-height: 1;
 }
 
 .pkt-detail-map {

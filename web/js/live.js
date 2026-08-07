@@ -24,18 +24,21 @@ const LIVE_BACKOFF_MAX_MS = 30000;
 const LIVE_LOG_MAX = 200;
 
 // ─── Filtro por tipo de paquete ─────────────────────────────────────────────
-const PORTNUM_CATEGORIES = {
-  TEXT_MESSAGE_APP: 'text',
-  POSITION_APP: 'position',
-  NODEINFO_APP: 'nodeinfo',
-  TELEMETRY_APP: 'telemetry',
-};
+// Lista larga: cada portnum real es su propio filtro, sin agrupar los
+// menos comunes bajo un "otros" salvo que de verdad no tengamos fila
+// dedicada para él (portnums muy raros/experimentales, o sin decodificar).
+const KNOWN_PORTNUMS = [
+  'POSITION_APP', 'TEXT_MESSAGE_APP', 'TEXT_MESSAGE_COMPRESSED_APP', 'TELEMETRY_APP',
+  'NODEINFO_APP', 'WAYPOINT_APP', 'ROUTING_APP', 'TRACEROUTE_APP', 'NEIGHBORINFO_APP',
+  'ADMIN_APP', 'REMOTE_HARDWARE_APP', 'DETECTION_SENSOR_APP', 'RANGE_TEST_APP',
+  'STORE_FORWARD_APP', 'MAP_REPORT_APP', 'ALERT_APP', 'KEY_VERIFICATION_APP', 'PAXCOUNTER_APP',
+];
 function portnumCategory(portnum) {
-  if (!portnum) return 'other';
-  if (portnum === 'ENCRYPTED') return 'encrypted';
-  return PORTNUM_CATEGORIES[portnum] || 'other';
+  if (!portnum) return 'OTHER';
+  if (portnum === 'ENCRYPTED') return 'ENCRYPTED';
+  return KNOWN_PORTNUMS.includes(portnum) ? portnum : 'OTHER';
 }
-const ALL_PORTNUM_CATS = ['position', 'text', 'telemetry', 'nodeinfo', 'encrypted', 'other'];
+const ALL_PORTNUM_CATS = [...KNOWN_PORTNUMS, 'ENCRYPTED', 'OTHER'];
 const PORTNUM_FILTER_KEY = 'mesh_live_portnum_filters';
 
 function loadPortnumFilters() {

@@ -1201,7 +1201,9 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  width: 200px;
+  width: 230px;
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
   flex-direction: column;
   gap: 2px;
   padding: 6px;

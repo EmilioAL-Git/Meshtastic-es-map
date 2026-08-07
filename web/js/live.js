@@ -2048,22 +2048,36 @@ function positionLegendAboveTimeline() {
   const legend = document.getElementById('live-legend');
   const bar = document.getElementById('timeline-bar');
   if (!legend || !bar) return;
+  // La línea de tiempo va centrada y con un ancho máximo (min(560px, ...)),
+  // la leyenda pegada a la derecha — en ventanas anchas ni se tocan. Subir
+  // la leyenda para esquivarla solo hace falta cuando de verdad se
+  // solapan en horizontal; si no, se queda abajo del todo (bottom base),
+  // que es donde tiene que estar.
+  const legendRect = legend.getBoundingClientRect();
+  const barRect = bar.getBoundingClientRect();
+  const overlapsHorizontally = legendRect.left < barRect.right && legendRect.right > barRect.left;
+  if (!overlapsHorizontally) {
+    legend.style.bottom = '';
+    return;
+  }
   const barBottom = parseFloat(getComputedStyle(bar).bottom) || 0;
   legend.style.bottom = (barBottom + bar.offsetHeight + 10) + 'px';
 }
 
-// Un único cálculo tras cargar podía quedar mal si la barra cambia de
-// tamaño después (fuentes cargando tarde, la leyenda se colapsa/expande,
-// resize de ventana...) — un ResizeObserver sobre .timeline-bar reacciona
-// a cualquier cambio real de su tamaño, no solo al resize de window.
+// Un único cálculo tras cargar podía quedar mal si la barra (o la
+// ventana) cambia después — fuentes cargando tarde, resize, la leyenda
+// colapsándose/expandiéndose... Un ResizeObserver sobre .timeline-bar
+// coge los cambios de tamaño de la barra; el listener de resize de
+// window coge además los casos en que la barra ya está en su ancho
+// máximo (no cambia de tamaño) pero su posición centrada sí se mueve
+// respecto a la leyenda al ensanchar/estrechar la ventana.
 function initLegendTimelineOffset() {
   const bar = document.getElementById('timeline-bar');
   if (!bar) return;
   if (window.ResizeObserver) {
     new ResizeObserver(positionLegendAboveTimeline).observe(bar);
-  } else {
-    window.addEventListener('resize', positionLegendAboveTimeline);
   }
+  window.addEventListener('resize', positionLegendAboveTimeline);
   positionLegendAboveTimeline();
 }
 

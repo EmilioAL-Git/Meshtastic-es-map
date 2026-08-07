@@ -585,16 +585,9 @@ function applyLaneOffset(pos, offset) {
   return offset ? [pos[0] + offset.lat, pos[1] + offset.lng] : pos;
 }
 
-// Distancia aproximada en metros entre dos lat/lng (plana, con corrección
-// de latitud para la longitud — suficiente para el propósito de dimensionar
-// el carril, no hace falta la precisión de una fórmula de gran círculo).
-function planarDistanceMeters(a, b) {
-  const lat0 = (a[0] + b[0]) / 2 * Math.PI / 180;
-  const kx = Math.cos(lat0) || 1e-6;
-  const dx = (b[1] - a[1]) * kx;
-  const dy = b[0] - a[0];
-  return Math.hypot(dx, dy) * (Math.PI / 180) * 6371000;
-}
+// Ver el comentario donde se usa (advanceTraceroute) para el porqué de una
+// distancia real fija en vez de basada en zoom o en la escala de la ruta.
+const LANE_OFFSET_METERS = 50;
 
 // Las 3 líneas visuales (halo + sólida + guion animado) de un tramo, más un
 // hit-stroke invisible opcional más ancho para poder pinchar la línea sin
@@ -836,20 +829,30 @@ function advanceTraceroute(packetId) {
     // Vector de carril fijo para TODO el paquete (ver laneOffsetVector) —
     // se calcula una vez con el origen/destino reales (no con los extremos
     // de "points", que de momento solo llegan hasta el último salto
-    // confirmado) para que no cambie a medio dibujar. El tamaño es una
-    // fracción de la distancia origen→destino, NO de pixels-al-zoom-actual
-    // — un traceroute puede tardar hasta 2 minutos en completarse y si el
-    // usuario hace zoom mientras tanto, un desplazamiento fijado en metros
-    // "para verse a 7px en ESE zoom" pasa a verse muchísimos más pixels al
-    // acercar, arrancando la línea de sus propios marcadores (se vio con un
-    // traceroute real: la línea acababa cruzada y separada de los saltos).
-    // Con una fracción de la distancia real, el carril nunca se desincroniza
-    // del zoom, y de paso queda proporcionado: minúsculo en saltos cortos
-    // dentro de una ciudad, más ancho en saltos de cientos de km.
+    // confirmado) para que no cambie a medio dibujar.
+    //
+    // El tamaño es una distancia real FIJA (LANE_OFFSET_METERS), a
+    // propósito NADA relativa al zoom ni a la escala de la ruta — ya se
+    // probaron las dos y ambas fallan:
+    //  - Basado en pixels-al-zoom-actual: un traceroute puede tardar hasta
+    //    2 min en completarse, así que si el usuario hace zoom mientras
+    //    tanto, el mismo desplazamiento en metros pasa a verse muchos más
+    //    pixels al acercar — la línea se arrancaba de sus propios
+    //    marcadores (visto con un traceroute real cruzándose consigo mismo).
+    //  - Proporcional a la distancia origen→destino: si esos dos extremos
+    //    están lejos pero un tramo concreto de la ruta pasa por un grupo de
+    //    saltos muy juntos entre sí (visto con un traceroute real por
+    //    Valencia), el carril calculado para "toda la ruta" resultaba
+    //    enorme comparado con esos saltos locales — la línea se separaba
+    //    claramente de sus marcadores otra vez, en la dirección contraria.
+    // Una distancia real fija no depende de ninguna de las dos cosas:
+    // invisible a escala país (perfecto, ahí no se puede distinguir carriles
+    // de todos modos) y una separación modesta y consistente a escala
+    // ciudad/calle, sea cual sea el zoom o la escala de la ruta.
     const originPos = nodeLatLng(tracked.info.from);
     const destPos = nodeLatLng(tracked.info.to);
     tracked.laneOffset = (originPos && destPos)
-      ? laneOffsetVector(originPos, destPos, Math.min(3000, Math.max(50, planarDistanceMeters(originPos, destPos) * 0.015)))
+      ? laneOffsetVector(originPos, destPos, LANE_OFFSET_METERS)
       : null;
   }
 
@@ -2030,14 +2033,10 @@ function toggleLiveLegendCollapse() {
 function initLegendCollapse() {
   const legend = document.getElementById('live-legend');
   if (!legend) return;
-  // Colapsada por defecto la primera vez: con 9 líneas ocupa demasiado
-  // alto y queda "subida" aunque el hueco con la línea de tiempo sea
-  // correcto. Si el usuario ya la abrió/cerró antes, se respeta eso.
-  let collapsed = true;
-  try {
-    const saved = localStorage.getItem(LEGEND_COLLAPSE_KEY);
-    if (saved !== null) collapsed = saved === '1';
-  } catch {}
+  // Siempre abierta por defecto (CLAUDE.md) — el botón ▾ sigue ahí para
+  // quien quiera colapsarla, pero eso lo decide el usuario, no el arranque.
+  let collapsed = false;
+  try { collapsed = localStorage.getItem(LEGEND_COLLAPSE_KEY) === '1'; } catch {}
   legend.classList.toggle('collapsed', collapsed);
 }
 

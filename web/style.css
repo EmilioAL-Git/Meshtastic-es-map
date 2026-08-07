@@ -537,6 +537,15 @@ header {
    mide la altura real de .timeline-bar y la coloca justo encima */
 body.live-page .legend { bottom: 20px; }
 
+/* live.html tiene bastantes más líneas que la leyenda del mapa principal
+   (9 vs 4-5) — con el mismo espaciado se hacía demasiado alta. Se aprieta
+   solo aquí (no en index.html) para que quepa entera sin tener que
+   colapsarla ni recortar ningún ítem. */
+body.live-page .legend-item { margin-bottom: 3px; font-size: 10.5px; }
+body.live-page .legend-sep { margin: 4px 0; }
+body.live-page .legend-title { margin-bottom: 5px; }
+body.live-page .legend-dot { width: 8px; height: 8px; }
+
 .legend-title {
   font-family: var(--mono);
   color: var(--muted);
@@ -1602,6 +1611,21 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   margin-bottom: 7px;
 }
 
+.pkt-hop-free {
+  font-size: 10px;
+  color: #facc15;
+  border: 1px solid rgba(250,204,21,.4);
+  background: rgba(250,204,21,.08);
+  border-radius: 20px;
+  padding: 2px 8px;
+}
+.pkt-hop-free.certain {
+  color: #0b0f1a;
+  background: #facc15;
+  border-color: #facc15;
+  font-weight: 700;
+}
+
 .pkt-hop-gateways {
   display: flex;
   flex-wrap: wrap;
@@ -1640,6 +1664,7 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
    saltos recorridos dentro — antes era un circleMarker SVG sin texto. */
 .pkt-marker-wrap { background: none; border: none; }
 .pkt-marker-icon {
+  position: relative;
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -1648,6 +1673,34 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   display: flex;
   align-items: center;
   justify-content: center;
+}
+/* Insignia de rayo: salto que no decrementó hop_limit (probable router).
+   "certain" = confirmado con hop_limit real visto en los stages; sin esa
+   clase, es solo una inferencia por el rol del nodo (contorno, no relleno)
+   para no aparentar más certeza de la que hay. */
+.pkt-marker-icon.pkt-marker-free::after,
+.pkt-marker-icon.pkt-marker-free-certain::after {
+  content: '⚡';
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  font-size: 8px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.pkt-marker-icon.pkt-marker-free::after {
+  background: #0b0f1a;
+  border: 1px solid #facc15;
+  color: #facc15;
+}
+.pkt-marker-icon.pkt-marker-free-certain::after {
+  background: #facc15;
+  color: #0b0f1a;
 }
 /* El origen del recorrido, en el mini-mapa del desglose: más grande y con
    un anillo extra para distinguirlo de un salto cualquiera de un vistazo,

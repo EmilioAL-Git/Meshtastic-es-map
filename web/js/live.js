@@ -705,11 +705,12 @@ function buildPacketPath(data) {
   // conocidas, en orden — origen y luego cada etapa que sí resolvimos.
   const points = [];
   const originPos = nodeLatLng(data.info.from);
-  if (originPos) points.push({ pos: originPos, label: `${nodeLabel(data.info.from)} (origen)` });
+  if (originPos) points.push({ pos: originPos, label: `${nodeLabel(data.info.from)} (origen)`, hops: 0 });
   for (const stage of data.stages) {
     const pos = stagePosition(stage);
     if (pos) {
-      points.push({ pos, label: `hop_limit ${stage.hop_limit} — ${stage.gateway_ids.map(nodeLabel).join(', ')}` });
+      const hops = data.info.hop_start != null ? Math.max(0, data.info.hop_start - stage.hop_limit) : null;
+      points.push({ pos, label: `hop_limit ${stage.hop_limit} — ${stage.gateway_ids.map(nodeLabel).join(', ')}`, hops });
     }
   }
   return points;
@@ -754,9 +755,14 @@ function renderDetailMiniMap(packetId) {
     }
   }
   points.forEach((p, i) => {
-    L.circleMarker(p.pos, {
-      radius: i === 0 ? 7 : 5,
-      color: '#fff', weight: 1.5, fillColor: color, fillOpacity: 1,
+    L.marker(p.pos, {
+      icon: L.divIcon({
+        className: 'pkt-marker-wrap',
+        html: markerIconHtml(color, p.hops ?? i),
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+      }),
+      interactive: true,
     }).bindTooltip(p.label, { direction: 'top' }).addTo(detailMapLayer);
   });
 

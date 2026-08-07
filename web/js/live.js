@@ -585,12 +585,15 @@ function applyLaneOffset(pos, offset) {
   return offset ? [pos[0] + offset.lat, pos[1] + offset.lng] : pos;
 }
 
-// Metros reales que ocupa un pixel de pantalla a una latitud y zoom dados
-// (fórmula estándar de Web Mercator) — para que laneOffsetVector separe los
-// carriles una distancia constante EN PANTALLA sea cual sea el zoom, en vez
-// de una distancia fija en metros que a poco zoom sería invisible.
-function metersPerPixelAt(lat, zoom) {
-  return 40075016.686 * Math.cos(lat * Math.PI / 180) / Math.pow(2, zoom + 8);
+// Distancia aproximada en metros entre dos lat/lng (plana, con corrección
+// de latitud para la longitud — suficiente para el propósito de dimensionar
+// el carril, no hace falta la precisión de una fórmula de gran círculo).
+function planarDistanceMeters(a, b) {
+  const lat0 = (a[0] + b[0]) / 2 * Math.PI / 180;
+  const kx = Math.cos(lat0) || 1e-6;
+  const dx = (b[1] - a[1]) * kx;
+  const dy = b[0] - a[0];
+  return Math.hypot(dx, dy) * (Math.PI / 180) * 6371000;
 }
 
 // Las 3 líneas visuales (halo + sólida + guion animado) de un tramo, más un
@@ -833,11 +836,20 @@ function advanceTraceroute(packetId) {
     // Vector de carril fijo para TODO el paquete (ver laneOffsetVector) —
     // se calcula una vez con el origen/destino reales (no con los extremos
     // de "points", que de momento solo llegan hasta el último salto
-    // confirmado) para que no cambie a medio dibujar.
+    // confirmado) para que no cambie a medio dibujar. El tamaño es una
+    // fracción de la distancia origen→destino, NO de pixels-al-zoom-actual
+    // — un traceroute puede tardar hasta 2 minutos en completarse y si el
+    // usuario hace zoom mientras tanto, un desplazamiento fijado en metros
+    // "para verse a 7px en ESE zoom" pasa a verse muchísimos más pixels al
+    // acercar, arrancando la línea de sus propios marcadores (se vio con un
+    // traceroute real: la línea acababa cruzada y separada de los saltos).
+    // Con una fracción de la distancia real, el carril nunca se desincroniza
+    // del zoom, y de paso queda proporcionado: minúsculo en saltos cortos
+    // dentro de una ciudad, más ancho en saltos de cientos de km.
     const originPos = nodeLatLng(tracked.info.from);
     const destPos = nodeLatLng(tracked.info.to);
     tracked.laneOffset = (originPos && destPos)
-      ? laneOffsetVector(originPos, destPos, metersPerPixelAt(originPos[0], map.getZoom()) * 7)
+      ? laneOffsetVector(originPos, destPos, Math.min(3000, Math.max(50, planarDistanceMeters(originPos, destPos) * 0.015)))
       : null;
   }
 
@@ -2018,8 +2030,14 @@ function toggleLiveLegendCollapse() {
 function initLegendCollapse() {
   const legend = document.getElementById('live-legend');
   if (!legend) return;
-  let collapsed = false;
-  try { collapsed = localStorage.getItem(LEGEND_COLLAPSE_KEY) === '1'; } catch {}
+  // Colapsada por defecto la primera vez: con 9 líneas ocupa demasiado
+  // alto y queda "subida" aunque el hueco con la línea de tiempo sea
+  // correcto. Si el usuario ya la abrió/cerró antes, se respeta eso.
+  let collapsed = true;
+  try {
+    const saved = localStorage.getItem(LEGEND_COLLAPSE_KEY);
+    if (saved !== null) collapsed = saved === '1';
+  } catch {}
   legend.classList.toggle('collapsed', collapsed);
 }
 

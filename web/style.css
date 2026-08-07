@@ -535,7 +535,7 @@ header {
 /* live.html tiene la barra de línea de tiempo pegada abajo del mapa —
    valor de respaldo hasta que positionLegendAboveTimeline() (live.js)
    mide la altura real de .timeline-bar y la coloca justo encima */
-body.live-page .legend { bottom: 130px; }
+body.live-page .legend { bottom: 20px; }
 
 .legend-title {
   font-family: var(--mono);
@@ -1459,6 +1459,13 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   opacity: .75;
 }
 
+.pkt-reached-hint {
+  font-size: 11px;
+  color: var(--muted);
+  border-bottom: 1px dotted var(--muted);
+  cursor: help;
+}
+
 .pkt-hops {
   position: relative;
   margin: 0;
@@ -1559,13 +1566,26 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   align-items: center;
   justify-content: center;
 }
+/* El origen del recorrido, en el mini-mapa del desglose: más grande y con
+   un anillo extra para distinguirlo de un salto cualquiera de un vistazo,
+   sin depender de leer el "0" dentro. */
+.pkt-marker-icon.pkt-marker-origin {
+  width: 24px;
+  height: 24px;
+  border-width: 2.5px;
+  box-shadow: 0 0 0 3px rgba(255,255,255,.25), 0 0 6px rgba(0,0,0,.6);
+}
 .pkt-marker-num {
-  font-family: var(--mono);
+  /* var(--sans), no var(--mono): Space Mono dibuja el 0 con una raya/punto
+     dentro para distinguirlo de la "O", y a este tamaño tan pequeño se ve
+     como un borrón en vez de un cero limpio. */
+  font-family: var(--sans);
   font-size: 9px;
   font-weight: 700;
   color: #0b0f1a;
   line-height: 1;
 }
+.pkt-marker-origin .pkt-marker-num { font-size: 11px; }
 
 .pkt-detail-map {
   height: 380px;

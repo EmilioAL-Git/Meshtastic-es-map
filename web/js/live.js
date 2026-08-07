@@ -391,8 +391,9 @@ function hopCountFor(tracked) {
   return tracked.legIndex + 1;
 }
 
-function markerIconHtml(color, hops) {
-  return `<div class="pkt-marker-icon" style="background:${color}"><span class="pkt-marker-num">${hops}</span></div>`;
+function markerIconHtml(color, hops, isOrigin) {
+  const cls = isOrigin ? 'pkt-marker-icon pkt-marker-origin' : 'pkt-marker-icon';
+  return `<div class="${cls}" style="background:${color}"><span class="pkt-marker-num">${hops}</span></div>`;
 }
 
 function updateMarkerHops(tracked) {
@@ -648,6 +649,20 @@ function nodeLabelFull(nodeId) {
     : escHtml(nodeId);
 }
 
+// Cota inferior del alcance real: solo cuenta nodos que además son
+// gateway MQTT (si no, meshview nunca nos habría llegado su "oída" del
+// paquete) — un nodo pudo recibirlo y retransmitirlo sin que ningún
+// gateway lo oyera directamente, así que el número real siempre es >= este.
+function estimateReachedNodes(data) {
+  const ids = new Set();
+  if (data.info.from) ids.add(data.info.from);
+  for (const stage of data.stages) {
+    for (const gw of stage.gateway_ids) ids.add(gw);
+    if (stage.relay_node) ids.add(stage.relay_node);
+  }
+  return ids;
+}
+
 function renderPacketDetail(packetId) {
   const data = livePacketLog.get(packetId);
   if (!data) return '<p class="malconfig-empty">Sin datos de este paquete (se ha perdido del historial).</p>';
@@ -655,6 +670,7 @@ function renderPacketDetail(packetId) {
   const confLabel = path_confidence === 'relay_node'
     ? 'Ruta confirmada — al menos un salto trae el nodo real que retransmitió (relay_node)'
     : 'Ruta aproximada — estimada por qué gateways oyeron cada salto, sin relay_node';
+  const reachedCount = estimateReachedNodes(data).size;
 
   const hopsHtml = stages.length
     ? stages.map((s, i) => `
@@ -687,6 +703,7 @@ function renderPacketDetail(packetId) {
       <tr><td>Tipo (portnum)</td><td>${escHtml(info.portnum || '—')}</td></tr>
       ${textRow}
       <tr><td>Confianza de ruta</td><td>${confLabel}</td></tr>
+      <tr><td>Nodos alcanzados</td><td>~${reachedCount} <span class="pkt-reached-hint" title="Cota mínima: solo cuenta nodos que son gateway MQTT (los únicos visibles desde aquí). El alcance real puede ser mayor.">(aprox.)</span></td></tr>
     </table>
     <h4 class="pkt-hops-title">
       Saltos detectados (${stages.length})
@@ -755,12 +772,14 @@ function renderDetailMiniMap(packetId) {
     }
   }
   points.forEach((p, i) => {
+    const isOrigin = i === 0;
+    const size = isOrigin ? 24 : 18;
     L.marker(p.pos, {
       icon: L.divIcon({
         className: 'pkt-marker-wrap',
-        html: markerIconHtml(color, p.hops ?? i),
-        iconSize: [18, 18],
-        iconAnchor: [9, 9],
+        html: markerIconHtml(color, p.hops ?? i, isOrigin),
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
       }),
       interactive: true,
     }).bindTooltip(p.label, { direction: 'top' }).addTo(detailMapLayer);
@@ -1424,7 +1443,6 @@ function toggleLiveLegendCollapse() {
   if (!legend) return;
   const collapsed = legend.classList.toggle('collapsed');
   try { localStorage.setItem(LEGEND_COLLAPSE_KEY, collapsed ? '1' : '0'); } catch {}
-  positionLegendAboveTimeline();
 }
 
 function initLegendCollapse() {
@@ -1433,36 +1451,6 @@ function initLegendCollapse() {
   let collapsed = false;
   try { collapsed = localStorage.getItem(LEGEND_COLLAPSE_KEY) === '1'; } catch {}
   legend.classList.toggle('collapsed', collapsed);
-}
-
-// La leyenda queda fija abajo a la derecha, apoyada justo encima de la
-// línea de tiempo — en vez de un hueco fijo adivinado (que sobraba o se
-// quedaba corto según cuánto envuelvan sus controles), se mide de verdad
-// la altura real de .timeline-bar.
-function positionLegendAboveTimeline() {
-  const legend = document.getElementById('live-legend');
-  const bar = document.getElementById('timeline-bar');
-  if (!legend || !bar) return;
-  const barBottom = parseFloat(getComputedStyle(bar).bottom) || 0;
-  legend.style.bottom = (barBottom + bar.offsetHeight + 10) + 'px';
-}
-
-// Un único cálculo tras cargar podía quedar mal en máquinas donde las
-// fuentes de Google Fonts (@import, bloqueante) tardan más en resolver:
-// la altura de .timeline-bar medida en ese instante no era la definitiva,
-// y como legend.style.bottom nunca se recalculaba, el hueco se quedaba
-// mal ajustado el resto de la sesión. Un ResizeObserver reacciona a
-// cualquier cambio real de tamaño de la barra (fuentes, wrap de
-// controles, resize de ventana...), no solo al resize de window.
-function initLegendTimelineOffset() {
-  const bar = document.getElementById('timeline-bar');
-  if (!bar) return;
-  if (window.ResizeObserver) {
-    new ResizeObserver(positionLegendAboveTimeline).observe(bar);
-  } else {
-    window.addEventListener('resize', positionLegendAboveTimeline);
-  }
-  positionLegendAboveTimeline();
 }
 
 async function bootLive() {
@@ -1480,7 +1468,6 @@ async function bootLive() {
   try { await loadNodes(); } catch (e) { console.error(e); }
   connectLive();
   await initTimeline();
-  initLegendTimelineOffset();
   updatePacketRateDisplay();
   setInterval(updatePacketRateDisplay, 2000);
 

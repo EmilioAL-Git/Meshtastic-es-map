@@ -197,7 +197,7 @@ function exportSessionCSV() {
   for (const { info, stages, path_confidence } of livePacketLog.values()) {
     lines.push([
       info.packet_id, info.from, info.to, info.hop_start,
-      info.channel, info.portnum, info.text, path_confidence, stages.length,
+      info.channel, info.portnum, info.text, effectiveConfidence(path_confidence, stages), stages.length,
     ].map(csvCell).join(','));
   }
   downloadFile(`meshtastic-live-${Date.now()}.csv`, lines.join('\n'), 'text/csv');
@@ -1048,6 +1048,7 @@ function updateLogRow(stageEvent) {
     hop_start: tracked.info.hop_start,
     hops: stageEvent.stages.length,
     path_confidence: stageEvent.path_confidence,
+    stages: stageEvent.stages,
   });
 }
 
@@ -1058,7 +1059,37 @@ function nodeLabel(nodeId) {
   return n && n.long_name ? escHtml(n.long_name) : escHtml(nodeId);
 }
 
-function renderLogRow(info, { hops, path_confidence }) {
+// relay_node en el protobuf de Meshtastic es solo el ÚLTIMO BYTE del
+// node_id real (ver docstring de detectFreeHops), así que por sí solo no
+// identifica a un nodo — hay que comprobar si ese byte coincide con
+// exactamente UN nodo conocido. Si coincide con varios (nada raro con
+// cientos de nodos en la malla), no podemos saber cuál retransmitió de
+// verdad y no cuenta como confirmado.
+function resolveRelayNode(relayNode) {
+  if (!relayNode || !nodesById) return null;
+  const lastByte = relayNode.slice(-2).toLowerCase();
+  let match = null;
+  for (const id of nodesById.keys()) {
+    if (id.slice(-2).toLowerCase() === lastByte) {
+      if (match) return null; // más de un candidato: ambiguo
+      match = id;
+    }
+  }
+  return match;
+}
+
+// Un paquete solo se marca como "confirmado" si al menos una etapa trae un
+// relay_node que resuelve a un único nodo real conocido — si no, aunque el
+// firmware haya mandado relay_node, seguimos sin saber quién retransmitió y
+// se trata como ruta estimada (igual que la heurística de gateways).
+function effectiveConfidence(path_confidence, stages) {
+  if (path_confidence !== 'relay_node') return path_confidence;
+  const confirmed = (stages || []).some(s => resolveRelayNode(s.relay_node));
+  return confirmed ? 'relay_node' : 'gateway_heuristic';
+}
+
+function renderLogRow(info, { hops, path_confidence, stages }) {
+  path_confidence = effectiveConfidence(path_confidence, stages);
   const confClass = path_confidence === 'traceroute' ? 'lr-conf-traceroute'
     : path_confidence === 'relay_node' ? 'lr-conf-relay' : 'lr-conf-heuristic';
   const confLabel = path_confidence === 'traceroute' ? 'ruta exacta (traceroute)'
@@ -1102,7 +1133,11 @@ function estimateReachedNodes(data) {
   if (data.info.from) ids.add(data.info.from);
   for (const stage of data.stages) {
     for (const gw of stage.gateway_ids) ids.add(gw);
-    if (stage.relay_node) ids.add(stage.relay_node);
+    // relay_node solo aporta si resuelve a un único nodo real — si no, el
+    // id crudo (tipo "!000000dd") es un id fantasma que no es ningún nodo
+    // y solo infla el recuento.
+    const resolved = resolveRelayNode(stage.relay_node);
+    if (resolved) ids.add(resolved);
   }
   return ids;
 }
@@ -1145,13 +1180,14 @@ function detectFreeHops(hopIds, stages, hopStart) {
 function renderPacketDetail(packetId) {
   const data = livePacketLog.get(packetId);
   if (!data) return '<p class="malconfig-empty">Sin datos de este paquete (se ha perdido del historial).</p>';
-  const { info, stages, path_confidence } = data;
+  const { info, stages } = data;
+  const path_confidence = effectiveConfidence(data.path_confidence, stages);
   const isTraceroute = path_confidence === 'traceroute';
   const confLabel = isTraceroute
     ? 'Ruta exacta — registrada por el propio traceroute, salto a salto real (no es una aproximación)'
     : path_confidence === 'relay_node'
-      ? 'Ruta confirmada — al menos un salto trae el nodo real que retransmitió (relay_node)'
-      : 'Ruta aproximada — estimada por qué gateways oyeron cada salto, sin relay_node';
+      ? 'Ruta confirmada — un salto trae relay_node y resuelve a un único nodo real conocido'
+      : 'Ruta aproximada — estimada por qué gateways oyeron cada salto, sin relay_node confirmado';
   const reachedCount = estimateReachedNodes(data).size;
 
   const traceIds = isTraceroute ? traceRouteIds(data) : null;
@@ -1187,8 +1223,11 @@ function renderPacketDetail(packetId) {
               <span>${formatTime(s.rx_time)}</span>
             </div>
             <div class="pkt-hop-gateways">
-              ${s.gateway_ids.map(gw => `<span class="pkt-gw-chip${gw === s.relay_node ? ' relay' : ''}">${gw === s.relay_node ? '🔗 ' : ''}${nodeLabel(gw)}</span>`).join('')}
-              ${s.relay_node && !s.gateway_ids.includes(s.relay_node) ? `<span class="pkt-gw-chip relay">🔗 ${nodeLabel(s.relay_node)}</span>` : ''}
+              ${(() => {
+                const resolved = resolveRelayNode(s.relay_node);
+                return s.gateway_ids.map(gw => `<span class="pkt-gw-chip${gw === resolved ? ' relay' : ''}">${gw === resolved ? '🔗 ' : ''}${nodeLabel(gw)}</span>`).join('')
+                  + (resolved && !s.gateway_ids.includes(resolved) ? `<span class="pkt-gw-chip relay">🔗 ${nodeLabel(resolved)}</span>` : '');
+              })()}
             </div>
           </div>
         </div>`).join('')
@@ -1212,7 +1251,7 @@ function renderPacketDetail(packetId) {
     </table>
     <h4 class="pkt-hops-title">
       Saltos detectados (${isTraceroute ? traceIds.length : stages.length})
-      <span class="pkt-hops-hint">${isTraceroute ? '🔗 = posición conocida · ❓ = nodo real, posición desconocida · ⚡ = salto reducido (router)' : '🔗 = relay_node confirmado en ese salto'}</span>
+      <span class="pkt-hops-hint">${isTraceroute ? '🔗 = posición conocida · ❓ = nodo real, posición desconocida · ⚡ = salto reducido (router)' : '🔗 = relay_node resuelto a un único nodo real en ese salto'}</span>
     </h4>
     <div class="pkt-hops">${hopsHtml}</div>`;
 }

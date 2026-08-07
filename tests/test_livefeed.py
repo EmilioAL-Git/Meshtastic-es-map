@@ -328,6 +328,28 @@ class CorrelatorTests(unittest.TestCase):
         out3 = self.corr.ingest(self._event(gateway_id="!33333333", route_back=["!aaaaaaaa"]))
         self.assertEqual(out3[-1]["route_back"], ["!aaaaaaaa", "!bbbbbbbb"])
 
+    def test_diverging_route_from_different_flood_copy_is_ignored(self):
+        """En flooding puro dos copias del mismo packet_id+from pueden viajar
+        por caminos físicos distintos. Si una sighting nueva es más larga
+        pero NO extiende (mismo prefijo) la route que ya teníamos, es de otra
+        copia — quedarse con ella cosería un camino que nunca ocurrió salto a
+        salto de verdad, así que se ignora y se conserva la que ya era
+        consistente."""
+        out1 = self.corr.ingest(self._event(route=["!aaaaaaaa", "!bbbbbbbb"]))
+        self.assertEqual(out1[-1]["route"], ["!aaaaaaaa", "!bbbbbbbb"])
+
+        # Más larga, pero diverge en la segunda posición: otra copia de flood.
+        out2 = self.corr.ingest(self._event(
+            gateway_id="!22222222", hop_limit=1, route=["!aaaaaaaa", "!cccccccc", "!dddddddd"],
+        ))
+        self.assertEqual(out2[-1]["route"], ["!aaaaaaaa", "!bbbbbbbb"])
+
+        # Una extensión real (mismo prefijo, más larga) sí se acepta.
+        out3 = self.corr.ingest(self._event(
+            gateway_id="!33333333", hop_limit=0, route=["!aaaaaaaa", "!bbbbbbbb", "!eeeeeeee"],
+        ))
+        self.assertEqual(out3[-1]["route"], ["!aaaaaaaa", "!bbbbbbbb", "!eeeeeeee"])
+
 
 if __name__ == "__main__":
     unittest.main()

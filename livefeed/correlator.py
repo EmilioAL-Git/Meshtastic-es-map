@@ -151,13 +151,21 @@ class Correlator:
         # salto en sucesivas retransmisiones del mismo paquete_id+from —
         # cada sighting nueva puede traer una lista más larga que la
         # anterior; nos quedamos con la más completa vista hasta ahora.
+        #
+        # OJO: en flooding puro (sin ruta fija), dos copias del mismo
+        # packet_id+from pueden viajar por caminos físicos distintos y
+        # llegarnos por MQTT en cualquier orden. Si la sighting nueva no es
+        # una extensión literal (mismo prefijo) de lo que ya teníamos, no es
+        # "más completa" — es de una copia distinta, y sustituirla a ciegas
+        # cose un camino Frankenstein que no corresponde a ningún salto real
+        # (visto con traceroutes que en el mapa daban saltos imposibles).
         route_changed = False
         new_route = event.get("route") or []
-        if len(new_route) > len(state.route):
+        if len(new_route) > len(state.route) and new_route[:len(state.route)] == state.route:
             state.route = new_route
             route_changed = True
         new_route_back = event.get("route_back") or []
-        if len(new_route_back) > len(state.route_back):
+        if len(new_route_back) > len(state.route_back) and new_route_back[:len(state.route_back)] == state.route_back:
             state.route_back = new_route_back
             route_changed = True
 

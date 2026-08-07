@@ -50,20 +50,37 @@ function loadPortnumFilters() {
 
 let activePortnumFilters = loadPortnumFilters();
 
-// El HTML trae todos los chips marcados "active" por defecto — hay que
+// El HTML trae todas las filas marcadas "active" por defecto — hay que
 // reflejar aquí el filtro ya guardado antes de que se vea la cabecera.
 function syncPortnumFilterButtons() {
-  document.querySelectorAll('#portnum-filter-group .tl-chip').forEach(btn => {
+  document.querySelectorAll('#portnum-filter-panel .pf-row').forEach(btn => {
     btn.classList.toggle('active', activePortnumFilters.has(btn.dataset.cat));
   });
+  updatePortnumFilterCount();
+}
+
+function updatePortnumFilterCount() {
+  const el = document.getElementById('portnum-filter-count');
+  if (!el) return;
+  const n = activePortnumFilters.size;
+  el.textContent = n === ALL_PORTNUM_CATS.length ? '' : `${n}/${ALL_PORTNUM_CATS.length}`;
 }
 
 function togglePortnumFilter(cat) {
   if (activePortnumFilters.has(cat)) activePortnumFilters.delete(cat);
   else activePortnumFilters.add(cat);
   try { localStorage.setItem(PORTNUM_FILTER_KEY, JSON.stringify([...activePortnumFilters])); } catch {}
-  const btn = document.querySelector(`#portnum-filter-group [data-cat="${cat}"]`);
+  const btn = document.querySelector(`#portnum-filter-panel [data-cat="${cat}"]`);
   if (btn) btn.classList.toggle('active', activePortnumFilters.has(cat));
+  updatePortnumFilterCount();
+}
+
+function togglePortnumFilterPanel() {
+  document.getElementById('portnum-filter-wrap').classList.toggle('open');
+}
+
+function closePortnumFilterPanel() {
+  document.getElementById('portnum-filter-wrap').classList.remove('open');
 }
 
 // ─── Paquetes/min: tasa de tráfico en vivo ──────────────────────────────────
@@ -818,6 +835,40 @@ function buildPacketPath(data) {
   return points;
 }
 
+// Dibuja la ruta exacta de un traceroute con más fuerza visual que una
+// polyline plana: halo de resplandor debajo, línea sólida encima, y un
+// guion animado que "fluye" salto a salto en el sentido del recorrido —
+// más una flecha por tramo — para que de un vistazo se note que es una
+// ruta confirmada, no la heurística aproximada del resto de paquetes.
+function drawTraceroutePath(latlngs, color) {
+  L.polyline(latlngs, {
+    color, weight: 10, opacity: 0.18, className: 'pkt-route-glow', interactive: false,
+  }).addTo(detailMapLayer);
+  L.polyline(latlngs, {
+    color, weight: 3.5, opacity: 0.95, interactive: false,
+  }).addTo(detailMapLayer);
+  L.polyline(latlngs, {
+    color: '#fff', weight: 2, opacity: 0.85, dashArray: '1 11',
+    className: 'pkt-route-flow', interactive: false,
+  }).addTo(detailMapLayer);
+
+  for (let i = 0; i < latlngs.length - 1; i++) {
+    const a = detailMap.latLngToLayerPoint(latlngs[i]);
+    const b = detailMap.latLngToLayerPoint(latlngs[i + 1]);
+    const mid = detailMap.layerPointToLatLng(L.point((a.x + b.x) / 2, (a.y + b.y) / 2));
+    const angle = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI;
+    L.marker(mid, {
+      icon: L.divIcon({
+        className: 'pkt-route-arrow-wrap',
+        html: `<div class="pkt-route-arrow" style="border-left-color:${color};transform:rotate(${angle}deg)"></div>`,
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+      }),
+      interactive: false,
+    }).addTo(detailMapLayer);
+  }
+}
+
 function renderDetailMiniMap(packetId) {
   if (!detailMap) {
     detailMap = L.map('packet-detail-map', {
@@ -847,7 +898,11 @@ function renderDetailMiniMap(packetId) {
   const color = packetColor(data.info.packet_id);
   const latlngs = points.map(p => p.pos);
   const allPositions = [...latlngs];
-  L.polyline(latlngs, { color, weight: 3, opacity: 0.8 }).addTo(detailMapLayer);
+  if (isTraceroute) {
+    drawTraceroutePath(latlngs, color);
+  } else {
+    L.polyline(latlngs, { color, weight: 3, opacity: 0.8 }).addTo(detailMapLayer);
+  }
   // Las líneas de "mismo salto oído por otro gateway" son de la heurística
   // de gateways — con un traceroute la ruta ya es exacta, mezclar ambos
   // modelos en el mismo mini-mapa solo confunde.
@@ -1574,12 +1629,16 @@ async function bootLive() {
     if (e.key !== 'Escape') return;
     closePacketDetail();
     closeLiveInfo();
+    closePortnumFilterPanel();
     document.getElementById('focus-dropdown').classList.remove('open');
   });
 
   document.addEventListener('click', (e) => {
     if (!document.getElementById('focus-wrap').contains(e.target)) {
       document.getElementById('focus-dropdown').classList.remove('open');
+    }
+    if (!document.getElementById('portnum-filter-wrap').contains(e.target)) {
+      closePortnumFilterPanel();
     }
   });
 }

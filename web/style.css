@@ -1167,19 +1167,74 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 }
 .tl-chip.active { color: var(--accent2); background: rgba(125,211,252,.15); }
 
-.pf-group { flex-shrink: 0; }
-.pf-group .tl-chip {
-  padding: 5px 9px;
-  display: inline-flex;
+/* ── Filtro por tipo de paquete: botón + desplegable ─────────────────────── */
+.pf-dropdown-wrap { position: relative; flex-shrink: 0; }
+
+.pf-dropdown-btn {
+  display: flex;
   align-items: center;
-  gap: 5px;
-}
-.pf-group .tl-chip:not(.active) { opacity: .3; }
-.pf-icon { width: 13px; height: 13px; flex-shrink: 0; }
-.pf-label {
-  font-family: var(--sans);
+  gap: 6px;
+  padding: 5px 10px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-family: var(--mono);
   font-size: 11px;
+  cursor: pointer;
+  transition: all .15s;
 }
+.pf-dropdown-btn:hover { color: var(--text); border-color: var(--accent2); }
+.pf-dropdown-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+.pf-dropdown-wrap.open .pf-dropdown-btn {
+  color: var(--accent2);
+  border-color: var(--accent2);
+  background: rgba(125,211,252,.12);
+}
+.pf-dropdown-count {
+  font-size: 10px;
+  color: var(--accent2);
+}
+
+.pf-dropdown-panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: 200px;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  z-index: 2000;
+}
+.pf-dropdown-wrap.open .pf-dropdown-panel { display: flex; }
+
+.pf-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: all .15s;
+}
+.pf-row:hover { background: var(--panel2); }
+.pf-row.active { color: var(--text); }
+.pf-row .pf-icon { width: 14px; height: 14px; flex-shrink: 0; opacity: .5; }
+.pf-row.active .pf-icon { opacity: 1; color: var(--accent2); }
+.pf-row .pf-label { flex: 1; }
+.pf-row .pf-check { color: var(--accent2); font-size: 12px; visibility: hidden; }
+.pf-row.active .pf-check { visibility: visible; }
 
 .timeline-cursor-label {
   font-family: var(--mono);
@@ -1599,6 +1654,24 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   opacity: .85;
 }
 .pkt-marker-unknown .pkt-marker-num { font-size: 11px; }
+
+.pkt-route-glow { filter: blur(4px); }
+.pkt-route-flow {
+  animation: pkt-route-flow-move .6s linear infinite;
+  filter: drop-shadow(0 0 3px rgba(255,255,255,.9));
+}
+@keyframes pkt-route-flow-move {
+  to { stroke-dashoffset: -24; }
+}
+.pkt-route-arrow-wrap { background: none; border: none; }
+.pkt-route-arrow {
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 8px solid currentColor;
+  filter: drop-shadow(0 0 2px rgba(0,0,0,.7));
+}
 
 .pkt-detail-map {
   height: 380px;
@@ -2365,7 +2438,10 @@ body.embed-mode .malconfig-table td:nth-child(3) { display: none; }
   body.live-page #pause-label { display: none; } /* solo icono, ahorra sitio */
   body.live-page .packet-rate-badge { display: none; } /* sitio justo en móvil, es un dato secundario */
 
-  body.live-page #portnum-filter-group { display: none; }
+  /* Ahora es un botón compacto ("Filtros") en vez de 6 chips en fila, cabe
+     bien junto al buscador — ya no hace falta ocultarlo en móvil. */
+  body.live-page .pf-dropdown-wrap { order: 2; }
+  body.live-page .pf-dropdown-btn span:not(.pf-dropdown-count) { display: none; } /* solo icono + contador, ahorra sitio */
   body.live-page .focus-wrap { order: 2; flex-shrink: 0; }
   body.live-page .focus-wrap .search-input { width: 160px; }
   body.live-page .focus-wrap .search-dropdown { width: min(260px, calc(100vw - 24px)); }

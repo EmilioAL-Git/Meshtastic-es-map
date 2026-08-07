@@ -152,7 +152,12 @@ function renderTopNodes() {
 // últimos TRAIL_GRACE_MS) a la vez en el mapa.
 let liveOrder = [];                      // pktKey() en orden de llegada (packet_new)
 const pendingTrailRemovals = new Map();  // pktKey() → timeoutId
-const MAX_VISIBLE_PACKETS = 40;
+const MAX_VISIBLE_PACKETS = 20;
+// Red de seguridad aparte para traceroutes: se les da prioridad para NO
+// expulsarlos mientras siguen esperando el salto final (advanceTraceroute
+// espera hasta 2 min), pero sin este tope podrían acumularse sin límite en
+// un rato con muchos traceroutes seguidos.
+const MAX_VISIBLE_TRACEROUTES = 30;
 const TRAIL_GRACE_MS = 5000;
 
 // pktKey() → { info, stages, path_confidence } — historial persistente
@@ -332,14 +337,35 @@ function connectLive() {
 // ─── Eventos de paquetes ────────────────────────────────────────────────────
 
 function enforceLiveWindow() {
-  while (liveOrder.length > MAX_VISIBLE_PACKETS) {
-    const oldId = liveOrder.shift();
-    if (pendingTrailRemovals.has(oldId) || !liveTracked.has(oldId)) continue;
-    const timer = setTimeout(() => {
-      pendingTrailRemovals.delete(oldId);
-      expirePacket(oldId);
-    }, TRAIL_GRACE_MS);
-    pendingTrailRemovals.set(oldId, timer);
+  // Los traceroutes se dejan más tiempo para poder llegar hasta el final
+  // (ver advanceTraceroute) — al superar MAX_VISIBLE_PACKETS se expulsa
+  // primero el paquete NORMAL más antiguo; un traceroute solo se expulsa
+  // si ya no queda ningún paquete normal que expulsar, o si hay demasiados
+  // traceroutes acumulados a la vez (MAX_VISIBLE_TRACEROUTES).
+  let overflow = liveOrder.length - MAX_VISIBLE_PACKETS;
+  let traceCount = 0;
+  for (const id of liveOrder) {
+    const t = liveTracked.get(id);
+    if (t && t.isTraceroute) traceCount++;
+  }
+  let traceOverflow = traceCount - MAX_VISIBLE_TRACEROUTES;
+
+  let i = 0;
+  while ((overflow > 0 || traceOverflow > 0) && i < liveOrder.length) {
+    const id = liveOrder[i];
+    const tracked = liveTracked.get(id);
+    const isTrace = !!(tracked && tracked.isTraceroute);
+    if (overflow <= 0 || (isTrace && traceOverflow <= 0)) { i++; continue; }
+    liveOrder.splice(i, 1);
+    overflow--;
+    if (isTrace) traceOverflow--;
+    if (!pendingTrailRemovals.has(id) && liveTracked.has(id)) {
+      const timer = setTimeout(() => {
+        pendingTrailRemovals.delete(id);
+        expirePacket(id);
+      }, TRAIL_GRACE_MS);
+      pendingTrailRemovals.set(id, timer);
+    }
   }
 }
 
@@ -1122,8 +1148,8 @@ function renderPacketDetail(packetId) {
         const free = i > 0 ? freeHops.get(id) : null;
         const freeBadge = free && free.free
           ? (free.certain
-            ? '<span class="pkt-hop-free certain" title="Confirmado: el hop_limit no bajó en este salto (visto en los stages de gateways)">⚡ sin coste</span>'
-            : '<span class="pkt-hop-free" title="Inferido por el rol del nodo (ROUTER/REPEATER) — sin confirmar con hop_limit real">⚡ posible sin coste</span>')
+            ? '<span class="pkt-hop-free certain" title="Confirmado: el hop_limit no bajó en este salto (visto en los stages de gateways)">⚡ salto reducido</span>'
+            : '<span class="pkt-hop-free" title="Inferido por el rol del nodo (ROUTER/REPEATER) — sin confirmar con hop_limit real">⚡ posible salto reducido</span>')
           : '';
         return `
         <div class="pkt-hop">
@@ -1171,7 +1197,7 @@ function renderPacketDetail(packetId) {
     </table>
     <h4 class="pkt-hops-title">
       Saltos detectados (${isTraceroute ? traceIds.length : stages.length})
-      <span class="pkt-hops-hint">${isTraceroute ? '🔗 = posición conocida · ❓ = nodo real, posición desconocida · ⚡ = salto sin coste (router)' : '🔗 = relay_node confirmado en ese salto'}</span>
+      <span class="pkt-hops-hint">${isTraceroute ? '🔗 = posición conocida · ❓ = nodo real, posición desconocida · ⚡ = salto reducido (router)' : '🔗 = relay_node confirmado en ese salto'}</span>
     </h4>
     <div class="pkt-hops">${hopsHtml}</div>`;
 }
@@ -1313,7 +1339,7 @@ function renderDetailMiniMap(packetId) {
     const size = isOrigin ? 24 : 18;
     const free = freeHops && !isOrigin ? freeHops.get(p.id) : null;
     const freeLabel = free && free.free
-      ? (free.certain ? ' · ⚡ sin coste (confirmado)' : ' · ⚡ posible sin coste (router)')
+      ? (free.certain ? ' · ⚡ salto reducido (confirmado)' : ' · ⚡ posible salto reducido (router)')
       : '';
     L.marker(p.pos, {
       icon: L.divIcon({
@@ -1997,6 +2023,33 @@ function initLegendCollapse() {
   legend.classList.toggle('collapsed', collapsed);
 }
 
+// La leyenda debe quedar lo más abajo posible sin tapar la línea de
+// tiempo — se mide la altura real de .timeline-bar y se apoya justo
+// encima. Un valor fijo no vale: la barra cambia de alto según cuánto
+// envuelvan sus controles (ancho de ventana, idioma...).
+function positionLegendAboveTimeline() {
+  const legend = document.getElementById('live-legend');
+  const bar = document.getElementById('timeline-bar');
+  if (!legend || !bar) return;
+  const barBottom = parseFloat(getComputedStyle(bar).bottom) || 0;
+  legend.style.bottom = (barBottom + bar.offsetHeight + 10) + 'px';
+}
+
+// Un único cálculo tras cargar podía quedar mal si la barra cambia de
+// tamaño después (fuentes cargando tarde, la leyenda se colapsa/expande,
+// resize de ventana...) — un ResizeObserver sobre .timeline-bar reacciona
+// a cualquier cambio real de su tamaño, no solo al resize de window.
+function initLegendTimelineOffset() {
+  const bar = document.getElementById('timeline-bar');
+  if (!bar) return;
+  if (window.ResizeObserver) {
+    new ResizeObserver(positionLegendAboveTimeline).observe(bar);
+  } else {
+    window.addEventListener('resize', positionLegendAboveTimeline);
+  }
+  positionLegendAboveTimeline();
+}
+
 async function bootLive() {
   try {
     const cfg = await fetch(API_BASE + '/data/config.json?t=' + Date.now()).then(r => r.ok ? r.json() : {});
@@ -2012,6 +2065,7 @@ async function bootLive() {
   try { await loadNodes(); } catch (e) { console.error(e); }
   connectLive();
   await initTimeline();
+  initLegendTimelineOffset();
   updatePacketRateDisplay();
   setInterval(updatePacketRateDisplay, 2000);
 

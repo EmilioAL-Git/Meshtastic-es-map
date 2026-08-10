@@ -1059,12 +1059,6 @@ function nodeLabel(nodeId) {
   return n && n.long_name ? escHtml(n.long_name) : escHtml(nodeId);
 }
 
-// Alcance generoso de un salto LoRa directo de Meshtastic (con buena
-// elevación/línea de vista puede llegar más lejos, pero por debajo de esto
-// cubre la inmensa mayoría de enlaces reales). Se usa solo para DESCARTAR
-// candidatos imposiblemente lejos, nunca para confirmar por sí solo.
-const RELAY_RANGE_M = 50000;
-
 // relay_node en el protobuf de Meshtastic es solo el ÚLTIMO BYTE del
 // node_id real (ver docstring de detectFreeHops), así que por sí solo no
 // identifica a un nodo. Con una red nacional de miles de nodos, ese byte
@@ -1072,44 +1066,91 @@ const RELAY_RANGE_M = 50000;
 // — comparar contra TODOS los nodos de España es inútil (con ~2800 nodos,
 // pigeonhole hace que el 99.9% de los bytes ya estén repetidos).
 //
-// En vez de eso, acotamos por geografía: el nodo que retransmitió tuvo que
-// estar dentro de alcance LoRa directo de al menos uno de los gateways que
-// oyeron esta etapa (si no, ese gateway no lo habría podido oír). Filtramos
-// los candidatos con esa cota física — no un recuento fijo arbitrario,
-// porque el número de nodos "cerca" depende de la zona (una ciudad densa
-// tiene muchos vecinos en 50km, un valle aislado casi ninguno). Los nodos
-// con posición desconocida no se pueden descartar por distancia, así que
-// se quedan como candidatos.
-function resolveRelayNode(relayNode, stage) {
-  if (!relayNode || !nodesById) return null;
-  const lastByte = relayNode.slice(-2).toLowerCase();
-  const candidates = [];
+// Algoritmo inspirado en el "hash prefix disambiguation" de CoreScope
+// (proyecto hermano para MeshCore, mismo problema con hashes de 1 byte —
+// ver docs/HASH-PREFIX-DISAMBIGUATION.md de ese repo):
+//   1. Candidatos triviales: si el byte solo coincide con 0 o 1 nodo a
+//      nivel nacional, resuelto sin más (0 → nada, 1 → confirmado).
+//   2. Si hay varios candidatos, se desambigua por evidencia física: el
+//      nodo tuvo que estar dentro de alcance LoRa (RELAY_RANGE_M) de algún
+//      "ancla" — los gateways que oyeron esa etapa, o (encadenado) la
+//      posición ya resuelta de la etapa vecina del MISMO paquete (pase
+//      hacia delante y luego hacia atrás por `stages`, que ya vienen en
+//      orden cronológico). Los nodos sin posición conocida no se pueden
+//      descartar por distancia; si además tienen un edge real (visto en
+//      edges.json) con alguna de las anclas, cuentan como candidato viable
+//      igualmente (evidencia topológica en vez de geográfica).
+//   3. Si tras filtrar sobrevive un único candidato → 'confirmed'. Si
+//      sobreviven varios, nos quedamos con el más cercano al ancla en vez
+//      de rendirnos (como hacía la versión anterior) — pero marcado
+//      'estimated', nunca como si fuera un hecho verificado.
+const RELAY_RANGE_M = 50000;
+
+function relayCandidatesByByte(lastByte) {
+  const out = [];
   for (const id of nodesById.keys()) {
-    if (id.slice(-2).toLowerCase() === lastByte) candidates.push(id);
+    if (id.slice(-2).toLowerCase() === lastByte) out.push(id);
   }
-  if (candidates.length === 0) return null;
-  if (candidates.length === 1) return candidates[0];
-
-  const anchors = (stage?.gateway_ids || [])
-    .map(nodeLatLng).filter(Boolean).map(([lat, lon]) => L.latLng(lat, lon));
-  if (!anchors.length) return null; // sin ancla geográfica no hay forma de desambiguar
-
-  const nearby = candidates.filter(id => {
-    const pos = nodeLatLng(id);
-    if (!pos) return true;
-    const p = L.latLng(pos[0], pos[1]);
-    return anchors.some(a => a.distanceTo(p) <= RELAY_RANGE_M);
-  });
-  return nearby.length === 1 ? nearby[0] : null;
+  return out;
 }
 
-// Un paquete solo se marca como "confirmado" si al menos una etapa trae un
-// relay_node que resuelve a un único nodo real conocido — si no, aunque el
-// firmware haya mandado relay_node, seguimos sin saber quién retransmitió y
-// se trata como ruta estimada (igual que la heurística de gateways).
+function resolvePacketRelays(stages) {
+  const n = (stages || []).length;
+  const candidates = new Array(n).fill(null).map((_, i) =>
+    stages[i].relay_node ? relayCandidatesByByte(stages[i].relay_node.slice(-2).toLowerCase()) : []);
+  const resolved = new Array(n).fill(null);
+  const confidence = new Array(n).fill(null);
+
+  function attempt(i, extraAnchorId, extraAnchorConfidence) {
+    if (resolved[i] || candidates[i].length === 0) return;
+    if (candidates[i].length === 1) { resolved[i] = candidates[i][0]; confidence[i] = 'confirmed'; return; }
+
+    const anchorIds = [...(stages[i].gateway_ids || [])];
+    if (extraAnchorId) anchorIds.push(extraAnchorId);
+    const anchorPts = anchorIds.map(nodeLatLng).filter(Boolean).map(([lat, lon]) => L.latLng(lat, lon));
+    if (!anchorPts.length) return; // sin ancla todavía — se reintenta en el siguiente pase
+
+    const linked = new Set();
+    for (const e of allEdges) {
+      if (anchorIds.includes(e.from_node)) linked.add(e.to_node);
+      if (anchorIds.includes(e.to_node)) linked.add(e.from_node);
+    }
+
+    const scored = [];
+    for (const id of candidates[i]) {
+      const pos = nodeLatLng(id);
+      if (pos) {
+        const p = L.latLng(pos[0], pos[1]);
+        const dist = Math.min(...anchorPts.map(a => a.distanceTo(p)));
+        if (dist <= RELAY_RANGE_M) scored.push({ id, dist });
+      } else if (linked.has(id)) {
+        scored.push({ id, dist: Infinity }); // viable por topología, sin distancia real para desempatar
+      }
+    }
+    if (!scored.length) return;
+    scored.sort((a, b) => a.dist - b.dist);
+    resolved[i] = scored[0].id;
+    // Si el desempate dependió de un ancla encadenada que a su vez era solo
+    // 'estimated' (una suposición, no un hecho), no se puede heredar
+    // 'confirmed' — sería presentar una cadena de suposiciones como certeza.
+    const chainedGuess = extraAnchorId && extraAnchorConfidence === 'estimated';
+    confidence[i] = (scored.length === 1 && !chainedGuess) ? 'confirmed' : 'estimated';
+  }
+
+  for (let i = 0; i < n; i++) attempt(i, null, null);
+  for (let i = 1; i < n; i++) attempt(i, resolved[i - 1], confidence[i - 1]);
+  for (let i = n - 2; i >= 0; i--) attempt(i, resolved[i + 1], confidence[i + 1]);
+
+  return stages.map((_, i) => ({ id: resolved[i], confidence: confidence[i] }));
+}
+
+// Un paquete solo se marca como "confirmado" si al menos una etapa resuelve
+// su relay_node a un único nodo con certeza ('confirmed') — un 'estimated'
+// (mejor candidato entre varios) no basta para esa etiqueta, aunque sí se
+// muestra como pista en el desglose de saltos.
 function effectiveConfidence(path_confidence, stages) {
   if (path_confidence !== 'relay_node') return path_confidence;
-  const confirmed = (stages || []).some(s => resolveRelayNode(s.relay_node, s));
+  const confirmed = resolvePacketRelays(stages || []).some(r => r.confidence === 'confirmed');
   return confirmed ? 'relay_node' : 'gateway_heuristic';
 }
 
@@ -1156,14 +1197,13 @@ function nodeLabelFull(nodeId) {
 function estimateReachedNodes(data) {
   const ids = new Set();
   if (data.info.from) ids.add(data.info.from);
-  for (const stage of data.stages) {
+  const relays = resolvePacketRelays(data.stages);
+  data.stages.forEach((stage, i) => {
     for (const gw of stage.gateway_ids) ids.add(gw);
-    // relay_node solo aporta si resuelve a un único nodo real — si no, el
-    // id crudo (tipo "!000000dd") es un id fantasma que no es ningún nodo
-    // y solo infla el recuento.
-    const resolved = resolveRelayNode(stage.relay_node, stage);
-    if (resolved) ids.add(resolved);
-  }
+    // Solo cuenta relays 'confirmed' — un 'estimated' es el mejor candidato,
+    // no un hecho, y no debe inflar la cifra mostrada al usuario.
+    if (relays[i].confidence === 'confirmed') ids.add(relays[i].id);
+  });
   return ids;
 }
 
@@ -1217,6 +1257,7 @@ function renderPacketDetail(packetId) {
 
   const traceIds = isTraceroute ? traceRouteIds(data) : null;
   const freeHops = isTraceroute ? detectFreeHops(traceIds.slice(1), stages, info.hop_start) : null;
+  const packetRelays = isTraceroute ? null : resolvePacketRelays(stages);
   const hopsHtml = isTraceroute
     ? traceIds.map((id, i) => {
         const known = !!nodeLatLng(id);
@@ -1239,7 +1280,14 @@ function renderPacketDetail(packetId) {
         </div>`;
       }).join('')
     : (stages.length
-      ? stages.map((s, i) => `
+      ? stages.map((s, i) => {
+        const relay = packetRelays[i];
+        const chipClass = relay.confidence === 'confirmed' ? ' relay'
+          : relay.confidence === 'estimated' ? ' relay-guess' : '';
+        const chipIcon = relay.confidence === 'confirmed' ? '🔗 ' : relay.confidence === 'estimated' ? '🔗? ' : '';
+        const chipTitle = relay.confidence === 'estimated'
+          ? ' title="Mejor candidato entre varios nodos posibles — no confirmado"' : '';
+        return `
         <div class="pkt-hop">
           <div class="pkt-hop-num">${i + 1}</div>
           <div class="pkt-hop-body">
@@ -1248,14 +1296,12 @@ function renderPacketDetail(packetId) {
               <span>${formatTime(s.rx_time)}</span>
             </div>
             <div class="pkt-hop-gateways">
-              ${(() => {
-                const resolved = resolveRelayNode(s.relay_node, s);
-                return s.gateway_ids.map(gw => `<span class="pkt-gw-chip${gw === resolved ? ' relay' : ''}">${gw === resolved ? '🔗 ' : ''}${nodeLabel(gw)}</span>`).join('')
-                  + (resolved && !s.gateway_ids.includes(resolved) ? `<span class="pkt-gw-chip relay">🔗 ${nodeLabel(resolved)}</span>` : '');
-              })()}
+              ${s.gateway_ids.map(gw => `<span class="pkt-gw-chip${gw === relay.id ? chipClass : ''}">${gw === relay.id ? chipIcon : ''}${nodeLabel(gw)}</span>`).join('')}
+              ${relay.id && !s.gateway_ids.includes(relay.id) ? `<span class="pkt-gw-chip${chipClass}"${chipTitle}>${chipIcon}${nodeLabel(relay.id)}</span>` : ''}
             </div>
           </div>
-        </div>`).join('')
+        </div>`;
+      }).join('')
       : '<p class="pkt-hop-empty">Sin saltos con coordenadas conocidas todavía</p>');
 
   const textRow = info.text
@@ -1276,7 +1322,7 @@ function renderPacketDetail(packetId) {
     </table>
     <h4 class="pkt-hops-title">
       Saltos detectados (${isTraceroute ? traceIds.length : stages.length})
-      <span class="pkt-hops-hint">${isTraceroute ? '🔗 = posición conocida · ❓ = nodo real, posición desconocida · ⚡ = salto reducido (router)' : '🔗 = relay_node resuelto a un único nodo real en ese salto'}</span>
+      <span class="pkt-hops-hint">${isTraceroute ? '🔗 = posición conocida · ❓ = nodo real, posición desconocida · ⚡ = salto reducido (router)' : '🔗 = relay_node confirmado (único candidato) · 🔗? = mejor candidato entre varios, sin confirmar'}</span>
     </h4>
     <div class="pkt-hops">${hopsHtml}</div>`;
 }

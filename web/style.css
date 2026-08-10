@@ -1706,6 +1706,11 @@ body.embed-mode .lang-switch { display: none; }
   border-style: dashed;
   color: var(--muted);
 }
+.pkt-gw-chip.relay-guess {
+  border-style: dashed;
+  border-color: var(--accent);
+  color: var(--accent);
+}
 
 .pkt-hop-empty {
   color: var(--muted);

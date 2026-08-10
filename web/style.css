@@ -861,6 +861,7 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 }
 .noopt-btn:hover { background: rgba(249,115,22,.22); }
 
+
 /* ── Enlace feed en directo ── */
 .live-link {
   display: flex;
@@ -1392,6 +1393,58 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   border-radius: 50%;
   flex-shrink: 0;
 }
+
+
+/* ── Selector de idioma (botón-icono + menú) ── */
+.lang-switch { position: relative; flex-shrink: 0; }
+.lang-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.lang-btn:hover,
+.lang-switch.open .lang-btn { color: var(--accent); border-color: var(--accent); }
+.lang-btn:focus-visible     { outline: none; border-color: var(--accent); }
+
+.lang-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 4px;
+  z-index: 1200;
+}
+.lang-switch.open .lang-menu { display: block; }
+.lang-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 7px 10px;
+  cursor: pointer;
+  transition: background .12s;
+}
+.lang-option:hover  { background: var(--panel2); }
+.lang-option.active { color: var(--accent); }
+body.embed-mode .lang-switch { display: none; }
+
 
 /* ── Modal mal configurados ── */
 .malconfig-modal {

@@ -36,6 +36,16 @@ MAP_LAT         = float(os.environ.get("MAP_LAT", 40.2))
 MAP_LNG         = float(os.environ.get("MAP_LNG", -3.7))
 MAP_ZOOM        = int(os.environ.get("MAP_ZOOM", 8))
 MAL_CONFIG_URL  = os.environ.get("MAL_CONFIG_URL", "/data/top-nodos.json")
+
+# Configuración opcional de la web (solo se exporta si la variable está definida;
+# si no, la web usa sus valores por defecto / traducción)
+DEFAULT_LANG    = os.environ.get("DEFAULT_LANG")      # idioma por defecto: es | gl
+SITE_TITLE      = os.environ.get("SITE_TITLE")        # <title> del documento
+BRAND_PRIMARY   = os.environ.get("BRAND_PRIMARY")     # cabecera, parte principal (ej. MESHTASTIC ESPAÑA)
+BRAND_SECONDARY = os.environ.get("BRAND_SECONDARY")   # cabecera, subtítulo en <em> (ej. Mapa de nodos)
+SOURCE_URL      = os.environ.get("SOURCE_URL")        # pie: URL del enlace "Datos extraídos de:"
+SOURCE_NAME     = os.environ.get("SOURCE_NAME")       # pie: texto visible del enlace
+
 REQUEST_TIMEOUT = 20       # segundos
 
 logging.basicConfig(
@@ -644,13 +654,25 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
     })
 
     # ── config.json ──
-    _write_atomic(out_dir / "config.json", {
+    config = {
         "map_auto_fit":   MAP_AUTO_FIT,
         "map_lat":        MAP_LAT,
         "map_lng":        MAP_LNG,
         "map_zoom":       MAP_ZOOM,
         "mal_config_url": MAL_CONFIG_URL,
-    })
+    }
+    # Campos opcionales de personalización de la web
+    for key, val in (
+        ("default_lang",    DEFAULT_LANG),
+        ("site_title",      SITE_TITLE),
+        ("brand_primary",   BRAND_PRIMARY),
+        ("brand_secondary", BRAND_SECONDARY),
+        ("source_url",      SOURCE_URL),
+        ("source_name",     SOURCE_NAME),
+    ):
+        if val:
+            config[key] = val
+    _write_atomic(out_dir / "config.json", config)
 
     log.info(f"JSON exportado → {out_dir}  ({len(nodes)} nodos, {len(edges)} edges)")
 

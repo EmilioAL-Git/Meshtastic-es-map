@@ -141,6 +141,14 @@ El mapa queda disponible en `http://localhost:8095`.
 | `MAP_LAT` | `40.2` | Latitud inicial (si `MAP_AUTO_FIT=false`) |
 | `MAP_LNG` | `-3.7` | Longitud inicial (si `MAP_AUTO_FIT=false`) |
 | `MAP_ZOOM` | `8` | Zoom inicial (si `MAP_AUTO_FIT=false`) |
+| `DEFAULT_LANG` | *(sin definir)* | Idioma por defecto de la web: `es` o `gl` (si el visitante no eligió otro) |
+| `SITE_TITLE` | *(sin definir)* | Título del documento (pestaña del navegador) |
+| `BRAND_PRIMARY` | *(sin definir)* | Cabecera, parte principal (ej. `MESHTASTIC ESPAÑA`) |
+| `BRAND_SECONDARY` | *(sin definir)* | Cabecera, subtítulo en cursiva tras la barra (ej. `Mapa de nodos`) |
+| `SOURCE_URL` | *(sin definir)* | Pie «Datos extraídos de:» — URL del enlace |
+| `SOURCE_NAME` | *(sin definir)* | Pie «Datos extraídos de:» — texto visible del enlace |
+
+> Las seis últimas son opcionales: si no se definen, la web mantiene sus valores por defecto y la traducción activa.
 
 ---
 

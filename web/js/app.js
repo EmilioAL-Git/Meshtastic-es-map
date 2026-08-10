@@ -24,6 +24,7 @@ async function loadAll() {
     malConfigurados.clear();
     if (malResp.status === 'fulfilled' && malResp.value?.nodes) {
       malHistory = malResp.value.history || [];
+      malUpdated = malResp.value.updated || null;
       malResp.value.nodes.forEach(n => {
         const hex = '!' + n.node_id.toString(16).padStart(8, '0');
         malConfigurados.set(hex, n);
@@ -46,7 +47,7 @@ async function loadAll() {
         }
         if (!entry.issues) entry.issues = [];
         if (!entry.issues.some(i => i.key === 'client_base_fw')) {
-          entry.issues.push({ key: 'client_base_fw', label: 'CLIENT_BASE ≥ 2.7.17 actúa como ROUTER_LATE', severity: 'medium' });
+          entry.issues.push({ key: 'client_base_fw', label: t('issueLabelsLong.client_base_fw'), severity: 'medium' });
         }
       });
 
@@ -59,11 +60,11 @@ async function loadAll() {
       }
     } else {
       console.error('Error cargando nodos:', nodesResp.reason);
-      showToast('⚠ Error cargando nodos — el collector puede no haber generado los datos aún');
+      showToast(t('toast.nodesError'));
     }
 
     const noOptCount = [...malConfigurados.values()].filter(n => detectIssues(n).length > 0).length;
-    document.getElementById('noopt-label').textContent = `No optimizados (${noOptCount})`;
+    document.getElementById('noopt-label').textContent = t('header.notOptimizedCount', { n: noOptCount });
 
     if (edgesResp.status === 'fulfilled') {
       allEdges = edgesResp.value.edges || [];
@@ -81,7 +82,7 @@ async function loadAll() {
 
     const now = new Date();
     document.getElementById('last-update').textContent =
-      'actualizado ' + now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+      t('header.lastUpdate', { time: now.toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' }) });
 
     if (MAP_AUTO_FIT && !autoFitDone) {
       const nodesWithPos = allNodes.filter(n => n.latitude != null);
@@ -99,14 +100,14 @@ async function loadAll() {
       const nodeParam = new URLSearchParams(location.search).get('node');
       if (nodeParam) {
         if (nodesById.has(nodeParam)) selectNode(nodeParam, true);
-        else showToast(`Nodo ${nodeParam} no encontrado en la red`);
+        else showToast(t('toast.nodeNotFound', { node: nodeParam }));
       }
 
       // Enlace directo a un informe de recomendaciones: ?report=!abcd1234
       const reportParam = new URLSearchParams(location.search).get('report');
       if (reportParam) {
         if (malConfigurados.has(reportParam)) openNodeReport(reportParam);
-        else showToast(`Informe de ${reportParam} no encontrado`);
+        else showToast(t('toast.reportNotFound', { node: reportParam }));
       }
 
       firstLoad = false;
@@ -114,7 +115,7 @@ async function loadAll() {
 
   } catch (e) {
     console.error(e);
-    showToast('⚠ Error de conexión con la API');
+    showToast(t('toast.apiError'));
   } finally {
     document.getElementById('loading').classList.add('hidden');
     loadRunning = false;
@@ -172,6 +173,26 @@ function acceptCookies() {
   document.getElementById('cookie-banner').classList.add('hidden');
 }
 
+// ─── Configuración de marca/sitio (config.json) ───────────────────────────────
+// Cada campo es opcional: si el collector no lo emite, se mantiene el valor por
+// defecto del HTML/i18n. Los textos vienen de variables de entorno del operador.
+function applySiteConfig(cfg) {
+  if (cfg.site_title) document.title = cfg.site_title;
+
+  const brand = document.getElementById('brand-title');
+  if (brand && (cfg.brand_primary != null || cfg.brand_secondary != null)) {
+    const primary   = cfg.brand_primary   != null ? cfg.brand_primary   : 'MESHTASTIC ESPAÑA';
+    const secondary = cfg.brand_secondary != null ? cfg.brand_secondary : 'Mapa de nodos';
+    brand.innerHTML = escHtml(primary) + ' <em>/ ' + escHtml(secondary) + '</em>';
+  }
+
+  const link = document.getElementById('footer-source-link');
+  if (link) {
+    if (cfg.source_url)  link.href        = cfg.source_url;
+    if (cfg.source_name) link.textContent = cfg.source_name;
+  }
+}
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 fetch(API_BASE + '/data/config.json')
   .then(r => r.ok ? r.json() : {})
@@ -182,6 +203,9 @@ fetch(API_BASE + '/data/config.json')
     if (cfg.map_lng        != null) MAP_LNG        = cfg.map_lng;
     if (cfg.map_zoom       != null) MAP_ZOOM       = cfg.map_zoom;
     if (cfg.mal_config_url != null) MAL_CONFIG_URL = cfg.mal_config_url;
+    // Idioma por defecto y marca del sitio (antes de renderizar contenido)
+    applyDefaultLang(cfg.default_lang);
+    applySiteConfig(cfg);
     initMap();
     syncFilterChips();
     syncEdgeFilterChips();

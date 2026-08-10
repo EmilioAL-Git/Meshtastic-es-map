@@ -64,6 +64,7 @@ const EDGE_STYLE_HI = {
 let MAL_CONFIG_URL = null; // se rellena desde config.json (mal_config_url)
 const malConfigurados = new Map();      // !hexvalue → { avg, sent, seen, packets, ... }
 let malHistory = [];                    // historial diario de top-nodos.json
+let malUpdated = null;                  // timestamp unix (s) del último análisis
 
 
 // ─── Renderer SVG de las líneas de edges (overlayPane, z-index 400) ───────────

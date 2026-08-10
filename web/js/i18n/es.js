@@ -139,6 +139,7 @@ window.I18N.es = {
     issueAll: 'Problema: Todos',
     mobFixed: '📍 Fijo',
     mobMobile: '🚶 Móvil',
+    mobPending: '⏳ No disponible',
     viewLink: 'Ver →',
     table: {
       rank: '#',
@@ -162,6 +163,7 @@ window.I18N.es = {
     nodeFixed: 'nodo fijo',
     nodeMobile: 'nodo móvil',
     mobilityHtml: 'Detectado como <strong>{status}</strong> — desplazamiento máximo {dist} ({checks} posiciones analizadas)',
+    mobilityPendingHtml: 'Movilidad <strong>no disponible</strong> — aún no hay suficientes posiciones para determinarla ({checks} analizadas)',
     hopOkHtml: 'Hop Limit configurado: <strong>{hop}</strong> — dentro del rango recomendado',
     problemsTitle: 'Problemas detectados',
     solution: 'Solución:',

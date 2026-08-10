@@ -136,6 +136,7 @@ window.I18N.gl = {
     issueAll: 'Problema: Todos',
     mobFixed: '📍 Fixo',
     mobMobile: '🚶 Móbil',
+    mobPending: '⏳ Non dispoñible',
     viewLink: 'Ver →',
     table: {
       rank: '#',
@@ -158,6 +159,7 @@ window.I18N.gl = {
     nodeFixed: 'nodo fixo',
     nodeMobile: 'nodo móbil',
     mobilityHtml: 'Detectado como <strong>{status}</strong> — desprazamento máximo {dist} ({checks} posicións analizadas)',
+    mobilityPendingHtml: 'Movilidade <strong>non dispoñible</strong> — aínda non hai suficientes posicións para determinala ({checks} analizadas)',
     hopOkHtml: 'Hop Limit configurado: <strong>{hop}</strong> — dentro do rango recomendado',
     problemsTitle: 'Problemas detectados',
     solution: 'Solución:',

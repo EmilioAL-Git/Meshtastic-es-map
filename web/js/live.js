@@ -227,6 +227,20 @@ function packetAnimSlowdown() {
   return inReplayView ? Math.max(1, 1 / replaySpeed) : 1;
 }
 
+// Antes se animaba el mapa grande salto a salto EN DIRECTO, según iban
+// llegando los packet_stage — pero una etapa sin ningún gateway con
+// posición conocida en ese momento se saltaba PARA SIEMPRE (legIndex solo
+// avanza hacia delante), aunque esa misma etapa consiguiera un gateway con
+// posición conocida segundos después. El mini-mapa del desglose sí
+// recalcula en frío con los datos más recientes, así que divergía del mapa
+// grande (visto en la conversación: una línea recta larga en el grande
+// frente a una ruta con más puntos intermedios en el desglose). En vez de
+// perseguir cada sighting en directo, se espera a tener casi todos los
+// datos (TRAIL_DRAW_DELAY_MS) y se anima la ruta completa de una sola vez,
+// con la misma lógica que usa el mini-mapa (buildGatewayLegs espeja el
+// filtro de buildPacketPath).
+const TRAIL_DRAW_DELAY_MS = 3000;
+
 function initLiveMap() {
   map = L.map('map', {
     center: [MAP_LAT, MAP_LNG],
@@ -387,7 +401,9 @@ function handleLiveEvent(event) {
       isTraceroute: false, traceField: null, traceDrawn: 0, traceLastHops: 0,
       traceUnknown: false, laneOffset: null,
       traceHopsSeen: -1, traceIncludeDest: false, traceFinalTimer: null,
+      gatewayLegs: null, drawTimer: null,
     });
+    liveTracked.get(key).drawTimer = setTimeout(() => startGatewayTrail(key), TRAIL_DRAW_DELAY_MS);
     liveOrder.push(key);
     enforceLiveWindow();
     addLogRow(event);
@@ -397,7 +413,6 @@ function handleLiveEvent(event) {
   } else if (event.type === 'packet_stage') {
     const tracked = liveTracked.get(key);
     if (!tracked) return;
-    const hadStages = tracked.stages.length;
     tracked.stages = event.stages;
     tracked.pathConfidence = event.path_confidence;
     tracked.info.route = event.route;
@@ -410,7 +425,6 @@ function handleLiveEvent(event) {
     // desglose). advanceTraceroute() dibuja solo lo confirmado hasta ahora
     // y se re-invoca según route/route_back se van completando.
     if (tracked.pathConfidence === 'traceroute') advanceTraceroute(key);
-    else if (event.stages.length > hadStages) animateNextLeg(key);
   } else if (event.type === 'packet_expired') {
     expirePacket(key);
   }
@@ -440,25 +454,32 @@ function stageSiblingLines(stage) {
   return rest.map(pos => [rep, pos]);
 }
 
-function spawnOriginPing(event) {
-  const pos = nodeLatLng(event.from);
+// Anillo que se expande y se desvanece sobre un nodo — usado tanto en el
+// origen de un paquete nuevo como en cualquier nodo que "recibe" algo
+// durante la animación (llegada de un tramo, o de una de las líneas
+// discontinuas de "también oído aquí"), para que el propio nodo reaccione
+// visualmente, no solo la línea que llega hasta él.
+function spawnNodePing(pos, color, { startRadius = 6, growBy = 18, durationMs = 900 } = {}) {
   if (!pos) return;
-  const color = packetColor(event.packet_id);
   const ring = L.circleMarker(pos, {
-    pane: 'livePane', radius: 6, color, weight: 2,
+    pane: 'livePane', radius: startRadius, color, weight: 2,
     fillOpacity: 0, interactive: false,
   }).addTo(livePingLayer);
 
-  const durationMs = 900 * packetAnimSlowdown();
+  const total = durationMs * packetAnimSlowdown();
   const start = performance.now();
   function step(now) {
-    const t = Math.min(1, (now - start) / durationMs);
-    ring.setRadius(6 + t * 18);
+    const t = Math.min(1, (now - start) / total);
+    ring.setRadius(startRadius + t * growBy);
     ring.setStyle({ opacity: 1 - t });
     if (t < 1) requestAnimationFrame(step);
     else livePingLayer.removeLayer(ring);
   }
   requestAnimationFrame(step);
+}
+
+function spawnOriginPing(event) {
+  spawnNodePing(nodeLatLng(event.from), packetColor(event.packet_id));
 }
 
 // Nº de saltos reales desde el origen hasta la etapa que el marcador
@@ -471,12 +492,9 @@ function hopCountFor(tracked) {
   // confirmada (igual numeración que el mini-mapa del desglose), no la
   // heurística de hop_start - hop_limit de abajo.
   if (tracked.isTraceroute) return tracked.traceLastHops;
-  if (tracked.legIndex < 0) return 0;
-  const stage = tracked.stages[tracked.legIndex];
-  if (stage && tracked.info.hop_start != null) {
-    return Math.max(0, tracked.info.hop_start - stage.hop_limit);
-  }
-  return tracked.legIndex + 1;
+  const leg = tracked.gatewayLegs && tracked.gatewayLegs[tracked.legIndex];
+  if (leg && leg.hops != null) return leg.hops;
+  return tracked.legIndex;
 }
 
 // free (opcional): { free, certain } de detectFreeHops() — añade una
@@ -685,61 +703,114 @@ function drawTraceSegment(layerGroup, from, to, color, extraOpts = {}) {
   return [lines.glow, lines.line, lines.flow, arrow];
 }
 
-function drawStageSiblingLines(tracked, stage) {
-  for (const [a, b] of stageSiblingLines(stage)) {
-    const line = L.polyline([a, b], {
-      pane: 'livePane', color: tracked.color, weight: 1.5, opacity: 0.35,
-      dashArray: '3 4', interactive: false,
-    }).addTo(liveSiblingLayer);
-    tracked.trails.push(line);
+// Antes estas líneas se quedaban dibujadas de forma estática mientras
+// durase el paquete entero (podían acumularse muchas y saturar la
+// pantalla). Ahora cada una es un "flash" independiente — crece hacia el
+// gateway, se mantiene un instante y se desvanece sola — igual de efímero
+// para todas las etapas, en vez de ir apilándose.
+function flashSiblingLine(tracked, a, b) {
+  const line = L.polyline([a, a], {
+    pane: 'livePane', color: tracked.color, weight: 2, opacity: 0,
+    dashArray: '4 5', interactive: false,
+  }).addTo(liveSiblingLayer);
+  tracked.trails.push(line);
+
+  const growMs = 350, holdMs = 650, fadeMs = 550;
+  const totalMs = growMs + holdMs + fadeMs;
+  const start = performance.now();
+  const peakOpacity = 0.55;
+  let pinged = false;
+
+  function remove() {
+    liveSiblingLayer.removeLayer(line);
+    const idx = tracked.trails.indexOf(line);
+    if (idx !== -1) tracked.trails.splice(idx, 1);
   }
+
+  function step(now) {
+    // Si el paquete expira a mitad del flash, expirePacket() ya se encarga
+    // del fundido de todo tracked.trails — dejamos de tocar esta línea para
+    // no pelearnos por su opacidad con esa otra animación.
+    if (tracked.expiring) return;
+    const elapsed = now - start;
+    if (elapsed < growMs) {
+      const e = easeInOutQuad(elapsed / growMs);
+      line.setLatLngs([a, [a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e]]);
+      line.setStyle({ opacity: peakOpacity * e });
+    } else if (elapsed < growMs + holdMs) {
+      line.setLatLngs([a, b]);
+      line.setStyle({ opacity: peakOpacity });
+      if (!pinged) { pinged = true; spawnNodePing(b, tracked.color, { startRadius: 4, growBy: 10, durationMs: 500 }); }
+    } else if (elapsed < totalMs) {
+      line.setStyle({ opacity: peakOpacity * (1 - (elapsed - growMs - holdMs) / fadeMs) });
+    } else {
+      remove();
+      return;
+    }
+    requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function drawStageSiblingLines(tracked, stage) {
+  for (const [a, b] of stageSiblingLines(stage)) flashSiblingLine(tracked, a, b);
+}
+
+// Misma secuencia y mismo filtro que la rama no-traceroute de
+// buildPacketPath (usada por el mini-mapa del desglose) — origen si se
+// conoce su posición, luego cada etapa con algún gateway de posición
+// conocida — pero conservando además la `stage` de origen de cada punto
+// (para las líneas de "también oído aquí") y el nº de saltos ya calculado,
+// que buildPacketPath no expone porque el mini-mapa no los necesita.
+function buildGatewayLegs(tracked) {
+  const legs = [];
+  const originPos = nodeLatLng(tracked.info.from);
+  if (originPos) legs.push({ pos: originPos, stage: null, hops: 0 });
+  for (const stage of tracked.stages) {
+    const pos = stagePosition(stage);
+    if (pos) {
+      const hops = tracked.info.hop_start != null ? Math.max(0, tracked.info.hop_start - stage.hop_limit) : null;
+      legs.push({ pos, stage, hops });
+    }
+  }
+  return legs;
+}
+
+// Arranca la animación del mapa grande TRAIL_DRAW_DELAY_MS después de
+// packet_new, con los datos acumulados hasta ese momento — no según van
+// llegando los packet_stage. Ver comentario de TRAIL_DRAW_DELAY_MS: animar
+// en directo etapa a etapa hacía que una etapa sin gateway conocido en ese
+// instante se perdiera para siempre aunque más tarde sí se pudiera ubicar.
+function startGatewayTrail(packetId) {
+  const tracked = liveTracked.get(packetId);
+  if (!tracked || tracked.expiring || tracked.isTraceroute) return;
+  const legs = buildGatewayLegs(tracked);
+  if (legs.length < 2) {
+    // Todavía no hay ni un segundo punto (el primer gateway puede tardar
+    // más de TRAIL_DRAW_DELAY_MS en reportar, sobre todo por LoRa) — antes
+    // esto se rendía para siempre y el paquete se quedaba sin ningún punto
+    // dibujado en el mapa grande. Reintentar en vez de abandonar; el
+    // drawTimer se limpia igualmente en expirePacket()/resetLiveState().
+    tracked.drawTimer = setTimeout(() => startGatewayTrail(packetId), TRAIL_DRAW_DELAY_MS);
+    return;
+  }
+  tracked.gatewayLegs = legs;
+  animateNextLeg(packetId);
 }
 
 function animateNextLeg(packetId) {
   const tracked = liveTracked.get(packetId);
   // tracked.animating evita lanzar dos animaciones a la vez sobre el mismo
-  // marcador si llega una nueva etapa mientras el tramo anterior aún se
-  // está moviendo — si no, ambas escriben setLatLng() cada frame y el
-  // punto se ve "pasarse" de sitio, pisándose entre sí. El propio step()
-  // encadena la siguiente etapa pendiente al terminar, así que aquí basta
-  // con no hacer nada y dejar que continúe cuando le toque.
+  // marcador — el propio step() encadena el siguiente tramo pendiente al
+  // terminar, así que aquí basta con no hacer nada.
   if (!tracked || tracked.expiring || tracked.animating) return;
-  const stages = tracked.stages;
+  const legs = tracked.gatewayLegs;
+  if (!legs || tracked.legIndex >= legs.length - 1) return;
 
-  // La posición de partida es siempre la última posición conocida en la
-  // que el marcador se dibujó de verdad — nunca se recalcula desde una
-  // etapa intermedia sin coordenadas, o el "salto" se perdía por completo.
-  // legIndex arranca en -1 cuando el origen es conocido para que stages[0]
-  // siga contando como un tramo real (si no, se saltaba y el mini-mapa del
-  // desglose — que sí usa todas las etapas vía buildPacketPath — no
-  // coincidía con lo animado aquí).
-  if (!tracked.lastPos) {
-    const originPos = nodeLatLng(tracked.info.from);
-    if (originPos) {
-      tracked.lastPos = originPos;
-      tracked.legIndex = -1;
-    } else {
-      const firstPos = stagePosition(stages[0]);
-      if (!firstPos) return; // aún no hay ninguna posición conocida
-      tracked.lastPos = firstPos;
-      tracked.legIndex = 0; // ya "empezamos" en stages[0], no se re-anima hacia él
-    }
-  }
-
-  // Avanza etapa a etapa hasta encontrar la siguiente con coordenadas
-  // conocidas; las intermedias sin coordenadas se saltan sin animar pero
-  // sin perder la posición de partida real.
-  let toPos = null;
-  while (tracked.legIndex < stages.length - 1) {
-    toPos = stagePosition(stages[tracked.legIndex + 1]);
-    tracked.legIndex++;
-    if (toPos) break;
-  }
-  if (!toPos) return; // no queda ninguna etapa nueva con coordenadas
-
-  const fromPos = tracked.lastPos;
-  tracked.lastPos = toPos;
-  drawStageSiblingLines(tracked, stages[tracked.legIndex]);
+  const fromPos = legs[tracked.legIndex].pos;
+  tracked.legIndex++;
+  const toLeg = legs[tracked.legIndex];
+  const toPos = toLeg.pos;
 
   ensureMarker(tracked, fromPos);
   updateMarkerHops(tracked);
@@ -752,7 +823,7 @@ function animateNextLeg(packetId) {
   // expira a mitad de tramo, el trozo dibujado hasta ese momento también
   // se recoja en el fade-out de expirePacket().
   const line = L.polyline([fromPos, fromPos], {
-    pane: 'livePane', color: tracked.color, weight: 2.5, opacity: 0.55,
+    pane: 'livePane', color: tracked.color, weight: 2.5, opacity: 0.75,
     interactive: false,
   }).addTo(liveTrailLayer);
   tracked.trails.push(line);
@@ -773,7 +844,13 @@ function animateNextLeg(packetId) {
       requestAnimationFrame(step);
     } else {
       tracked.animating = false;
-      if (tracked.legIndex < stages.length - 1) animateNextLeg(packetId);
+      spawnNodePing(toPos, tracked.color, { startRadius: 5, growBy: 12, durationMs: 600 });
+      // El abanico hacia los demás gateways que oyeron esta etapa se
+      // dispara AL LLEGAR, no al salir — si no, el flash aparecía antes de
+      // que el punto principal hubiera recorrido el tramo, como si el
+      // paquete ya estuviera en dos sitios a la vez.
+      if (toLeg.stage) drawStageSiblingLines(tracked, toLeg.stage);
+      if (tracked.legIndex < legs.length - 1) animateNextLeg(packetId);
     }
   }
   requestAnimationFrame(step);
@@ -963,6 +1040,7 @@ function expirePacket(packetId) {
   tracked.expiring = true;
   liveTracked.delete(packetId);
   if (tracked.traceFinalTimer) { clearTimeout(tracked.traceFinalTimer); tracked.traceFinalTimer = null; }
+  if (tracked.drawTimer) { clearTimeout(tracked.drawTimer); tracked.drawTimer = null; }
 
   const layers = [...tracked.trails];
   if (tracked.halo) layers.push(tracked.halo);
@@ -1633,6 +1711,7 @@ function resetLiveState() {
     if (tracked.halo) liveLayer.removeLayer(tracked.halo);
     tracked.trails.forEach(l => { liveTrailLayer.removeLayer(l); liveSiblingLayer.removeLayer(l); });
     if (tracked.traceFinalTimer) clearTimeout(tracked.traceFinalTimer);
+    if (tracked.drawTimer) clearTimeout(tracked.drawTimer);
   }
   liveTracked.clear();
   livePacketLog.clear();

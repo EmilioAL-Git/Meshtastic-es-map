@@ -256,9 +256,18 @@ function packetAnimSlowdown() {
 // nuevo reinicia la espera — con un tope absoluto (TRAIL_MAX_WAIT_MS) para
 // que un paquete con sightings muy espaciadas en el tiempo no se quede sin
 // dibujar nunca ni se salga de la ventana visible (enforceLiveWindow) antes
-// de que le toque. Una vez arrancado el dibujo (tracked.trailStarted),
-// los packet_stage siguientes sí se aplican al instante — a esas alturas ya
-// no se trata de "esperar a tener datos", sino de refinos tardíos.
+// de que le toque.
+//
+// El mismo silencio se respeta también DESPUÉS de arrancar el dibujo
+// (tracked.trailStarted): buildGatewayLegs() reconstruye la lista de legs
+// desde cero en cada packet_stage, y un gateway que resuelve una etapa
+// intermedia que antes se saltaba puede desplazar los índices de legs[]
+// respecto a los ya animados — aplicar ese cambio al instante hacía que la
+// línea ya dibujada "saltara" de sitio en cuanto llegaba el siguiente
+// paquete. Esperar el mismo STAGE_QUIET_MS en cada redibujado (sin el tope
+// TRAIL_MAX_WAIT_MS, que ya no aplica una vez hay algo en pantalla) reduce
+// esos saltos a que solo se note un realineado tras una pausa real en el
+// tráfico, no en cada evento suelto.
 const STAGE_QUIET_MS = 1500;
 const TRAIL_MAX_WAIT_MS = 8000;
 
@@ -488,7 +497,6 @@ function handleLiveEvent(event) {
     // desglose). advanceTraceroute() dibuja solo lo confirmado hasta ahora
     // y se re-invoca según route/route_back se van completando.
     if (tracked.pathConfidence === 'traceroute') advanceTraceroute(key);
-    else if (tracked.trailStarted) refreshGatewayTrail(key);
     else scheduleGatewayTrailDraw(key);
   } else if (event.type === 'packet_expired') {
     expirePacket(key);
@@ -736,6 +744,12 @@ function createTraceLines(layerGroup, at, color, extraOpts = {}) {
       ...restOpts, interactive: true, bubblingMouseEvents: false,
       color: '#000', opacity: 0, weight: 14,
     }).addTo(layerGroup);
+    // Invisible a propósito (opacity 0, solo ensancha el área pinchable) —
+    // el fundido de expirePacket() no debe tocar su opacidad: si la anima
+    // igual que las líneas visibles, el primer frame la sube de 0 a un
+    // valor >0 y aparece de golpe como un flash negro grueso justo al
+    // desaparecer el paquete.
+    hit.isHitLine = true;
     hit.on('click', onClick);
   }
   return { glow, line, flow, hit };
@@ -906,9 +920,15 @@ function refreshGatewayTrail(packetId) {
 // arriba para el motivo.
 function scheduleGatewayTrailDraw(packetId) {
   const tracked = liveTracked.get(packetId);
-  if (!tracked || tracked.trailStarted) return;
+  if (!tracked) return;
   if (tracked.drawTimer) clearTimeout(tracked.drawTimer);
-  const wait = Math.max(0, Math.min(STAGE_QUIET_MS, tracked.drawDeadline - performance.now()));
+  // Antes de trailStarted respetamos el tope TRAIL_MAX_WAIT_MS desde
+  // packet_new (para que el primer trazo no tarde eternamente). Una vez ya
+  // hay algo dibujado ese tope deja de tener sentido — no hay prisa por
+  // volver a redibujar, así que se espera el silencio completo cada vez.
+  const wait = tracked.trailStarted
+    ? STAGE_QUIET_MS
+    : Math.max(0, Math.min(STAGE_QUIET_MS, tracked.drawDeadline - performance.now()));
   tracked.drawTimer = setTimeout(() => startGatewayTrail(packetId), wait);
 }
 
@@ -960,6 +980,7 @@ function animateNextLeg(packetId) {
       pane: 'livePane', renderer: liveTraceRenderer, color: '#000', opacity: 0, weight: 14,
       interactive: true, bubblingMouseEvents: false,
     }).addTo(liveTrailLayer);
+    tracked.hitLine.isHitLine = true;
     tracked.hitLine.on('click', () => openPacketDetail(pktKey(tracked.info.packet_id, tracked.info.from)));
     tracked.trails.push(tracked.hitLine);
   }
@@ -1195,6 +1216,7 @@ function expirePacket(packetId) {
     const t = Math.min(1, (now - start) / durationMs);
     const opacity = 1 - t;
     for (const l of layers) {
+      if (l.isHitLine) continue;
       if (l instanceof L.Polyline) l.setStyle({ opacity: opacity * 0.55 });
       else if (l instanceof L.Marker) {
         // Las flechas de dirección de un tramo de traceroute son L.Marker

@@ -2584,7 +2584,7 @@ body.embed-mode .malconfig-table td:nth-child(3) { display: none; }
     -webkit-overflow-scrolling: touch;
   }
   .timeline-controls::-webkit-scrollbar { display: none; }
-  .timeline-cursor-label { display: none; }
+  .timeline-cursor-label { flex-shrink: 0; }
   .tl-live-btn { margin-left: 0; flex-shrink: 0; }
 
   /* ── live.html: cabecera en varias filas, si no todo se apiña/monta ── */

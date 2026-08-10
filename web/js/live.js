@@ -2088,7 +2088,7 @@ function updateCursorLabel() {
   const el = document.getElementById('timeline-cursor-label');
   if (!el) return;
   el.textContent = replayCursorTime != null
-    ? new Date(replayCursorTime * 1000).toLocaleString('es-ES')
+    ? new Date(replayCursorTime * 1000).toLocaleTimeString('es-ES', { hour12: false })
     : '';
 }
 

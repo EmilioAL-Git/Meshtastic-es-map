@@ -109,6 +109,7 @@ window.I18N.gl = {
     connections: { one: '{n} conexión', other: '{n} conexións' },
     malBannerText: 'Este nodo pode <strong>non estar optimizado</strong>.',
     malBannerLink: 'Ver recomendacións →',
+    viewLive: 'Ver nodo en directo',
   },
 
   popup: {

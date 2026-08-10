@@ -164,7 +164,11 @@ function selectNode(nodeId, fly = false) {
     </div>`;
   }
 
-  document.getElementById('detail-body').innerHTML = malBanner + fieldsHtml;
+  const liveLinkHtml = `<a class="detail-live-link" href="live.html?focus=${encodeURIComponent(node.node_id)}">
+      <span class="live-dot"></span> ${escHtml(t('detail.viewLive'))}
+    </a>`;
+
+  document.getElementById('detail-body').innerHTML = malBanner + fieldsHtml + liveLinkHtml;
 
   document.getElementById('detail-panel').classList.add('visible');
   document.body.classList.add('detail-open');

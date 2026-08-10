@@ -891,7 +891,8 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   flex-shrink: 0;
 }
 .live-link:hover { background: rgba(94,234,212,.2); }
-.live-link .live-dot {
+.live-link .live-dot,
+.detail-live-link .live-dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
@@ -903,6 +904,24 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   0%, 100% { opacity: 1; }
   50% { opacity: .35; }
 }
+
+.detail-live-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 9px 10px;
+  background: rgba(94,234,212,.10);
+  border: 1px solid rgba(94,234,212,.35);
+  border-radius: var(--radius);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 12px;
+  text-decoration: none;
+  transition: background .15s;
+}
+.detail-live-link:hover { background: rgba(94,234,212,.2); }
 
 /* ── Página live.html ── */
 .focus-wrap {

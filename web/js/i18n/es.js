@@ -110,6 +110,7 @@ window.I18N.es = {
     connections: { one: '{n} conexión', other: '{n} conexiones' },
     malBannerText: 'Este nodo puede estar <strong>no optimizado</strong>.',
     malBannerLink: 'Ver recomendaciones →',
+    viewLive: 'Ver nodo en directo',
   },
 
   // Popup del marcador en el mapa (js/map.js)

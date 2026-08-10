@@ -1059,23 +1059,48 @@ function nodeLabel(nodeId) {
   return n && n.long_name ? escHtml(n.long_name) : escHtml(nodeId);
 }
 
+// Alcance generoso de un salto LoRa directo de Meshtastic (con buena
+// elevación/línea de vista puede llegar más lejos, pero por debajo de esto
+// cubre la inmensa mayoría de enlaces reales). Se usa solo para DESCARTAR
+// candidatos imposiblemente lejos, nunca para confirmar por sí solo.
+const RELAY_RANGE_M = 50000;
+
 // relay_node en el protobuf de Meshtastic es solo el ÚLTIMO BYTE del
 // node_id real (ver docstring de detectFreeHops), así que por sí solo no
-// identifica a un nodo — hay que comprobar si ese byte coincide con
-// exactamente UN nodo conocido. Si coincide con varios (nada raro con
-// cientos de nodos en la malla), no podemos saber cuál retransmitió de
-// verdad y no cuenta como confirmado.
-function resolveRelayNode(relayNode) {
+// identifica a un nodo. Con una red nacional de miles de nodos, ese byte
+// (256 valores posibles) casi siempre coincide con varios nodos a la vez
+// — comparar contra TODOS los nodos de España es inútil (con ~2800 nodos,
+// pigeonhole hace que el 99.9% de los bytes ya estén repetidos).
+//
+// En vez de eso, acotamos por geografía: el nodo que retransmitió tuvo que
+// estar dentro de alcance LoRa directo de al menos uno de los gateways que
+// oyeron esta etapa (si no, ese gateway no lo habría podido oír). Filtramos
+// los candidatos con esa cota física — no un recuento fijo arbitrario,
+// porque el número de nodos "cerca" depende de la zona (una ciudad densa
+// tiene muchos vecinos en 50km, un valle aislado casi ninguno). Los nodos
+// con posición desconocida no se pueden descartar por distancia, así que
+// se quedan como candidatos.
+function resolveRelayNode(relayNode, stage) {
   if (!relayNode || !nodesById) return null;
   const lastByte = relayNode.slice(-2).toLowerCase();
-  let match = null;
+  const candidates = [];
   for (const id of nodesById.keys()) {
-    if (id.slice(-2).toLowerCase() === lastByte) {
-      if (match) return null; // más de un candidato: ambiguo
-      match = id;
-    }
+    if (id.slice(-2).toLowerCase() === lastByte) candidates.push(id);
   }
-  return match;
+  if (candidates.length === 0) return null;
+  if (candidates.length === 1) return candidates[0];
+
+  const anchors = (stage?.gateway_ids || [])
+    .map(nodeLatLng).filter(Boolean).map(([lat, lon]) => L.latLng(lat, lon));
+  if (!anchors.length) return null; // sin ancla geográfica no hay forma de desambiguar
+
+  const nearby = candidates.filter(id => {
+    const pos = nodeLatLng(id);
+    if (!pos) return true;
+    const p = L.latLng(pos[0], pos[1]);
+    return anchors.some(a => a.distanceTo(p) <= RELAY_RANGE_M);
+  });
+  return nearby.length === 1 ? nearby[0] : null;
 }
 
 // Un paquete solo se marca como "confirmado" si al menos una etapa trae un
@@ -1084,7 +1109,7 @@ function resolveRelayNode(relayNode) {
 // se trata como ruta estimada (igual que la heurística de gateways).
 function effectiveConfidence(path_confidence, stages) {
   if (path_confidence !== 'relay_node') return path_confidence;
-  const confirmed = (stages || []).some(s => resolveRelayNode(s.relay_node));
+  const confirmed = (stages || []).some(s => resolveRelayNode(s.relay_node, s));
   return confirmed ? 'relay_node' : 'gateway_heuristic';
 }
 
@@ -1136,7 +1161,7 @@ function estimateReachedNodes(data) {
     // relay_node solo aporta si resuelve a un único nodo real — si no, el
     // id crudo (tipo "!000000dd") es un id fantasma que no es ningún nodo
     // y solo infla el recuento.
-    const resolved = resolveRelayNode(stage.relay_node);
+    const resolved = resolveRelayNode(stage.relay_node, stage);
     if (resolved) ids.add(resolved);
   }
   return ids;
@@ -1224,7 +1249,7 @@ function renderPacketDetail(packetId) {
             </div>
             <div class="pkt-hop-gateways">
               ${(() => {
-                const resolved = resolveRelayNode(s.relay_node);
+                const resolved = resolveRelayNode(s.relay_node, s);
                 return s.gateway_ids.map(gw => `<span class="pkt-gw-chip${gw === resolved ? ' relay' : ''}">${gw === resolved ? '🔗 ' : ''}${nodeLabel(gw)}</span>`).join('')
                   + (resolved && !s.gateway_ids.includes(resolved) ? `<span class="pkt-gw-chip relay">🔗 ${nodeLabel(resolved)}</span>` : '');
               })()}

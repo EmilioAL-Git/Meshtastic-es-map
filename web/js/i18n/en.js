@@ -66,7 +66,7 @@ window.I18N.en = {
 
   hint: {
     close: 'Close',
-    novedades: '<strong>New</strong> — map links are now filterable. Click the legend or use the filters panel to toggle <strong>Direct neighbor</strong> and <strong>Traceroute</strong>.',
+    novedades: '<strong>New</strong> — <strong>Live</strong> tab: follow the network packets in real time.',
   },
 
   cookie: {

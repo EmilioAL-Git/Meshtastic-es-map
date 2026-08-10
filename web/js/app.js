@@ -125,9 +125,9 @@ async function loadAll() {
 // ─── Hint: banner novedades ───────────────────────────────────────────────────
 function positionEdgeHint() {
   const bubble = document.getElementById('hint-novedades');
-  const legend = document.querySelector('.legend');
-  if (!bubble || !legend || bubble.classList.contains('hidden')) return;
-  const r = legend.getBoundingClientRect();
+  const target = document.querySelector('.live-link');
+  if (!bubble || !target || bubble.classList.contains('hidden')) return;
+  const r = target.getBoundingClientRect();
   if (window.innerWidth <= 768) {
     bubble.classList.add('arrow-down');
     bubble.classList.remove('arrow-right');
@@ -148,7 +148,7 @@ function positionEdgeHint() {
 (function() {
   if (document.body.classList.contains('embed-mode')) return;
   try {
-    if (!localStorage.getItem('mesh_hint_novedades')) {
+    if (!localStorage.getItem('mesh_hint_live')) {
       document.getElementById('hint-novedades').classList.remove('hidden');
       requestAnimationFrame(positionEdgeHint);
     }
@@ -156,7 +156,7 @@ function positionEdgeHint() {
 })();
 
 function dismissEdgeHint() {
-  try { localStorage.setItem('mesh_hint_novedades', '1'); } catch {}
+  try { localStorage.setItem('mesh_hint_live', '1'); } catch {}
   document.getElementById('hint-novedades').classList.add('hidden');
 }
 

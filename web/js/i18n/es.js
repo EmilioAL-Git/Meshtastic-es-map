@@ -68,7 +68,7 @@ window.I18N.es = {
 
   hint: {
     close: 'Cerrar',
-    novedades: '<strong>Nuevo</strong> — los enlaces del mapa son filtrables. Pulsa en la leyenda o usa el panel de filtros para activar o desactivar <strong>Vecino directo</strong> y <strong>Traceroute</strong>.',
+    novedades: '<strong>Nuevo</strong> — pestaña <strong>En directo</strong>: sigue los paquetes de la red en tiempo real.',
   },
 
   cookie: {

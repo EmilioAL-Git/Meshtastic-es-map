@@ -1387,6 +1387,8 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 .live-log-row .lr-conf-relay { color: var(--accent); }
 .live-log-row .lr-conf-heuristic { color: var(--accent2); }
 .live-log-row .lr-conf-traceroute { color: #facc15; font-weight: 700; }
+.lr-meshview { margin-left: auto; color: #f97316; text-decoration: none; }
+.lr-meshview:hover { text-decoration: underline; }
 .live-log-row .lr-swatch {
   width: 7px;
   height: 7px;

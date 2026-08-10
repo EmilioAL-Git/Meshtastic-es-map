@@ -68,7 +68,7 @@ window.I18N.gl = {
 
   hint: {
     close: 'Pechar',
-    novedades: '<strong>Novo</strong> — as ligazóns do mapa pódense filtrar. Preme na lenda ou usa o panel de filtros para activar ou desactivar <strong>Veciño directo</strong> e <strong>Traceroute</strong>.',
+    novedades: '<strong>Novo</strong> — pestana <strong>En directo</strong>: segue os paquetes da rede en tempo real.',
   },
 
   cookie: {

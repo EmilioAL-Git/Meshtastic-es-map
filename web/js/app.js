@@ -128,21 +128,14 @@ function positionEdgeHint() {
   const target = document.querySelector('.live-link');
   if (!bubble || !target || bubble.classList.contains('hidden')) return;
   const r = target.getBoundingClientRect();
-  if (window.innerWidth <= 768) {
-    bubble.classList.add('arrow-down');
-    bubble.classList.remove('arrow-right');
-    bubble.style.left   = r.left + 'px';
-    bubble.style.bottom = (window.innerHeight - r.top + 10) + 'px';
-    bubble.style.right  = 'auto';
-    bubble.style.top    = 'auto';
-  } else {
-    bubble.classList.add('arrow-right');
-    bubble.classList.remove('arrow-down');
-    bubble.style.right  = (window.innerWidth - r.left + 10) + 'px';
-    bubble.style.top    = (r.top + r.height / 2 - 35) + 'px';
-    bubble.style.left   = 'auto';
-    bubble.style.bottom = 'auto';
-  }
+  bubble.classList.add('arrow-up');
+  bubble.classList.remove('arrow-down', 'arrow-right');
+  const left = Math.max(10, Math.min(r.right - 200, window.innerWidth - 200 - 10));
+  bubble.style.left   = left + 'px';
+  bubble.style.top    = (r.bottom + 10) + 'px';
+  bubble.style.right  = 'auto';
+  bubble.style.bottom = 'auto';
+  bubble.style.setProperty('--arrow-left', (r.left + r.width / 2 - left - 7) + 'px');
 }
 
 (function() {

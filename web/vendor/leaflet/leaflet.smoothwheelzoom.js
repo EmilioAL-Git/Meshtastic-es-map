@@ -1,28 +1,14 @@
 /* Smooth (continuous, no-step) mouse-wheel zoom for Leaflet 1.9.x.
- *
- * Cualquier intento de mantener sincronizado el estado REAL de Leaflet
- * (setView/setZoomAround, aunque sea con animate:true) en cada frame
- * mientras dura el gesto de scroll acaba disparando recargas de tiles
- * (a lo bruto o encadenadas) — con tiles raster eso siempre da parpadeo u
- * oscurecimiento, o si no, deja de ser continuo (pasos cortos).
- *
- * Así que mientras dura el gesto NO se toca el estado real del mapa en
- * absoluto: solo se aplica una vista previa por CSS transform (scale +
- * transform-origin en el punto del ratón) sobre los panes de Leaflet —
- * fluida, sigue al ratón, cero peticiones de red, cero parpadeo. Las líneas
- * y marcadores se ven "estirados" en vez de recalculados mientras se hace
- * zoom rápido — es el precio de que no haya parpadeo. Solo cuando el
- * usuario para de girar la rueda (tras el debounce) se hace la única
- * llamada real a Leaflet (setZoomAround) que deja el mapa nítido y
- * correcto.
+ * Reemplaza el handler nativo scrollWheelZoom: en vez de calcular UN salto
+ * de zoom tras un debounce (lo que provoca los "saltos" al desplazar rápido
+ * la rueda), interpola el zoom hacia un valor objetivo en cada frame con
+ * requestAnimationFrame, igual que el zoom de Google Maps.
  */
 L.Map.mergeOptions({
   scrollWheelZoom: true,
   smoothWheelZoom: true,
   smoothSensitivity: 1,
 });
-
-const SMOOTH_ZOOM_PANES = ['tilePane', 'overlayPane', 'markerPane', 'markersPane', 'livePane'];
 
 L.Map.SmoothWheelZoom = L.Handler.extend({
   addHooks() {
@@ -31,18 +17,6 @@ L.Map.SmoothWheelZoom = L.Handler.extend({
 
   removeHooks() {
     L.DomEvent.off(this._map._container, 'wheel', this._onWheelScroll, this);
-  },
-
-  _getPanes() {
-    const map = this._map;
-    return SMOOTH_ZOOM_PANES.map(name => map.getPane(name)).filter(Boolean);
-  },
-
-  _previewTransform(scale, origin) {
-    for (const pane of this._getPanes()) {
-      pane.style.transformOrigin = `${origin.x}px ${origin.y}px`;
-      pane.style.transform = scale === 1 ? '' : `scale(${scale})`;
-    }
   },
 
   _onWheelScroll(e) {
@@ -54,12 +28,15 @@ L.Map.SmoothWheelZoom = L.Handler.extend({
     const map = this._map;
     this._isWheeling = true;
     this._wheelMousePosition = map.mouseEventToContainerPoint(e);
+    this._centerPoint = map.getSize()._divideBy(2);
+    this._wheelStartLatLng = map.containerPointToLatLng(this._wheelMousePosition);
 
+    map._stop();
     if (map._panAnim) map._panAnim.stop();
 
-    this._committedZoom = map.getZoom();
-    this._previewZoom = map.getZoom();
     this._goalZoom = map.getZoom();
+    this._prevCenter = map.getCenter();
+    this._prevZoom = map.getZoom();
 
     this._zoomAnimationId = requestAnimationFrame(this._updateWheelZoom.bind(this));
   },
@@ -70,6 +47,7 @@ L.Map.SmoothWheelZoom = L.Handler.extend({
     this._goalZoom -= e.deltaY * 0.003 * map.options.smoothSensitivity;
     this._goalZoom = map._limitZoom(this._goalZoom);
     this._wheelMousePosition = map.mouseEventToContainerPoint(e);
+    this._wheelStartLatLng = map.containerPointToLatLng(this._wheelMousePosition);
 
     clearTimeout(this._timeoutId);
     this._timeoutId = setTimeout(this._onWheelEnd.bind(this), 200);
@@ -81,18 +59,29 @@ L.Map.SmoothWheelZoom = L.Handler.extend({
   _onWheelEnd() {
     this._isWheeling = false;
     cancelAnimationFrame(this._zoomAnimationId);
-    this._previewTransform(1, this._wheelMousePosition);
-    this._map.setZoomAround(this._wheelMousePosition, this._goalZoom, { animate: false });
+    this._map._moveEnd(true);
   },
 
   _updateWheelZoom() {
     const map = this._map;
 
-    this._previewZoom = map._limitZoom(this._previewZoom + (this._goalZoom - this._previewZoom) * 0.3);
+    if (!map.getCenter().equals(this._prevCenter) || map.getZoom() !== this._prevZoom) return;
 
-    const scale = map.getZoomScale(this._previewZoom, this._committedZoom);
-    const origin = this._wheelMousePosition.subtract(map._getMapPanePos());
-    this._previewTransform(scale, origin);
+    this._zoom = map.getZoom() + (this._goalZoom - map.getZoom()) * 0.3;
+    this._zoom = Math.floor(this._zoom * 100) / 100;
+
+    const delta = this._wheelMousePosition.subtract(this._centerPoint);
+    if (delta.x === 0 && delta.y === 0) return;
+
+    const center = map.unproject(
+      map.project(this._wheelStartLatLng, this._zoom).subtract(delta),
+      this._zoom
+    );
+
+    map._move(center, this._zoom);
+
+    this._prevCenter = map.getCenter();
+    this._prevZoom = map.getZoom();
 
     this._zoomAnimationId = requestAnimationFrame(this._updateWheelZoom.bind(this));
   },

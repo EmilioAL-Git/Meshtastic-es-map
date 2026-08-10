@@ -638,7 +638,7 @@ body.live-page .legend-dot { width: 8px; height: 8px; }
   font-family: var(--sans);
   line-height: 1.55;
   max-width: 200px;
-  z-index: 490;
+  z-index: 1010;
   box-shadow: 0 4px 20px rgba(0,0,0,.5);
 }
 
@@ -672,7 +672,7 @@ body.live-page .legend-dot { width: 8px; height: 8px; }
   border-left-color: var(--accent2);
 }
 
-/* Flecha apuntando hacia abajo (móvil: burbuja encima de la leyenda) */
+/* Flecha apuntando hacia abajo (burbuja encima del objetivo) */
 .hint-bubble.arrow-down::after {
   content: '';
   position: absolute;
@@ -681,6 +681,17 @@ body.live-page .legend-dot { width: 8px; height: 8px; }
   border: 7px solid transparent;
   border-bottom: none;
   border-top-color: var(--accent2);
+}
+
+/* Flecha apuntando hacia arriba (burbuja debajo del botón "En directo") */
+.hint-bubble.arrow-up::after {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: var(--arrow-left, 18px);
+  border: 7px solid transparent;
+  border-top: none;
+  border-bottom-color: var(--accent2);
 }
 
 .cookie-banner {

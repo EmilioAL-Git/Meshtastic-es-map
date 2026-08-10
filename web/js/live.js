@@ -1648,11 +1648,7 @@ function renderDetailMiniMap(packetId) {
     detailMap = L.map('packet-detail-map', {
       zoomControl: true,
       attributionControl: false,
-      zoomSnap: 0,
-      zoomDelta: 0.5,
       scrollWheelZoom: false,
-      smoothWheelZoom: true,
-      smoothSensitivity: 1.8,
     });
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       maxZoom: 19,

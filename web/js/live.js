@@ -2087,9 +2087,12 @@ function timelineTimeFromEvent(e) {
 function updateCursorLabel() {
   const el = document.getElementById('timeline-cursor-label');
   if (!el) return;
-  el.textContent = replayCursorTime != null
-    ? new Date(replayCursorTime * 1000).toLocaleTimeString('es-ES', { hour12: false })
-    : '';
+  if (replayCursorTime == null) { el.textContent = ''; return; }
+  const d = new Date(replayCursorTime * 1000);
+  const time = d.toLocaleTimeString('es-ES', { hour12: false });
+  el.textContent = timelineRangeS <= 43200
+    ? time // 1h/12h: solo hora
+    : d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' }) + ' ' + time;
 }
 
 function enterReplayView() {

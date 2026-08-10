@@ -11,64 +11,12 @@ function fwGte(firmware, major, minor, patch) {
 }
 
 // ─── Definiciones de problemas ────────────────────────────────────────────────
-const ISSUE_DEFS = {
-  range_test: {
-    desc: 'El módulo Range Test está activo y genera tráfico innecesario. Debe desactivarse cuando no se estén realizando pruebas de cobertura.',
-    fix:  'Módulos → Range Test → Desactivar',
-  },
-  position_fixed: {
-    desc: 'Según meshtastic.es, un nodo fijo debe emitir su posición 1 vez al día (86 400 s). La posición de un nodo fijo no cambia, no tiene sentido enviarla frecuentemente.',
-    fix:  'Config → Posición → Broadcast Interval → 86400',
-  },
-  position_mobile: {
-    desc: 'Según meshtastic.es, un nodo móvil no debería emitir su posición más de 48 veces al día (mínimo cada 30 min, 1 800 s).',
-    fix:  'Config → Posición → Broadcast Interval → 1800 (mínimo)',
-  },
-  position_unknown: {
-    desc: 'El nodo emite su posición con mucha frecuencia. Según meshtastic.es: nodos fijos 1/día (86 400 s), móviles máximo 48/día (1 800 s).',
-    fix:  'Config → Posición → Broadcast Interval → 86400 (fijo) o 1800 (móvil)',
-  },
-  nodeinfo: {
-    desc: 'Según meshtastic.es, el NodeInfo debe emitirse 1 vez al día (86 400 s). La información del nodo raramente cambia.',
-    fix:  'Config → Dispositivo → Node Info Broadcast Interval → 86400',
-  },
-  telemetry_device: {
-    desc: 'Según meshtastic.es, las métricas del dispositivo (batería, voltaje, uso del canal) deben enviarse cada 12 h (43 200 s), 2 veces al día.',
-    fix:  'Módulos → Telemetría del dispositivo → Intervalo → 43200',
-  },
-  telemetry_environment: {
-    desc: 'Las métricas del entorno (temperatura, presión...) se están enviando con más frecuencia de la necesaria. 4-6 veces al día es suficiente.',
-    fix:  'Módulos → Telemetría del entorno → Intervalo → aumentar',
-  },
-  telemetry_power: {
-    desc: 'Las métricas eléctricas se están enviando con mucha frecuencia. 4-6 veces al día es suficiente salvo monitorización activa.',
-    fix:  'Módulos → Telemetría eléctrica → Intervalo → aumentar',
-  },
-  routing: {
-    desc: 'Un alto número de paquetes de routing (ACKs de protocolo) puede indicar que el módulo Store & Forward está mal configurado, o tráfico de control excesivo.',
-    fix:  'Módulos → Store & Forward → desactivar si no es necesario',
-  },
-  position_flags: {
-    desc: 'Este nodo fijo está enviando campos GPS innecesarios en sus paquetes de posición. Para nodos fijos es recomendable desactivar todas los flags/marcas. SPEED y HEADING son exclusivos de nodos móviles; NVSS_SATS, SEQ_NO, TIMESTAMP y ALT_HAE añaden datos sin valor en un nodo estático.',
-    fix:  'Config → Posición → Position Flags → desactivar todos los flags',
-  },
-  traceroute_auto: {
-    desc: 'Este nodo está generando traceroutes de forma sistemática (posiblemente una herramienta de monitorización de red). Genera tráfico considerable en la red.',
-    fix:  'Configura la herramienta de monitorización (MeshSense, MeshMonitor...) para reducir la frecuencia de traceroutes o el número de nodos destino',
-  },
-  hop_limit_high: {
-    desc: 'El nodo tiene configurado un hop_limit superior al recomendado. Un hop_limit alto provoca que cada paquete se reemita en cascada muchas más veces de lo necesario, saturando el canal y perjudicando a toda la red. Si estás en un extremo de la malla y tienes problemas de cobertura, puedes probar con 5-6, pero usa siempre el mínimo que te permita comunicarte.',
-    fix:  'Config → LoRa → Hop Limit → 3 (recomendado). Si estás en el borde de la malla: prueba 5 o como máximo 6, nunca 7',
-  },
-  client_base_fw: {
-    desc: 'A partir del firmware 2.7.17, el rol CLIENT_BASE se comporta como ROUTER_LATE: el nodo espera antes de reemitir paquetes, lo que ralentiza la propagación de mensajes en la red. Se recomienda no usar este rol.',
-    fix:  'Config → Dispositivo → Rol → cambiar a CLIENT o CLIENT_MUTE si el nodo no necesita enrutar',
-  },
-  client_mute_mobile: {
-    desc: 'Este nodo ha sido detectado como móvil pero no usa el rol CLIENT_MUTE. Un nodo móvil que retransmite paquetes ajenos genera rutas inestables y tráfico redundante al cambiar de posición.',
-    fix:  'Config → Dispositivo → Rol → CLIENT_MUTE (el nodo sigue emitiendo su posición, pero deja de reenviar paquetes ajenos)',
-  },
-};
+// Las descripciones y soluciones viven en el diccionario i18n (issueDefs.<key>).
+// Estos helpers las leen con fallback vacío si la clave no existe.
+function issueDesc(key)       { return tOr('issueDefs.' + key + '.desc', ''); }
+function issueFix(key)        { return tOr('issueDefs.' + key + '.fix',  ''); }
+// Etiqueta corta del tipo de problema (fallback: la propia clave)
+function issueShortLabel(key) { return tOr('issueLabels.' + key, key); }
 
 // ─── Tab de estadísticas ──────────────────────────────────────────────────────
 let _malCurrentTab = 'list';
@@ -100,8 +48,8 @@ function _showChartTip(evt, el) {
   const d = el.dataset;
   tip.innerHTML = `
     <div class="mcs-tip-date">${d.date}</div>
-    <div class="mcs-tip-main">${d.wi} <span>con problemas</span></div>
-    ${+d.ta ? `<div class="mcs-tip-analyzed">${d.ta} analizados</div>` : ''}`;
+    <div class="mcs-tip-main">${d.wi} <span>${escHtml(t('chartTip.withProblems'))}</span></div>
+    ${+d.ta ? `<div class="mcs-tip-analyzed">${escHtml(t('chartTip.analyzed', { n: d.ta }))}</div>` : ''}`;
   const x = evt.clientX, y = evt.clientY;
   tip.style.left = (x + 16) + 'px';
   tip.style.top  = (y - 10) + 'px';
@@ -213,7 +161,7 @@ function _doRenderStats(history) {
   const el      = document.getElementById('malconfig-content');
 
   if (!all.length) {
-    el.innerHTML = '<div class="malconfig-empty">Sin datos disponibles</div>';
+    el.innerHTML = `<div class="malconfig-empty">${escHtml(t('malconfig.noData'))}</div>`;
     return;
   }
 
@@ -232,31 +180,29 @@ function _doRenderStats(history) {
     (n.issues || []).forEach(i => { sevCounts[i.severity] = (sevCounts[i.severity] || 0) + 1; });
   });
 
-  // Categorías agrupadas
+  // Categorías agrupadas (claves estables; la etiqueta visible sale del i18n)
   const GROUPS = {
-    'Posición':   ['position_fixed', 'position_mobile', 'position_unknown', 'position_flags'],
-    'Telemetría': ['telemetry_device', 'telemetry_environment', 'telemetry_power'],
-    'NodeInfo':   ['nodeinfo'],
-    'Red/Routing':['routing', 'traceroute_auto', 'hop_limit_high'],
-    'Otros':      ['range_test', 'client_base_fw', 'client_mute_mobile'],
+    position:  ['position_fixed', 'position_mobile', 'position_unknown', 'position_flags'],
+    telemetry: ['telemetry_device', 'telemetry_environment', 'telemetry_power'],
+    nodeinfo:  ['nodeinfo'],
+    network:   ['routing', 'traceroute_auto', 'hop_limit_high'],
+    others:    ['range_test', 'client_base_fw', 'client_mute_mobile'],
   };
   const GROUP_COLORS = {
-    'Posición':    '#7dd3fc',
-    'Telemetría':  '#f97316',
-    'NodeInfo':    '#a78bfa',
-    'Red/Routing': '#ef4444',
-    'Otros':       '#6b7280',
+    position:  '#7dd3fc',
+    telemetry: '#f97316',
+    nodeinfo:  '#a78bfa',
+    network:   '#ef4444',
+    others:    '#6b7280',
   };
   const groupSlices = Object.entries(GROUPS).map(([group, keys]) => ({
-    label: group, color: GROUP_COLORS[group],
+    label: t('stats.groups.' + group), color: GROUP_COLORS[group],
     value: keys.reduce((s, k) => s + (issueCounts[k] || 0), 0),
   })).filter(s => s.value > 0);
 
   // CCAA
   const ccaaCounts = {};
   withIss.forEach(n => { if (n.ccaa) ccaaCounts[n.ccaa] = (ccaaCounts[n.ccaa] || 0) + 1; });
-
-  const ISSUE_LABELS = ISSUE_SHORT_LABELS;
 
   const sortedIssues  = Object.entries(issueCounts).sort(([, a], [, b]) => b - a);
   const maxIssueCount = (sortedIssues[0] || [, 1])[1];
@@ -266,22 +212,22 @@ function _doRenderStats(history) {
   const summaryHtml = `
     <div class="mcs-summary">
       <div class="mcs-card">
-        <div class="mcs-card-val">${networkTotal.toLocaleString('es-ES')}</div>
-        <div class="mcs-card-lbl">Nodos en la red</div>
+        <div class="mcs-card-val">${networkTotal.toLocaleString(getLocale())}</div>
+        <div class="mcs-card-lbl">${escHtml(t('stats.networkNodes'))}</div>
       </div>
       <div class="mcs-card mcs-card-warn">
         <div class="mcs-card-val">${withIss.length}</div>
-        <div class="mcs-card-lbl">Con problemas detectados</div>
+        <div class="mcs-card-lbl">${escHtml(t('stats.withProblems'))}</div>
       </div>
     </div>`;
 
   // ── Issue type bar chart ──────────────────────────────────────────────────
   const issuesBarHtml = `
-    <div class="mcs-section-title">Tipos de problema <span class="mcs-subtitle">· nodos afectados</span></div>
+    <div class="mcs-section-title">${escHtml(t('stats.issueTypesTitle'))} <span class="mcs-subtitle">${escHtml(t('stats.issueTypesSub'))}</span></div>
     <div class="mcs-bar-list">
       ${sortedIssues.map(([key, count]) => `
         <div class="mcs-bar-row">
-          <div class="mcs-bar-lbl" title="${escHtml(ISSUE_LABELS[key] || key)}">${escHtml(ISSUE_LABELS[key] || key)}</div>
+          <div class="mcs-bar-lbl" title="${escHtml(issueShortLabel(key))}">${escHtml(issueShortLabel(key))}</div>
           <div class="mcs-bar-track"><div class="mcs-bar-fill" style="width:${Math.round(count / maxIssueCount * 100)}%"></div></div>
           <div class="mcs-bar-num">${count}</div>
         </div>`).join('')}
@@ -289,15 +235,15 @@ function _doRenderStats(history) {
 
   // ── Severity pie ──────────────────────────────────────────────────────────
   const sevSlices = [
-    { label: 'Crítico', value: sevCounts.critical, color: '#ef4444' },
-    { label: 'Alto',    value: sevCounts.high,     color: '#f97316' },
-    { label: 'Medio',   value: sevCounts.medium,   color: '#eab308' },
+    { label: t('stats.critical'), value: sevCounts.critical, color: '#ef4444' },
+    { label: t('stats.high'),     value: sevCounts.high,     color: '#f97316' },
+    { label: t('stats.medium'),   value: sevCounts.medium,   color: '#eab308' },
   ].filter(s => s.value > 0);
   const totalIssues = sevSlices.reduce((s, sl) => s + sl.value, 0);
 
   const sevPieHtml = `
     <div class="mcs-pie-section">
-      <div class="mcs-section-title">Severidad</div>
+      <div class="mcs-section-title">${escHtml(t('stats.severityTitle'))}</div>
       <div class="mcs-pie-row">
         ${_svgPie(sevSlices)}
         <div class="mcs-pie-legend">
@@ -305,11 +251,11 @@ function _doRenderStats(history) {
             const pct = Math.round(s.value / totalIssues * 100);
             return `<div class="mcs-pie-item">
               <span class="mcs-pie-dot" style="background:${s.color}"></span>
-              <span class="mcs-pie-label">${s.label}</span>
+              <span class="mcs-pie-label">${escHtml(s.label)}</span>
               <span class="mcs-pie-count">${s.value} <span class="mcs-pie-pct">(${pct}%)</span></span>
             </div>`;
           }).join('')}
-          <div class="mcs-pie-total">${totalIssues} issues en total</div>
+          <div class="mcs-pie-total">${escHtml(t('stats.issuesTotal', { n: totalIssues }))}</div>
         </div>
       </div>
     </div>`;
@@ -318,7 +264,7 @@ function _doRenderStats(history) {
   const catTotal   = groupSlices.reduce((s, sl) => s + sl.value, 0);
   const catPieHtml = `
     <div class="mcs-pie-section">
-      <div class="mcs-section-title">Categoría de problema</div>
+      <div class="mcs-section-title">${escHtml(t('stats.categoryTitle'))}</div>
       <div class="mcs-pie-row">
         ${_svgPie(groupSlices)}
         <div class="mcs-pie-legend">
@@ -326,7 +272,7 @@ function _doRenderStats(history) {
             const pct = Math.round(s.value / catTotal * 100);
             return `<div class="mcs-pie-item">
               <span class="mcs-pie-dot" style="background:${s.color}"></span>
-              <span class="mcs-pie-label">${s.label}</span>
+              <span class="mcs-pie-label">${escHtml(s.label)}</span>
               <span class="mcs-pie-count">${s.value} <span class="mcs-pie-pct">(${pct}%)</span></span>
             </div>`;
           }).join('')}
@@ -339,7 +285,7 @@ function _doRenderStats(history) {
   const maxCCAACount = (sortedCCAA[0] || [, 1])[1];
   const ccaaHtml = sortedCCAA.length ? `
     <div>
-      <div class="mcs-section-title">Por comunidad autónoma <span class="mcs-subtitle">· nodos con problemas</span></div>
+      <div class="mcs-section-title">${escHtml(t('stats.byCCAA'))} <span class="mcs-subtitle">${escHtml(t('stats.byCCAASub'))}</span></div>
       <div class="mcs-bar-list mcs-ccaa-list">
         ${sortedCCAA.map(([ccaa, count]) => `
           <div class="mcs-bar-row">
@@ -352,10 +298,10 @@ function _doRenderStats(history) {
 
   const chartHtml = `
     <div>
-      <div class="mcs-section-title">Evolución últimos 30 días <span class="mcs-subtitle">· nodos con problemas detectados</span></div>
+      <div class="mcs-section-title">${escHtml(t('stats.evolution'))} <span class="mcs-subtitle">${escHtml(t('stats.evolutionSub'))}</span></div>
       ${history.length >= 2
         ? _svgLineChart(history)
-        : `<div class="mcs-chart-empty">${history.length === 1 ? 'Solo hay datos de 1 día — el gráfico aparecerá a partir del segundo día.' : 'Sin historial disponible aún — se acumula con cada ejecución diaria.'}</div>`}
+        : `<div class="mcs-chart-empty">${escHtml(history.length === 1 ? t('stats.chartEmpty1Day') : t('stats.chartEmptyNoHistory'))}</div>`}
     </div>`;
 
   el.innerHTML = `
@@ -378,10 +324,16 @@ function shortIssueLabel(label) {
   return label.split(':')[0];
 }
 
+// Etiqueta de un issue para chips: traducible por clave, con la etiqueta que
+// envía el collector como fallback si la clave no está en el diccionario.
+function issueChipLabel(i) {
+  return tOr('issueLabels.' + i.key, shortIssueLabel(i.label));
+}
+
 function renderIssueChips(issues) {
   if (!issues.length) return '<span class="issue-none">—</span>';
   return issues.map(i =>
-    `<span class="issue-chip ${i.severity}">${escHtml(shortIssueLabel(i.label))}</span>`
+    `<span class="issue-chip ${i.severity}">${escHtml(issueChipLabel(i))}</span>`
   ).join('');
 }
 
@@ -413,9 +365,11 @@ function openNodeReport(nodeId) {
     const checks  = mob.positions_checked;
     mobHtml = `<div class="nr-mobility nr-mobility-${isFixed ? 'fixed' : 'mobile'}">
       <span class="nr-mob-icon">${isFixed ? '📍' : '🚶'}</span>
-      <span>Detectado como <strong>${isFixed ? 'nodo fijo' : 'nodo móvil'}</strong>
-        — desplazamiento máximo ${dist >= 1000 ? (dist/1000).toFixed(1)+'km' : dist+'m'}
-        (${checks} posiciones analizadas)</span>
+      <span>${t('report.mobilityHtml', {
+        status: escHtml(isFixed ? t('report.nodeFixed') : t('report.nodeMobile')),
+        dist: dist >= 1000 ? (dist/1000).toFixed(1)+'km' : dist+'m',
+        checks,
+      })}</span>
     </div>`;
   }
 
@@ -425,28 +379,26 @@ function openNodeReport(nodeId) {
   if (hopStart !== null && !hopFlagged && hopStart < 7) {
     hopHtml = `<div class="nr-hop nr-hop-ok">
       <span class="nr-hop-icon">🔁</span>
-      <span>Hop Limit configurado: <strong>${hopStart}</strong> — dentro del rango recomendado</span>
+      <span>${t('report.hopOkHtml', { hop: hopStart })}</span>
     </div>`;
   }
 
   // Problemas detectados
   const issuesHtml = issues.length
     ? issues.map(i => {
-        const def = ISSUE_DEFS[i.key] || {};
+        const desc = issueDesc(i.key);
+        const fix  = issueFix(i.key);
         return `<div class="nr-issue nr-issue-${i.severity}">
           <div class="nr-issue-title">${severityLabel[i.severity] || '●'} ${escHtml(i.label)}</div>
-          <div class="nr-issue-desc">${escHtml(def.desc || '')}</div>
-          ${def.fix ? `<div class="nr-issue-fix"><strong>Solución:</strong> ${escHtml(def.fix)}</div>` : ''}
+          <div class="nr-issue-desc">${escHtml(desc)}</div>
+          ${fix ? `<div class="nr-issue-fix"><strong>${escHtml(t('report.solution'))}</strong> ${escHtml(fix)}</div>` : ''}
         </div>`;
       }).join('')
-    : '<div class="nr-no-issues">No se han detectado problemas específicos con los datos disponibles.</div>';
+    : `<div class="nr-no-issues">${escHtml(t('report.noIssues'))}</div>`;
 
-  // Desglose de paquetes
-  const PACKET_LABELS = {
-    position: 'Posición', nodeinfo: 'NodeInfo', telemetry: 'Telemetría',
-    routing: 'Routing', traceroute: 'Traceroute', text: 'Texto',
-    range_test: 'Range Test', neighborinfo: 'Neighbor Info',
-  };
+  // Desglose de paquetes (etiquetas desde el i18n; claves estables)
+  const PACKET_KEYS = ['position', 'nodeinfo', 'telemetry', 'routing', 'traceroute', 'text', 'range_test', 'neighborinfo'];
+  const PACKET_LABELS = Object.fromEntries(PACKET_KEYS.map(k => [k, t('packetLabels.' + k)]));
 
   const breakdownHtml = Object.entries(PACKET_LABELS)
     .filter(([k]) => p[k] != null)
@@ -459,16 +411,16 @@ function openNodeReport(nodeId) {
       let subHtml = '';
       if (k === 'telemetry' && (tel.device || tel.environment || tel.power)) {
         subHtml = `<div class="nr-bar-sub">`
-          + (tel.device      ? `<span>Dispositivo: ${tel.device}</span>` : '')
-          + (tel.environment ? `<span>Entorno: ${tel.environment}</span>` : '')
-          + (tel.power       ? `<span>Eléctrica: ${tel.power}</span>` : '')
+          + (tel.device      ? `<span>${escHtml(t('report.subDevice', { n: tel.device }))}</span>` : '')
+          + (tel.environment ? `<span>${escHtml(t('report.subEnvironment', { n: tel.environment }))}</span>` : '')
+          + (tel.power       ? `<span>${escHtml(t('report.subPower', { n: tel.power }))}</span>` : '')
           + `</div>`;
       }
       if (k === 'traceroute' && tr) {
-        subHtml = `<div class="nr-bar-sub"><span>${tr.is_automatic ? '⚡ Automático' : 'Manual'} · cada ${tr.avg_interval_min}min</span></div>`;
+        subHtml = `<div class="nr-bar-sub"><span>${escHtml((tr.is_automatic ? t('report.auto') : t('report.manual')) + ' · ' + t('report.everyMin', { n: tr.avg_interval_min }))}</span></div>`;
       }
       if (k === 'nodeinfo' && ni) {
-        subHtml = `<div class="nr-bar-sub"><span>${ni.is_automatic ? '⚡ Automático' : 'Manual/petición'} · cada ${ni.avg_interval_min}min</span></div>`;
+        subHtml = `<div class="nr-bar-sub"><span>${escHtml((ni.is_automatic ? t('report.auto') : t('report.manualRequest')) + ' · ' + t('report.everyMin', { n: ni.avg_interval_min }))}</span></div>`;
       }
       return `<div class="nr-bar-row ${hasIssue ? 'nr-bar-flagged' : ''}">
         <div class="nr-bar-label">${escHtml(label)}</div>
@@ -476,23 +428,23 @@ function openNodeReport(nodeId) {
           <div class="nr-bar-track"><div class="nr-bar-fill" style="width:${Math.min(pct, 100)}%"></div></div>
           ${subHtml}
         </div>
-        <div class="nr-bar-num">${count.toLocaleString('es-ES')} <span class="nr-bar-pct">(${pct}%)</span></div>
+        <div class="nr-bar-num">${count.toLocaleString(getLocale())} <span class="nr-bar-pct">(${pct}%)</span></div>
       </div>`;
     }).join('');
 
   document.getElementById('node-report-body').innerHTML = `
     <div class="nr-header">
       <div class="nr-node-name">${name}</div>
-      <div class="nr-node-meta">${escHtml(hex)} · ${escHtml(malData.channel)} · ${total.toLocaleString('es-ES')} paquetes/día</div>
+      <div class="nr-node-meta">${escHtml(hex)} · ${escHtml(malData.channel)} · ${total.toLocaleString(getLocale())} ${escHtml(t('report.packetsPerDay'))}</div>
     </div>
     ${mobHtml}
     ${hopHtml}
-    <div class="nr-section-title">Problemas detectados</div>
+    <div class="nr-section-title">${escHtml(t('report.problemsTitle'))}</div>
     ${issuesHtml}
-    <div class="nr-section-title">Desglose de paquetes (últimas 24h)</div>
+    <div class="nr-section-title">${escHtml(t('report.breakdownTitle'))}</div>
     <div class="nr-breakdown">${breakdownHtml}</div>
     <div class="nr-meshview">
-      <a href="https://meshview.meshtastic.es/node/${malData.node_id}" target="_blank" rel="noopener">Ver actividad en meshview →</a>
+      <a href="https://meshview.meshtastic.es/node/${malData.node_id}" target="_blank" rel="noopener">${escHtml(t('report.meshviewLink'))}</a>
     </div>`;
 
   const fromList = document.getElementById('malconfig-modal').classList.contains('open');
@@ -514,23 +466,8 @@ function closeNodeReport() {
   history.replaceState(null, '', url);
 }
 
-// ─── Etiquetas de tipos de problema (compartidas) ────────────────────────────
-const ISSUE_SHORT_LABELS = {
-  range_test:            'Range Test activo',
-  position_fixed:        'Posición / nodo fijo',
-  position_mobile:       'Posición / nodo móvil',
-  position_unknown:      'Posición frecuente',
-  nodeinfo:              'NodeInfo frecuente',
-  telemetry_device:      'Telemetría dispositivo',
-  telemetry_environment: 'Telemetría entorno',
-  telemetry_power:       'Telemetría eléctrica',
-  routing:               'Routing excesivo',
-  traceroute_auto:       'Traceroute sistemático',
-  position_flags:        'Flags GPS (fijo)',
-  hop_limit_high:        'Hop limit excesivo',
-  client_base_fw:        'CLIENT_BASE ≥ 2.7.17',
-  client_mute_mobile:    'Móvil sin CLIENT_MUTE',
-};
+// Las etiquetas cortas de tipo de problema viven en el i18n (issueLabels.<key>);
+// se leen con issueShortLabel(key), definido más arriba.
 
 // ─── Modal: Nodos mal configurados ────────────────────────────────────────────
 let _malChannelFilter = 'Todos';
@@ -549,12 +486,12 @@ function _filteredMalNodes() {
 function _malUpdatedLabel() {
   if (!malUpdated) return '';
   const diffMin = Math.round((Date.now() / 1000 - malUpdated) / 60);
-  const time = new Date(malUpdated * 1000).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-  if (diffMin < 1)  return 'Actualizado hace un momento';
-  if (diffMin < 60) return `Actualizado hace ${diffMin} min`;
+  const time = new Date(malUpdated * 1000).toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' });
+  if (diffMin < 1)  return t('malconfig.updated.justNow');
+  if (diffMin < 60) return t('malconfig.updated.agoMin', { n: diffMin });
   const diffH = Math.round(diffMin / 60);
-  if (diffH < 24)   return `Actualizado hace ${diffH}h (${time})`;
-  return `Actualizado a las ${time}`;
+  if (diffH < 24)   return t('malconfig.updated.agoHour', { h: diffH, time });
+  return t('malconfig.updated.atTime', { time });
 }
 
 function openMalConfigModal(preserveFilters) {
@@ -591,20 +528,20 @@ function renderMalConfigModal(preserveFilters) {
   const issueKeys = Object.entries(issueCounts).sort(([,a],[,b]) => b - a).map(([k]) => k);
 
   const channelHtml = `<select class="malconfig-filter-select" onchange="switchChannelFilter(this.value)">
-    ${channels.map(ch => `<option value="${escHtml(ch)}" ${ch === _malChannelFilter ? 'selected' : ''}>Preset: ${escHtml(ch)}</option>`).join('')}
+    ${channels.map(ch => `<option value="${escHtml(ch)}" ${ch === _malChannelFilter ? 'selected' : ''}>${escHtml(ch === 'Todos' ? t('malconfig.presetAll') : t('malconfig.presetPrefix', { ch }))}</option>`).join('')}
   </select>`;
 
   const ccaaHtml = ccaas.length
     ? `<select class="malconfig-filter-select" onchange="switchCCAAFilter(this.value)">
-        <option value="" ${_malCCAAFilter === '' ? 'selected' : ''}>CCAA: Todas</option>
+        <option value="" ${_malCCAAFilter === '' ? 'selected' : ''}>${escHtml(t('malconfig.ccaaAll'))}</option>
         ${ccaas.map(c => `<option value="${escHtml(c)}" ${c === _malCCAAFilter ? 'selected' : ''}>${escHtml(c)}</option>`).join('')}
        </select>`
     : '';
 
   const issueHtml = issueKeys.length
     ? `<select class="malconfig-filter-select" onchange="switchIssueFilter(this.value)">
-        <option value="" ${_malIssueFilter === '' ? 'selected' : ''}>Problema: Todos</option>
-        ${issueKeys.map(k => `<option value="${k}" ${k === _malIssueFilter ? 'selected' : ''}>${escHtml(ISSUE_SHORT_LABELS[k] || k)} (${issueCounts[k]})</option>`).join('')}
+        <option value="" ${_malIssueFilter === '' ? 'selected' : ''}>${escHtml(t('malconfig.issueAll'))}</option>
+        ${issueKeys.map(k => `<option value="${k}" ${k === _malIssueFilter ? 'selected' : ''}>${escHtml(issueShortLabel(k))} (${issueCounts[k]})</option>`).join('')}
        </select>`
     : '';
 
@@ -638,7 +575,7 @@ function renderMalConfigTable(nodes) {
   const el    = document.getElementById('malconfig-content');
 
   if (!nodes.length) {
-    el.innerHTML = '<div class="malconfig-empty">Sin datos disponibles</div>';
+    el.innerHTML = `<div class="malconfig-empty">${escHtml(t('malconfig.noData'))}</div>`;
     return;
   }
 
@@ -646,11 +583,11 @@ function renderMalConfigTable(nodes) {
     <table class="malconfig-table">
       <thead>
         <tr>
-          <th>#</th>
-          <th>Nombre</th>
-          <th>Preset</th>
-          <th>Paquetes</th>
-          <th>Problemas detectados</th>
+          <th>${escHtml(t('malconfig.table.rank'))}</th>
+          <th>${escHtml(t('malconfig.table.name'))}</th>
+          <th>${escHtml(t('malconfig.table.preset'))}</th>
+          <th>${escHtml(t('malconfig.table.packets'))}</th>
+          <th>${escHtml(t('malconfig.table.problems'))}</th>
           <th></th>
         </tr>
       </thead>
@@ -660,7 +597,7 @@ function renderMalConfigTable(nodes) {
           const issues = detectIssues(n);
           const mob    = n.mobility;
           const mobChip = mob != null
-            ? `<span class="mob-chip ${mob.is_fixed ? 'mob-fixed' : 'mob-mobile'}">${mob.is_fixed ? '📍 Fijo' : '🚶 Móvil'}</span>`
+            ? `<span class="mob-chip ${mob.is_fixed ? 'mob-fixed' : 'mob-mobile'}">${escHtml(mob.is_fixed ? t('malconfig.mobFixed') : t('malconfig.mobMobile'))}</span>`
             : '';
           return `<tr class="mc-row" onclick="openNodeReport(${n.node_id})">
             <td class="mc-rank">${i + 1}</td>
@@ -669,9 +606,9 @@ function renderMalConfigTable(nodes) {
               <div class="mc-id">${escHtml(hex)}</div>
             </td>
             <td><span class="mc-preset">${escHtml(n.channel)}</span></td>
-            <td class="mc-num">${n.sent.toLocaleString('es-ES')}</td>
+            <td class="mc-num">${n.sent.toLocaleString(getLocale())}</td>
             <td class="mc-issues">${renderIssueChips(issues)}</td>
-            <td class="mc-action"><button class="mc-link" onclick="event.stopPropagation(); openNodeReport(${n.node_id})">Ver →</button></td>
+            <td class="mc-action"><button class="mc-link" onclick="event.stopPropagation(); openNodeReport(${n.node_id})">${escHtml(t('malconfig.viewLink'))}</button></td>
           </tr>`;
         }).join('')}
       </tbody>

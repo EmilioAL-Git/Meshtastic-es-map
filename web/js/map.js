@@ -17,15 +17,15 @@ function initMap() {
     onAdd() {
       const c = L.DomUtil.create('div', 'map-zoom-ctrl');
       c.innerHTML = `
-        <button class="map-zoom-btn" id="zoom-in"  title="Acercar">+</button>
-        <button class="map-zoom-btn" id="zoom-out" title="Alejar">−</button>
-        <button class="map-zoom-btn" id="zoom-locate" title="Mi ubicación">◎</button>`;
+        <button class="map-zoom-btn" id="zoom-in"  title="${escHtml(t('zoom.in'))}">+</button>
+        <button class="map-zoom-btn" id="zoom-out" title="${escHtml(t('zoom.out'))}">−</button>
+        <button class="map-zoom-btn" id="zoom-locate" title="${escHtml(t('zoom.locate'))}">◎</button>`;
       L.DomEvent.disableClickPropagation(c);
       c.querySelector('#zoom-in').addEventListener('click', () => map.zoomIn());
       c.querySelector('#zoom-out').addEventListener('click', () => map.zoomOut());
       c.querySelector('#zoom-locate').addEventListener('click', () => {
         map.locate({ setView: true, maxZoom: 14 });
-        map.once('locationerror', () => showToast('No se pudo obtener tu ubicación'));
+        map.once('locationerror', () => showToast(t('map.locationError')));
       });
       return c;
     }
@@ -374,17 +374,17 @@ function popupHtml(node) {
     <div style="font-family:'Space Mono',monospace">
       <div style="font-weight:700;font-size:13px;margin-bottom:6px;color:#00e5a0">${escHtml(name)}</div>
       <div style="font-size:11px;color:#64748b;margin-bottom:8px">${escHtml(node.node_id)}</div>
-      ${node.is_mqtt_gateway ? '<div style="background:rgba(245,158,11,.15);color:#f59e0b;font-size:11px;padding:2px 6px;border-radius:4px;margin-bottom:6px;display:inline-block">⚡ GATEWAY MQTT</div><br>' : ''}
+      ${node.is_mqtt_gateway ? `<div style="background:rgba(245,158,11,.15);color:#f59e0b;font-size:11px;padding:2px 6px;border-radius:4px;margin-bottom:6px;display:inline-block">${escHtml(t('popup.gatewayMqtt'))}</div><br>` : ''}
       ${isRouter(node) && !node.is_mqtt_gateway ? `<div style="background:rgba(251,146,60,.15);color:#fb923c;font-size:11px;padding:2px 6px;border-radius:4px;margin-bottom:6px;display:inline-block">⇆ ${escHtml(node.role)}</div><br>` : ''}
       <table style="font-size:11px;width:100%;border-collapse:collapse">
-        ${node.hardware      ? row('Hardware', node.hardware) : ''}
-        ${node.role          ? row('Rol', node.role) : ''}
-        ${node.battery_level != null ? row('Batería', node.battery_level + '%') : ''}
-        ${node.snr      != null ? row('SNR', node.snr + ' dB') : ''}
-        ${node.hops_away != null ? row('Saltos', node.hops_away) : ''}
-        ${node.firmware      ? row('Firmware', node.firmware) : ''}
-        ${row('Visto', 'hace ' + ago)}
-        ${node.latitude != null ? row('Coords', node.latitude.toFixed(4) + ', ' + node.longitude.toFixed(4)) : ''}
+        ${node.hardware      ? row(t('popup.hardware'), node.hardware) : ''}
+        ${node.role          ? row(t('popup.role'), node.role) : ''}
+        ${node.battery_level != null ? row(t('popup.battery'), node.battery_level + '%') : ''}
+        ${node.snr      != null ? row(t('popup.snr'), node.snr + ' dB') : ''}
+        ${node.hops_away != null ? row(t('popup.hops'), node.hops_away) : ''}
+        ${node.firmware      ? row(t('popup.firmware'), node.firmware) : ''}
+        ${row(t('popup.seen'), t('popup.seenValue', { ago }))}
+        ${node.latitude != null ? row(t('popup.coords'), node.latitude.toFixed(4) + ', ' + node.longitude.toFixed(4)) : ''}
       </table>
     </div>
   `;

@@ -26,7 +26,7 @@
 <!-- Loading -->
 <div id="loading">
   <div class="loader-ring"></div>
-  <div class="loader-text">CARGANDO RED MESHTASTIC…</div>
+  <div class="loader-text" data-i18n="loading.text">CARGANDO RED MESHTASTIC…</div>
 </div>
 
 <!-- Header -->
@@ -43,42 +43,49 @@
       <line x1="14" y1="14" x2="6"  y2="22" stroke="#00e5a0" stroke-width="1" opacity=".3"/>
       <line x1="14" y1="14" x2="22" y2="22" stroke="#00e5a0" stroke-width="1" opacity=".3"/>
     </svg>
-    <span>MESHTASTIC ESPAÑA <em>/ Mapa de nodos</em></span>
+    <span id="brand-title" data-i18n-html="header.brand">MESHTASTIC ESPAÑA <em>/ Mapa de nodos</em></span>
   </div>
 
   <div class="stats-bar">
     <div class="stat">
       <div class="stat-val" id="hdr-nodes">—</div>
-      <div class="stat-lbl">Nodos</div>
+      <div class="stat-lbl" data-i18n="header.nodes">Nodos</div>
     </div>
     <div class="sep"></div>
     <div class="stat">
       <div class="stat-val" id="hdr-active">—</div>
-      <div class="stat-lbl">Activos 1h</div>
+      <div class="stat-lbl" data-i18n="header.active1h">Activos 1h</div>
     </div>
     <div class="sep"></div>
     <div class="stat">
       <div class="stat-val" id="hdr-gw">—</div>
-      <div class="stat-lbl">Gateways</div>
+      <div class="stat-lbl" data-i18n="header.gateways">Gateways</div>
     </div>
     <div class="sep"></div>
     <div class="stat">
       <div class="stat-val" id="hdr-edges">—</div>
-      <div class="stat-lbl">Conexiones</div>
+      <div class="stat-lbl" data-i18n="header.connections">Conexiones</div>
     </div>
     <div class="sep"></div>
     <span class="last-update" id="last-update">—</span>
-    <button class="noopt-btn" onclick="openMalConfigModal()" title="Ver nodos no optimizados">
+    <button class="noopt-btn" onclick="openMalConfigModal()" data-i18n-title="header.notOptimizedTitle" title="Ver nodos no optimizados">
       <svg width="13" height="12" viewBox="0 0 22 20" aria-hidden="true"><polygon points="11,1 21,19 1,19" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round" opacity=".9"/><text x="11" y="15.5" text-anchor="middle" font-size="9" font-weight="bold" font-family="monospace" fill="#1e293b">!</text></svg>
-      <span class="noopt-label" id="noopt-label">No optimizados</span>
+      <span class="noopt-label" id="noopt-label" data-i18n="header.notOptimized">No optimizados</span>
     </button>
     <div class="search-wrap">
       <svg class="search-icon" viewBox="0 0 16 16" fill="none">
         <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/>
         <line x1="10" y1="10" x2="14" y2="14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
       </svg>
-      <input type="text" id="search-input" class="search-input" placeholder="Buscar nodo…" autocomplete="off" oninput="onSearchInput()" onfocus="onSearchInput()" onkeydown="onSearchKey(event)" onblur="setTimeout(()=>setMapControlsVisible(true),200)">
+      <input type="text" id="search-input" class="search-input" placeholder="Buscar nodo…" data-i18n-placeholder="header.searchPlaceholder" autocomplete="off" oninput="onSearchInput()" onfocus="onSearchInput()" onkeydown="onSearchKey(event)" onblur="setTimeout(()=>setMapControlsVisible(true),200)">
       <div class="search-dropdown" id="search-dropdown"></div>
+    </div>
+
+    <div class="lang-switch" id="lang-switch">
+      <button class="lang-btn" id="lang-btn" type="button" data-i18n-title="langSelector.title" title="Idioma / Language" aria-label="Idioma" aria-haspopup="true" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg>
+      </button>
+      <div class="lang-menu" id="lang-menu" role="menu"></div>
     </div>
 
   </div>
@@ -88,7 +95,7 @@
 <div class="main">
   <div id="map">
     <!-- Botón filtros (móvil) — dentro del mapa para posicionarse bajo el header -->
-    <button class="filter-toggle-btn" id="filter-toggle-btn" onclick="toggleFilterPanel()" title="Filtros">
+    <button class="filter-toggle-btn" id="filter-toggle-btn" onclick="toggleFilterPanel()" data-i18n-title="filters.toggleTitle" title="Filtros">
       <svg viewBox="0 0 16 16" fill="none">
         <line x1="2" y1="4" x2="14" y2="4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         <line x1="4" y1="8" x2="12" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -101,32 +108,32 @@
 <!-- Filtros -->
 <div class="filter-panel" id="filter-panel">
   <button class="fchip active" data-cat="gateway" onclick="toggleFilter('gateway')">
-    <span class="fchip-dot" style="background:#fbbf24;box-shadow:0 0 5px #fbbf24"></span>Gateway
+    <span class="fchip-dot" style="background:#fbbf24;box-shadow:0 0 5px #fbbf24"></span><span data-i18n="filters.gateway">Gateway</span>
   </button>
   <button class="fchip active" data-cat="router" onclick="toggleFilter('router')">
-    <span class="fchip-dot" style="background:#fb923c;box-shadow:0 0 5px #fb923c"></span>Router
+    <span class="fchip-dot" style="background:#fb923c;box-shadow:0 0 5px #fb923c"></span><span data-i18n="filters.router">Router</span>
   </button>
   <button class="fchip active" data-cat="recent" onclick="toggleFilter('recent')">
-    <span class="fchip-dot" style="background:#5eead4;box-shadow:0 0 5px #5eead4"></span>Activo &lt;1h
+    <span class="fchip-dot" style="background:#5eead4;box-shadow:0 0 5px #5eead4"></span><span data-i18n="filters.recent">Activo &lt;1h</span>
   </button>
   <button class="fchip active" data-cat="active" onclick="toggleFilter('active')">
-    <span class="fchip-dot" style="background:#7dd3fc"></span>Activo &lt;24h
+    <span class="fchip-dot" style="background:#7dd3fc"></span><span data-i18n="filters.active">Activo &lt;24h</span>
   </button>
   <button class="fchip active" data-cat="old" onclick="toggleFilter('old')">
-    <span class="fchip-dot" style="background:#64748b"></span>Sin actividad
+    <span class="fchip-dot" style="background:#64748b"></span><span data-i18n="filters.old">Sin actividad</span>
   </button>
   <hr class="filter-sep">
   <button class="fchip active" data-edge="neighbor" onclick="toggleEdgeFilter('neighbor')">
     <svg class="fchip-line" width="18" height="8" viewBox="0 0 18 8" aria-hidden="true">
       <line x1="0" y1="4" x2="18" y2="4" stroke="#1d4ed8" stroke-width="2"/>
     </svg>
-    Vecino directo
+    <span data-i18n="filters.neighbor">Vecino directo</span>
   </button>
   <button class="fchip" data-edge="traceroute" onclick="toggleEdgeFilter('traceroute')">
     <svg class="fchip-line" width="18" height="8" viewBox="0 0 18 8" aria-hidden="true">
       <line x1="0" y1="4" x2="18" y2="4" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="5 4"/>
     </svg>
-    Traceroute
+    <span data-i18n="filters.traceroute">Traceroute</span>
   </button>
 </div>
 
@@ -142,35 +149,35 @@
 
 <!-- Leyenda -->
 <div class="legend">
-  <div class="legend-title">Leyenda</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#5eead4;box-shadow:0 0 5px #5eead4"></div> Activo &lt;1h</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#7dd3fc"></div> Activo &lt;24h</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#fbbf24;box-shadow:0 0 5px #fbbf24"></div> Gateway MQTT</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#fb923c;box-shadow:0 0 5px #fb923c"></div> Router / Repeater</div>
-  <div class="legend-item"><div class="legend-dot" style="background:#64748b"></div> Sin actividad reciente</div>
+  <div class="legend-title" data-i18n="legend.title">Leyenda</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#5eead4;box-shadow:0 0 5px #5eead4"></div> <span data-i18n="legend.recent">Activo &lt;1h</span></div>
+  <div class="legend-item"><div class="legend-dot" style="background:#7dd3fc"></div> <span data-i18n="legend.active">Activo &lt;24h</span></div>
+  <div class="legend-item"><div class="legend-dot" style="background:#fbbf24;box-shadow:0 0 5px #fbbf24"></div> <span data-i18n="legend.gatewayMqtt">Gateway MQTT</span></div>
+  <div class="legend-item"><div class="legend-dot" style="background:#fb923c;box-shadow:0 0 5px #fb923c"></div> <span data-i18n="legend.routerRepeater">Router / Repeater</span></div>
+  <div class="legend-item"><div class="legend-dot" style="background:#64748b"></div> <span data-i18n="legend.old">Sin actividad reciente</span></div>
   <div class="legend-item">
     <svg width="14" height="13" viewBox="0 0 22 20" style="flex-shrink:0"><polygon points="11,1 21,19 1,19" fill="#f97316" stroke="#ef4444" stroke-width="2" stroke-linejoin="round"/><text x="11" y="15.5" text-anchor="middle" font-size="10" font-weight="bold" font-family="monospace" fill="#1e293b">!</text></svg>
-    No optimizado
+    <span data-i18n="legend.notOptimized">No optimizado</span>
   </div>
   <hr class="legend-sep">
   <div class="legend-item legend-edge active" data-edge="neighbor" onclick="toggleEdgeFilter('neighbor')" role="button" tabindex="0">
     <svg class="legend-line" width="24" height="10" viewBox="0 0 24 10">
       <line x1="0" y1="5" x2="24" y2="5" stroke="#1d4ed8" stroke-width="2"/>
     </svg>
-    Vecino directo
+    <span data-i18n="legend.neighbor">Vecino directo</span>
   </div>
   <div class="legend-item legend-edge" data-edge="traceroute" onclick="toggleEdgeFilter('traceroute')" role="button" tabindex="0">
     <svg class="legend-line" width="24" height="10" viewBox="0 0 24 10">
       <line x1="0" y1="5" x2="24" y2="5" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="6 5"/>
     </svg>
-    Traceroute
+    <span data-i18n="legend.traceroute">Traceroute</span>
   </div>
 </div>
 
 <!-- Banner novedades -->
 <div class="hint-bubble hidden" id="hint-novedades">
-  <button class="hint-bubble-close" onclick="dismissEdgeHint()" aria-label="Cerrar">✕</button>
-  <strong>Nuevo</strong> — los enlaces del mapa son filtrables. Pulsa en la leyenda o usa el panel de filtros para activar o desactivar <strong>Vecino directo</strong> y <strong>Traceroute</strong>.
+  <button class="hint-bubble-close" onclick="dismissEdgeHint()" data-i18n-aria-label="hint.close" aria-label="Cerrar">✕</button>
+  <span data-i18n-html="hint.novedades"><strong>Nuevo</strong> — los enlaces del mapa son filtrables. Pulsa en la leyenda o usa el panel de filtros para activar o desactivar <strong>Vecino directo</strong> y <strong>Traceroute</strong>.</span>
 </div>
 
 <!-- Modal: Reporte de nodo individual -->
@@ -178,11 +185,11 @@
   <div class="malconfig-inner nr-inner">
     <div class="malconfig-header">
       <div class="malconfig-title">
-        <button id="node-report-back" class="nr-back" onclick="closeNodeReport(); openMalConfigModal(true);" style="display:none">← Listado</button>
+        <button id="node-report-back" class="nr-back" onclick="closeNodeReport(); openMalConfigModal(true);" style="display:none" data-i18n="report.back">← Listado</button>
         <svg width="16" height="15" viewBox="0 0 22 20" aria-hidden="true"><polygon points="11,1 21,19 1,19" fill="#f97316" stroke="#ef4444" stroke-width="1.5" stroke-linejoin="round"/><text x="11" y="15.5" text-anchor="middle" font-size="9" font-weight="bold" font-family="monospace" fill="#1e293b">!</text></svg>
-        Diagnóstico del nodo
+        <span data-i18n="report.title">Diagnóstico del nodo</span>
       </div>
-      <button class="malconfig-close" onclick="closeNodeReport()" aria-label="Cerrar">✕</button>
+      <button class="malconfig-close" onclick="closeNodeReport()" data-i18n-aria-label="common.close" aria-label="Cerrar">✕</button>
     </div>
     <div class="malconfig-content" id="node-report-body"></div>
   </div>
@@ -194,16 +201,16 @@
     <div class="malconfig-header">
       <div class="malconfig-title">
         <svg width="16" height="15" viewBox="0 0 22 20" aria-hidden="true"><polygon points="11,1 21,19 1,19" fill="#f97316" stroke="#ef4444" stroke-width="1.5" stroke-linejoin="round"/><text x="11" y="15.5" text-anchor="middle" font-size="9" font-weight="bold" font-family="monospace" fill="#1e293b">!</text></svg>
-        <span>Nodos no optimizados <span class="malconfig-subtitle">· Top ordenado por tráfico</span></span>
+        <span><span data-i18n="malconfig.title">Nodos no optimizados</span> <span class="malconfig-subtitle" data-i18n="malconfig.subtitle">· Top ordenado por tráfico</span></span>
       </div>
       <div class="malconfig-header-right">
         <span class="malconfig-updated" id="malconfig-updated"></span>
-        <button class="malconfig-close" onclick="closeMalConfigModal()" aria-label="Cerrar">✕</button>
+        <button class="malconfig-close" onclick="closeMalConfigModal()" data-i18n-aria-label="common.close" aria-label="Cerrar">✕</button>
       </div>
     </div>
     <div class="malconfig-nav" id="malconfig-nav">
-      <button class="mc-tab active" data-tab="list" onclick="switchMalTab('list')">Listado</button>
-      <button class="mc-tab" data-tab="stats" onclick="switchMalTab('stats')">Estadísticas</button>
+      <button class="mc-tab active" data-tab="list" onclick="switchMalTab('list')" data-i18n="malconfig.tabList">Listado</button>
+      <button class="mc-tab" data-tab="stats" onclick="switchMalTab('stats')" data-i18n="malconfig.tabStats">Estadísticas</button>
     </div>
     <div class="malconfig-tabs" id="malconfig-tabs"></div>
     <div class="malconfig-content" id="malconfig-content"></div>
@@ -221,25 +228,28 @@
       <line x1="8" y1="5" x2="8" y2="8.5" stroke="#fbbf24" stroke-width="1.5" stroke-linecap="round"/>
       <circle cx="8" cy="11" r="0.75" fill="#fbbf24"/>
     </svg>
-    <span>Esta web usa <strong>almacenamiento local</strong> para guardar tus preferencias de filtros. No se usan cookies de terceros ni datos de seguimiento.</span>
+    <span data-i18n-html="cookie.text">Esta web usa <strong>almacenamiento local</strong> para guardar tus preferencias. No se usan cookies de terceros ni datos de seguimiento.</span>
   </div>
-  <button class="cookie-btn" onclick="acceptCookies()">Entendido</button>
+  <button class="cookie-btn" onclick="acceptCookies()" data-i18n="cookie.accept">Entendido</button>
 </div>
 
 <!-- Footer -->
 <footer class="app-footer">
   <div class="footer-left">
-    <span class="footer-source">Datos extraídos de: <a href="https://meshview.meshtastic.es" target="_blank" rel="noopener">meshview.meshtastic.es</a></span>
+    <span class="footer-source"><span data-i18n="footer.source">Datos extraídos de:</span> <a id="footer-source-link" href="https://meshview.meshtastic.es" target="_blank" rel="noopener">meshview.meshtastic.es</a></span>
   </div>
   <div class="footer-right">
     <a class="footer-gh" href="https://github.com/EmilioAL-Git/Meshtastic-es-map" target="_blank" rel="noopener">
       <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.34c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.88-1.17-.88-1.17-.72-.5.05-.48.05-.48.8.06 1.22.82 1.22.82.71 1.22 1.87.87 2.32.66.07-.52.28-.87.5-1.07-1.77-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.66 7.66 0 018 3.8c.68 0 1.36.09 2 .26 1.52-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-      GitHub
+      <span data-i18n="footer.github">GitHub</span>
     </a>
     <span class="footer-version">v1.4.0</span>
   </div>
 </footer>
 
+<script src="js/i18n/es.js?v=1.4.0"></script>
+<script src="js/i18n/gl.js?v=1.4.0"></script>
+<script src="js/i18n.js?v=1.4.0"></script>
 <script src="js/state.js?v=1.4.0"></script>
 <script src="js/map.js?v=1.4.0"></script>
 <script src="js/filters.js?v=1.4.0"></script>

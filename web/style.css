@@ -2613,11 +2613,8 @@ body.embed-mode .malconfig-table td:nth-child(3) { display: none; }
   body.live-page .pf-dropdown-wrap { order: 2; }
   body.live-page .pf-dropdown-btn span:not(.pf-dropdown-count) { display: none; } /* solo icono + contador, ahorra sitio */
 
-  /* El buscador crece para ocupar el resto de la fila (o toda su propia
-     fila si no cabe) en vez de quedar suelto con hueco muerto a la
-     derecha — antes tenía un ancho fijo de 160px. */
-  body.live-page .focus-wrap { order: 2; flex: 1 1 140px; min-width: 140px; }
-  body.live-page .focus-wrap .search-input { width: 100%; }
+  body.live-page .focus-wrap { order: 2; flex-shrink: 0; }
+  body.live-page .focus-wrap .search-input { width: 110px; }
   body.live-page .focus-wrap .search-dropdown { width: min(260px, calc(100vw - 24px)); }
 
   /* live.html no tiene nada que enseñar en la leyenda de "edges" del mapa

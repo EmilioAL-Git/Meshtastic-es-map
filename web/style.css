@@ -1074,19 +1074,22 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   top: 10px;
   right: 10px;
   z-index: 1000;
-  width: 32px;
   height: 32px;
+  padding: 0 12px;
+  gap: 6px;
   align-items: center;
   justify-content: center;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   color: var(--muted);
+  font-family: var(--mono);
+  font-size: 11px;
   cursor: pointer;
   box-shadow: var(--shadow);
   transition: all .15s;
 }
-.live-log-toggle-btn svg { width: 15px; height: 15px; }
+.live-log-toggle-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
 .live-log-toggle-btn.active {
   border-color: var(--accent);
   color: var(--accent);

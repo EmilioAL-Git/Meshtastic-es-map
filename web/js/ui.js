@@ -6,7 +6,14 @@ function precisionRadiusMeters(precisionBits, lat) {
 }
 
 function _flyToCircle(nodeId, lat, lng, circle, duration) {
-  map.flyToBounds(circle.getBounds(), { animate: true, duration, padding: [40, 40] });
+  const isMobile = window.innerWidth <= 768;
+  const offsetPx = isMobile ? Math.round(window.innerHeight * 0.38) : 0;
+  map.flyToBounds(circle.getBounds(), {
+    animate: true,
+    duration,
+    paddingTopLeft: [40, 40],
+    paddingBottomRight: [40, 40 + offsetPx],
+  });
 }
 
 function _makePrecisionCircle(node) {
@@ -92,9 +99,9 @@ function selectNode(nodeId, fly = false) {
       if (precisionCircle) {
         _flyToCircle(nodeId, node.latitude, node.longitude, precisionCircle, 0.7);
       } else {
-        const zoom     = Math.max(map.getZoom(), 16);
         const isMobile = window.innerWidth <= 768;
-        const offsetPx = isMobile ? Math.round(window.innerHeight * 0.22) : 0;
+        const zoom     = Math.max(map.getZoom(), isMobile ? 15 : 16);
+        const offsetPx = isMobile ? Math.round(window.innerHeight * 0.38) : 0;
         if (offsetPx > 0) {
           const targetPx  = map.project([node.latitude, node.longitude], zoom);
           const shiftedPx = targetPx.add([0, offsetPx]);

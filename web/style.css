@@ -2856,8 +2856,18 @@ body.embed-mode .malconfig-table td:nth-child(3) { display: none; }
   body.live-page .pf-dropdown-wrap { order: 2; }
   body.live-page .pf-dropdown-btn span:not(.pf-dropdown-count) { display: none; } /* solo icono + contador, ahorra sitio */
 
-  body.live-page .focus-wrap { order: 2; flex-shrink: 0; }
-  body.live-page .focus-wrap .search-input { width: 110px; }
+  /* Solo icono, sin texto de placeholder — pegado al borde derecho de la
+     fila; se expande al enfocarlo para poder escribir */
+  body.live-page .focus-wrap { order: 2; flex-shrink: 0; margin-left: auto; }
+  body.live-page .focus-wrap .search-input {
+    width: 34px;
+    padding-left: 30px;
+    padding-right: 4px;
+    transition: width .15s;
+  }
+  body.live-page .focus-wrap .search-input::placeholder { color: transparent; }
+  body.live-page .focus-wrap .search-input:focus,
+  body.live-page .focus-wrap.active .search-input { width: 130px; }
   body.live-page .focus-wrap .search-dropdown { width: min(260px, calc(100vw - 24px)); }
 
   /* Leyenda de live.html: sin sitio para tenerla siempre visible como en

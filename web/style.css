@@ -1098,9 +1098,12 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 
 .legend-toggle-btn {
   display: none; /* solo visible en móvil, posicionado sobre el mapa */
+  /* Debajo de .live-log-toggle-btn (top:10, right:10) — el control de zoom
+     de Leaflet ocupa la esquina superior izquierda, así que se apila aquí
+     en vez de solaparlo */
   position: absolute;
-  top: 10px;
-  left: 10px;
+  top: 52px;
+  right: 10px;
   z-index: 1000;
   width: 32px;
   height: 32px;

@@ -1,3 +1,15 @@
+// ─── Tema del mapa base ────────────────────────────────────────────────────────
+const TILE_URLS = {
+  light: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+  dark:  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+};
+let baseTileLayer;
+
+function applyMapTheme(theme) {
+  if (baseTileLayer) baseTileLayer.setUrl(TILE_URLS[theme]);
+  document.body.classList.toggle('theme-dark', theme === 'dark');
+}
+
 // ─── Init mapa ────────────────────────────────────────────────────────────────
 function initMap() {
   map = L.map('map', {
@@ -12,10 +24,11 @@ function initMap() {
     smoothSensitivity: 1.8,
   });
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  baseTileLayer = L.tileLayer(TILE_URLS[mapSettings.theme], {
     maxZoom: 19,
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
   }).addTo(map);
+  document.body.classList.toggle('theme-dark', mapSettings.theme === 'dark');
 
   const ZoomCtrl = L.Control.extend({
     options: { position: 'topleft' },
@@ -29,8 +42,7 @@ function initMap() {
       c.querySelector('#zoom-in').addEventListener('click', () => map.zoomIn());
       c.querySelector('#zoom-out').addEventListener('click', () => map.zoomOut());
       c.querySelector('#zoom-locate').addEventListener('click', () => {
-        map.locate({ setView: true, maxZoom: 14 });
-        map.once('locationerror', () => showToast(t('map.locationError')));
+        locateUser({ onError: () => showToast(t('map.locationError')) });
       });
       return c;
     }
@@ -50,6 +62,22 @@ function initMap() {
     if (markerClicked) { markerClicked = false; return; }
     if (window.innerWidth <= 768 && selectedNodeId) closeDetail();
   });
+}
+
+// ─── Geolocalización / encuadre general ───────────────────────────────────────
+function locateUser({ onFound, onError } = {}) {
+  if (onFound) map.once('locationfound', onFound);
+  if (onError) map.once('locationerror', onError);
+  map.locate({ setView: true, maxZoom: 14 });
+}
+
+function fitAllNodes() {
+  const nodesWithPos = allNodes.filter(n => n.latitude != null);
+  if (nodesWithPos.length < 2 || Object.keys(markers).length === 0) return false;
+  const bounds = L.latLngBounds(nodesWithPos.map(n => [n.latitude, n.longitude]));
+  if (!bounds.isValid()) return false;
+  map.fitBounds(bounds, { padding: [40, 40] });
+  return true;
 }
 
 // ─── Helpers de color/icono ───────────────────────────────────────────────────
@@ -122,9 +150,11 @@ function makeSelectedIcon(color) {
 function markerSize() {
   const z = map.getZoom();
   const mobile = window.innerWidth <= 768;
-  if (z <= 7) return mobile ? 4  : 3;
-  if (z <= 9) return mobile ? 5  : 4;
-  return mobile ? 8 : 6;
+  let base;
+  if (z <= 7) base = mobile ? 4  : 3;
+  else if (z <= 9) base = mobile ? 5  : 4;
+  else base = mobile ? 8 : 6;
+  return Math.max(2, Math.round(base * MARKER_SIZE_MULT[mapSettings.markerSize]));
 }
 
 function updateMarkerSizes() {
@@ -139,10 +169,10 @@ function updateMarkerSizes() {
       const [dLat, dLng] = getSpreadLatLng(n.node_id, n.latitude, n.longitude);
       m.setLatLng([dLat, dLng]);
     }
-    const md = malConfigurados.get(n.node_id);
-    if (md && detectIssues(md).some(i => i.severity !== 'medium')) m.setIcon(makeMalConfiguradoIcon(nodeColor(n), sz));
+    const kind = markerKind(n);
+    if (kind === 'mal') m.setIcon(makeMalConfiguradoIcon(nodeColor(n), sz));
     else if (m.setRadius) m.setRadius(sz);
-    else if (isRouter(n) && !n.is_mqtt_gateway) m.setIcon(makeRouterIcon(nodeColor(n), sz));
+    else if (kind === 'router') m.setIcon(makeRouterIcon(nodeColor(n), sz));
   });
   renderSpiderLegs();
 
@@ -363,7 +393,7 @@ function renderClusters() {
 // que recrear el marker: circleMarker y L.marker no comparten API de estilo)
 function markerKind(node) {
   const malData = malConfigurados.get(node.node_id);
-  if (malData && detectIssues(malData).some(i => i.severity !== 'medium')) return 'mal';
+  if (mapSettings.showMalIcons && malData && detectIssues(malData).some(i => i.severity !== 'medium')) return 'mal';
   if (isRouter(node) && !node.is_mqtt_gateway) return 'router';
   return 'circle';
 }

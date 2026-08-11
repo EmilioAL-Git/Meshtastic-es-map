@@ -133,7 +133,7 @@ function renderTopNodes() {
   const top = [...nodeActivityCount.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
   if (!top.length) { el.innerHTML = ''; return; }
   el.innerHTML = `
-    <div class="lt-title">Más activos en esta sesión</div>
+    <div class="lt-title">${t('live.topActiveSession')}</div>
     ${top.map(([id, count], i) => `
       <div class="lt-row">
         <span class="lt-rank">${i + 1}</span>
@@ -184,7 +184,7 @@ function downloadFile(filename, content, mime) {
 }
 
 function exportSessionJSON() {
-  if (!livePacketLog.size) { showToast('No hay paquetes en la sesión todavía'); return; }
+  if (!livePacketLog.size) { showToast(t('live.noPacketsYet')); return; }
   const packets = [...livePacketLog.values()];
   downloadFile(`meshtastic-live-${Date.now()}.json`, JSON.stringify(packets, null, 2), 'application/json');
 }
@@ -195,7 +195,7 @@ function csvCell(value) {
 }
 
 function exportSessionCSV() {
-  if (!livePacketLog.size) { showToast('No hay paquetes en la sesión todavía'); return; }
+  if (!livePacketLog.size) { showToast(t('live.noPacketsYet')); return; }
   const header = ['packet_id', 'from', 'to', 'hop_start', 'channel', 'portnum', 'text', 'path_confidence', 'saltos'];
   const lines = [header.join(',')];
   for (const { info, stages, path_confidence } of livePacketLog.values()) {
@@ -369,7 +369,7 @@ function renderBaseNodes() {
 
 async function loadNodes() {
   const r = await fetch(API_BASE + '/data/nodes.json?t=' + Date.now());
-  if (!r.ok) throw new Error('No se pudo cargar nodes.json');
+  if (!r.ok) throw new Error(t('live.errorLoadingNodes'));
   const data = await r.json();
   allNodes = data.nodes || [];
   nodesById = new Map(allNodes.map(n => [n.node_id, n]));
@@ -396,12 +396,12 @@ function setConnBadge(state, label) {
 }
 
 function connectLive() {
-  setConnBadge('reconnecting', 'Conectando…');
+  setConnBadge('reconnecting', t('live.connecting'));
   liveWs = new WebSocket(liveWsUrl());
 
   liveWs.onopen = () => {
     liveBackoffMs = 1000;
-    setConnBadge('connected', 'Conectado');
+    setConnBadge('connected', t('live.connected'));
   };
 
   liveWs.onmessage = (ev) => {
@@ -412,7 +412,7 @@ function connectLive() {
   };
 
   liveWs.onclose = () => {
-    setConnBadge('reconnecting', `Reconectando en ${Math.round(liveBackoffMs / 1000)}s…`);
+    setConnBadge('reconnecting', t('live.reconnectingIn', { s: Math.round(liveBackoffMs / 1000) }));
     setTimeout(connectLive, liveBackoffMs);
     liveBackoffMs = Math.min(liveBackoffMs * 2, LIVE_BACKOFF_MAX_MS);
   };
@@ -1300,7 +1300,7 @@ function updateLogRow(stageEvent) {
 
 function nodeLabel(nodeId) {
   if (!nodeId) return '?';
-  if (nodeId === '!ffffffff') return 'Todos';
+  if (nodeId === '!ffffffff') return t('live.broadcastAll');
   const n = nodesById.get(nodeId);
   return n && n.long_name ? escHtml(n.long_name) : escHtml(nodeId);
 }
@@ -1412,8 +1412,8 @@ function renderLogRow(info, { hops, path_confidence, stages }) {
   path_confidence = effectiveConfidence(path_confidence, stages);
   const confClass = path_confidence === 'traceroute' ? 'lr-conf-traceroute'
     : path_confidence === 'relay_node' ? 'lr-conf-relay' : 'lr-conf-heuristic';
-  const confLabel = path_confidence === 'traceroute' ? 'ruta exacta (traceroute)'
-    : path_confidence === 'relay_node' ? 'ruta confirmada' : 'ruta aproximada';
+  const confLabel = path_confidence === 'traceroute' ? t('live.route.exactShort')
+    : path_confidence === 'relay_node' ? t('live.route.confirmedShort') : t('live.route.approxShort');
   const color = packetColor(info.packet_id);
   const textHtml = info.text
     ? `<div class="lr-text">💬 “${escHtml(info.text)}”</div>`
@@ -1422,8 +1422,8 @@ function renderLogRow(info, { hops, path_confidence, stages }) {
     <div class="lr-route"><span class="lr-swatch" style="background:${color};box-shadow:0 0 5px ${color}"></span>${nodeLabel(info.from)} → ${nodeLabel(info.to)}</div>
     ${textHtml}
     <div class="lr-meta">
-      <span>${hops} salto${hops === 1 ? '' : 's'}</span>
-      <span>${escHtml(info.portnum || '—')}</span>
+      <span>${tp('live.hopCount', hops, { n: hops })}</span>
+      <span>${escHtml(info.portnum || t('common.dash'))}</span>
       <span class="${confClass}">${confLabel}</span>
     </div>`;
 }
@@ -1431,13 +1431,13 @@ function renderLogRow(info, { hops, path_confidence, stages }) {
 // ─── Desglose de paquete ────────────────────────────────────────────────────
 
 function formatTime(unixSeconds) {
-  if (!unixSeconds) return '—';
-  return new Date(unixSeconds * 1000).toLocaleTimeString('es-ES');
+  if (!unixSeconds) return t('common.dash');
+  return new Date(unixSeconds * 1000).toLocaleTimeString(getLocale());
 }
 
 function nodeLabelFull(nodeId) {
   if (!nodeId) return '—';
-  if (nodeId === '!ffffffff') return 'Todos (broadcast)';
+  if (nodeId === '!ffffffff') return t('live.broadcastAllFull');
   const n = nodesById.get(nodeId);
   return n && n.long_name
     ? `${escHtml(n.long_name)} (${escHtml(n.short_name || '')}) — ${escHtml(nodeId)}`
@@ -1498,15 +1498,15 @@ function detectFreeHops(hopIds, stages, hopStart) {
 
 function renderPacketDetail(packetId) {
   const data = livePacketLog.get(packetId);
-  if (!data) return '<p class="malconfig-empty">Sin datos de este paquete (se ha perdido del historial).</p>';
+  if (!data) return `<p class="malconfig-empty">${t('live.packetDetail.noData')}</p>`;
   const { info, stages } = data;
   const path_confidence = effectiveConfidence(data.path_confidence, stages);
   const isTraceroute = path_confidence === 'traceroute';
   const confLabel = isTraceroute
-    ? 'Ruta exacta — registrada por el propio traceroute, salto a salto real (no es una aproximación)'
+    ? t('live.route.exactLong')
     : path_confidence === 'relay_node'
-      ? 'Ruta confirmada — un salto trae relay_node y resuelve a un único nodo real conocido'
-      : 'Ruta aproximada — estimada por qué gateways oyeron cada salto, sin relay_node confirmado';
+      ? t('live.route.confirmedLong')
+      : t('live.route.approxLong');
   const reachedCount = estimateReachedNodes(data).size;
 
   const traceIds = isTraceroute ? traceRouteIds(data) : null;
@@ -1515,12 +1515,12 @@ function renderPacketDetail(packetId) {
   const hopsHtml = isTraceroute
     ? traceIds.map((id, i) => {
         const known = !!nodeLatLng(id);
-        const roleLabel = i === 0 ? 'origen' : i === traceIds.length - 1 ? 'destino' : `salto ${i}`;
+        const roleLabel = i === 0 ? t('live.hop.origin') : i === traceIds.length - 1 ? t('live.hop.destination') : t('live.hop.hopN', { n: i });
         const free = i > 0 ? freeHops.get(id) : null;
         const freeBadge = free && free.free
           ? (free.certain
-            ? '<span class="pkt-hop-free certain" title="Confirmado: el hop_limit no bajó en este salto (visto en los stages de gateways)">⚡ salto reducido</span>'
-            : '<span class="pkt-hop-free" title="Inferido por el rol del nodo (ROUTER/REPEATER) — sin confirmar con hop_limit real">⚡ posible salto reducido</span>')
+            ? `<span class="pkt-hop-free certain" title="${t('live.hop.reducedCertainTitle')}">${t('live.hop.reducedCertain')}</span>`
+            : `<span class="pkt-hop-free" title="${t('live.hop.reducedGuessTitle')}">${t('live.hop.reducedGuess')}</span>`)
           : '';
         return `
         <div class="pkt-hop">
@@ -1540,7 +1540,7 @@ function renderPacketDetail(packetId) {
           : relay.confidence === 'estimated' ? ' relay-guess' : '';
         const chipIcon = relay.confidence === 'confirmed' ? '🔗 ' : relay.confidence === 'estimated' ? '🔗? ' : '';
         const chipTitle = relay.confidence === 'estimated'
-          ? ' title="Mejor candidato entre varios nodos posibles — no confirmado"' : '';
+          ? ` title="${t('live.hop.bestCandidateTitle')}"` : '';
         return `
         <div class="pkt-hop">
           <div class="pkt-hop-num">${i + 1}</div>
@@ -1556,27 +1556,27 @@ function renderPacketDetail(packetId) {
           </div>
         </div>`;
       }).join('')
-      : '<p class="pkt-hop-empty">Sin saltos con coordenadas conocidas todavía</p>');
+      : `<p class="pkt-hop-empty">${t('live.hop.noHopsYet')}</p>`);
 
   const textRow = info.text
-    ? `<tr><td>Mensaje</td><td>💬 “${escHtml(info.text)}”</td></tr>`
+    ? `<tr><td>${t('live.packetDetail.message')}</td><td>💬 “${escHtml(info.text)}”</td></tr>`
     : '';
 
   return `
     <table class="malconfig-table pkt-kv">
-      <tr><td>Packet ID</td><td>${info.packet_id} · <a class="lr-meshview" href="${meshviewPacketUrl(info.packet_id)}" target="_blank" rel="noopener">ver en meshview ↗</a></td></tr>
-      <tr><td>Origen</td><td>${nodeLabelFull(info.from)}</td></tr>
-      <tr><td>Destino</td><td>${nodeLabelFull(info.to)}</td></tr>
-      <tr><td>hop_start</td><td>${info.hop_start ?? '—'}</td></tr>
-      <tr><td>Canal</td><td>${info.channel ?? '—'}</td></tr>
-      <tr><td>Tipo (portnum)</td><td>${escHtml(info.portnum || '—')}</td></tr>
+      <tr><td>${t('live.packetDetail.packetId')}</td><td>${info.packet_id} · <a class="lr-meshview" href="${meshviewPacketUrl(info.packet_id)}" target="_blank" rel="noopener">${t('live.packetDetail.viewOnMeshview')}</a></td></tr>
+      <tr><td>${t('live.packetDetail.origin')}</td><td>${nodeLabelFull(info.from)}</td></tr>
+      <tr><td>${t('live.packetDetail.destination')}</td><td>${nodeLabelFull(info.to)}</td></tr>
+      <tr><td>hop_start</td><td>${info.hop_start ?? t('common.dash')}</td></tr>
+      <tr><td>${t('live.packetDetail.channel')}</td><td>${info.channel ?? t('common.dash')}</td></tr>
+      <tr><td>${t('live.packetDetail.type')}</td><td>${escHtml(info.portnum || t('common.dash'))}</td></tr>
       ${textRow}
-      <tr><td>Confianza de ruta</td><td>${confLabel}</td></tr>
-      <tr><td>Nodos alcanzados</td><td>~${reachedCount} <span class="pkt-reached-hint" title="Cota mínima: solo cuenta nodos que son gateway MQTT (los únicos visibles desde aquí). El alcance real puede ser mayor.">(aprox.)</span></td></tr>
+      <tr><td>${t('live.packetDetail.routeConfidence')}</td><td>${confLabel}</td></tr>
+      <tr><td>${t('live.packetDetail.nodesReached')}</td><td>~${reachedCount} <span class="pkt-reached-hint" title="${t('live.packetDetail.reachedHint')}">${t('live.packetDetail.approx')}</span></td></tr>
     </table>
     <h4 class="pkt-hops-title">
-      Saltos detectados (${isTraceroute ? traceIds.length : stages.length})
-      <span class="pkt-hops-hint">${isTraceroute ? '🔗 = posición conocida · ❓ = nodo real, posición desconocida · ⚡ = salto reducido (router)' : '🔗 = relay_node confirmado (único candidato) · 🔗? = mejor candidato entre varios, sin confirmar'}</span>
+      ${t('live.packetDetail.hopsDetected', { n: isTraceroute ? traceIds.length : stages.length })}
+      <span class="pkt-hops-hint">${isTraceroute ? t('live.packetDetail.hopsHintTraceroute') : t('live.packetDetail.hopsHintHeuristic')}</span>
     </h4>
     <div class="pkt-hops">${hopsHtml}</div>`;
 }
@@ -1605,11 +1605,11 @@ function buildSequencedPath(ids, labelFor) {
     let nextIdx = -1;
     for (let j = i + 1; j < ids.length; j++) { if (positions[j]) { nextIdx = j; break; } }
     if (prevIdx === -1 || nextIdx === -1) continue; // sin referencia a ambos lados, no se puede ni interpolar
-    const t = (i - prevIdx) / (nextIdx - prevIdx);
+    const frac = (i - prevIdx) / (nextIdx - prevIdx);
     const a = positions[prevIdx], b = positions[nextIdx];
     points.push({
-      pos: [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t],
-      label: `${labelFor(ids[i], i)} — posición desconocida`,
+      pos: [a[0] + (b[0] - a[0]) * frac, a[1] + (b[1] - a[1]) * frac],
+      label: `${labelFor(ids[i], i)} — ${t('live.hop.unknownPosition')}`,
       hops: i,
       unknown: true,
       id: ids[i],
@@ -1630,9 +1630,9 @@ function traceRouteIds(data) {
 function traceroutePath(data) {
   const ids = traceRouteIds(data);
   return buildSequencedPath(ids, (id, i) => {
-    if (i === 0) return `${nodeLabel(id)} (origen)`;
-    if (i === ids.length - 1) return `${nodeLabel(id)} (destino)`;
-    return `${nodeLabel(id)} — salto ${i} (traceroute)`;
+    if (i === 0) return `${nodeLabel(id)} (${t('live.hop.origin')})`;
+    if (i === ids.length - 1) return `${nodeLabel(id)} (${t('live.hop.destination')})`;
+    return `${nodeLabel(id)} — ${t('live.hop.hopN', { n: i })} (traceroute)`;
   });
 }
 
@@ -1645,7 +1645,7 @@ function buildPacketPath(data) {
   // resolvimos (aproximación por heurística de gateways).
   const points = [];
   const originPos = nodeLatLng(data.info.from);
-  if (originPos) points.push({ pos: originPos, label: `${nodeLabel(data.info.from)} (origen)`, hops: 0 });
+  if (originPos) points.push({ pos: originPos, label: `${nodeLabel(data.info.from)} (${t('live.hop.origin')})`, hops: 0 });
   for (const stage of data.stages) {
     const refPos = points.length ? points[points.length - 1].pos : null;
     const pos = stagePosition(stage, refPos);
@@ -1794,9 +1794,9 @@ function showToast(msg, ms = 3000) {
 async function copyCurrentLink() {
   try {
     await navigator.clipboard.writeText(location.href);
-    showToast('Enlace copiado');
+    showToast(t('live.linkCopied'));
   } catch {
-    showToast('No se pudo copiar — usa la barra de direcciones');
+    showToast(t('live.copyFailed'));
   }
 }
 
@@ -1812,7 +1812,7 @@ async function loadSharedPacket(rawId) {
   try {
     const qs = fromId ? `?from=${encodeURIComponent(fromId)}` : '';
     const r = await fetch(`${API_BASE}/live-ws/packet/${packetId}${qs}`);
-    if (!r.ok) { showToast('Ese paquete ya no está disponible (caducó)'); return; }
+    if (!r.ok) { showToast(t('live.packetExpired')); return; }
     const data = await r.json();
     const key = pktKey(data.packet_id, data.from);
     livePacketLog.set(key, {
@@ -1826,7 +1826,7 @@ async function loadSharedPacket(rawId) {
     });
     openPacketDetail(key);
   } catch {
-    showToast('No se pudo cargar el paquete compartido');
+    showToast(t('live.sharedPacketError'));
   }
 }
 
@@ -1847,7 +1847,7 @@ function onFocusInput() {
   }).slice(0, 8);
 
   if (!results.length) {
-    dd.innerHTML = '<div class="search-no-results">Sin resultados</div>';
+    dd.innerHTML = `<div class="search-no-results">${t('search.noResults')}</div>`;
     dd.classList.add('open');
     return;
   }
@@ -1902,7 +1902,7 @@ function resetLiveState() {
   for (const timer of pendingTrailRemovals.values()) clearTimeout(timer);
   pendingTrailRemovals.clear();
   liveOrder = [];
-  document.getElementById('live-log-rows').innerHTML = '<div class="live-log-empty" id="live-log-empty">Esperando paquetes…</div>';
+  document.getElementById('live-log-rows').innerHTML = `<div class="live-log-empty" id="live-log-empty">${t('live.waitingPackets')}</div>`;
   nodeActivityCount.clear();
   renderTopNodes();
 }
@@ -2022,11 +2022,11 @@ async function loadTimelineActivity() {
   drawTimelineAxis();
 }
 
-function formatAxisTime(t) {
-  const d = new Date(t * 1000);
-  const time = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+function formatAxisTime(unixSeconds) {
+  const d = new Date(unixSeconds * 1000);
+  const time = d.toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' });
   if (timelineRangeS <= 43200) return time; // 1h/12h: solo hora
-  return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' }) + ' ' + time;
+  return d.toLocaleDateString(getLocale(), { day: '2-digit', month: '2-digit' }) + ' ' + time;
 }
 
 function drawTimelineAxis() {
@@ -2089,10 +2089,10 @@ function updateCursorLabel() {
   if (!el) return;
   if (replayCursorTime == null) { el.textContent = ''; return; }
   const d = new Date(replayCursorTime * 1000);
-  const time = d.toLocaleTimeString('es-ES', { hour12: false });
+  const time = d.toLocaleTimeString(getLocale(), { hour12: false });
   el.textContent = timelineRangeS <= 43200
     ? time // 1h/12h: solo hora
-    : d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' }) + ' ' + time;
+    : d.toLocaleDateString(getLocale(), { day: '2-digit', month: '2-digit' }) + ' ' + time;
 }
 
 function enterReplayView() {
@@ -2110,7 +2110,7 @@ async function loadReplayPackets() {
     replayPackets = (data.packets || []).slice().sort((a, b) => a.first_seen - b.first_seen);
   } catch {
     replayPackets = [];
-    showToast('No se pudo cargar el histórico de ese rango');
+    showToast(t('live.historyLoadError'));
   }
 }
 
@@ -2262,7 +2262,8 @@ function handleTimelineHover(e) {
   tooltip.style.left = `${x}px`;
   tooltip.style.display = 'block';
   const label = formatAxisTime(Math.floor(t / timelineBucketSize()) * timelineBucketSize());
-  tooltip.textContent = `${label} — ${bucket ? bucket.count : 0} paquete${bucket && bucket.count === 1 ? '' : 's'}`;
+  const count = bucket ? bucket.count : 0;
+  tooltip.textContent = `${label} — ${tp('live.packetCount', count, { n: count })}`;
 }
 
 function hideTimelineHover() {
@@ -2351,7 +2352,7 @@ function togglePause() {
   const btn = document.getElementById('live-pause-btn');
   const icon = document.getElementById('pause-icon');
   btn.classList.toggle('paused', livePaused);
-  document.getElementById('pause-label').textContent = livePaused ? 'Reanudar' : 'Pausar';
+  document.getElementById('pause-label').textContent = livePaused ? t('live.resume') : t('live.pause');
   icon.innerHTML = livePaused
     ? '<path d="M4 3l9 5-9 5V3z" fill="currentColor"/>'
     : '<rect x="4" y="3" width="3" height="10" rx="1" fill="currentColor"/><rect x="9" y="3" width="3" height="10" rx="1" fill="currentColor"/>';

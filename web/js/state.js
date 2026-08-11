@@ -43,6 +43,23 @@ const _savedEdge        = (() => { try { return JSON.parse(localStorage.getItem(
 const _validSavedEdge   = _savedEdge ? _savedEdge.filter(c => ALL_EDGE_CATS.includes(c)) : null;
 const activeEdgeFilters = new Set(_validSavedEdge !== null ? _validSavedEdge : ['neighbor']);
 
+// ─── Ajustes del mapa (panel de ajustes) ──────────────────────────────────────
+const SETTINGS_KEY = 'mesh_map_settings';
+const DEFAULT_SETTINGS = {
+  theme: 'light',           // 'light' | 'dark'
+  markerSize: 'normal',     // 'small' | 'normal' | 'large'
+  autoLocate: false,
+  showPrecisionCircle: true,
+  showMalIcons: true,
+  flyToNode: true,
+};
+const _savedSettings = (() => { try { return JSON.parse(localStorage.getItem(SETTINGS_KEY)); } catch { return null; } })();
+const mapSettings = { ...DEFAULT_SETTINGS, ..._savedSettings };
+const MARKER_SIZE_MULT = { small: 0.75, normal: 1, large: 1.35 };
+
+let kioskActive      = false;  // no persistido: siempre empieza apagado
+let kioskPulseGroup  = null;   // L.layerGroup de pulsos del modo kiosko
+
 // ─── Colores ──────────────────────────────────────────────────────────────────
 const C_RECENT  = '#5eead4';
 const C_ACTIVE  = '#7dd3fc';

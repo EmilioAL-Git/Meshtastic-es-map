@@ -71,9 +71,9 @@
       <svg width="13" height="12" viewBox="0 0 22 20" aria-hidden="true"><polygon points="11,1 21,19 1,19" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round" opacity=".9"/><text x="11" y="15.5" text-anchor="middle" font-size="9" font-weight="bold" font-family="monospace" fill="#1e293b">!</text></svg>
       <span class="noopt-label" id="noopt-label" data-i18n="header.notOptimized">No optimizados</span>
     </button>
-    <a class="live-link" href="live.html" title="Ver paquetes en directo">
+    <a class="live-link" href="live.html" data-i18n-title="header.liveTitle" title="Ver paquetes en directo">
       <span class="live-dot"></span>
-      <span class="live-label">En directo</span>
+      <span class="live-label" data-i18n="header.live">En directo</span>
     </a>
     <div class="search-wrap">
       <svg class="search-icon" viewBox="0 0 16 16" fill="none">
@@ -91,8 +91,83 @@
       <div class="lang-menu" id="lang-menu" role="menu"></div>
     </div>
 
+    <div class="settings-switch" id="settings-switch">
+      <button class="settings-btn" id="settings-btn" type="button" onclick="toggleSettingsPanel()" data-i18n-title="settings.title" title="Ajustes del mapa" aria-haspopup="true" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"/><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></svg>
+      </button>
+
+      <div class="settings-panel" id="settings-panel">
+        <div class="settings-title" data-i18n="settings.title">Ajustes del mapa</div>
+
+        <div class="settings-row">
+          <span class="settings-label" data-i18n="settings.theme">Tema</span>
+          <div class="settings-seg">
+            <button class="fchip" data-theme="light" onclick="setTheme('light')" data-i18n="settings.themeLight">Claro</button>
+            <button class="fchip" data-theme="dark" onclick="setTheme('dark')" data-i18n="settings.themeDark">Oscuro</button>
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <span class="settings-label" data-i18n="settings.markerSize">Tamaño de marcadores</span>
+          <div class="settings-seg">
+            <button class="fchip" data-marker-size="small" onclick="setMarkerSize('small')" data-i18n="settings.markerSizeSmall">S</button>
+            <button class="fchip" data-marker-size="normal" onclick="setMarkerSize('normal')" data-i18n="settings.markerSizeNormal">M</button>
+            <button class="fchip" data-marker-size="large" onclick="setMarkerSize('large')" data-i18n="settings.markerSizeLarge">L</button>
+          </div>
+        </div>
+
+        <button class="settings-toggle-row" data-setting-toggle="autoLocate" onclick="toggleMapSetting('autoLocate')">
+          <span class="settings-label-info">
+            <span data-i18n="settings.autoLocate">Auto-centrar en mi ubicación</span>
+            <span class="settings-info-icon" tabindex="0" role="button" data-i18n-aria-label="settings.autoLocateInfo" aria-label="Info" onclick="event.stopPropagation(); toggleSettingInfo(event, 'settings.autoLocateInfo')">ⓘ</span>
+          </span>
+          <span class="settings-switch-track"></span>
+        </button>
+
+        <button class="settings-toggle-row" data-setting-toggle="flyToNode" onclick="toggleMapSetting('flyToNode')">
+          <span class="settings-label-info">
+            <span data-i18n="settings.flyToNode">Volar al nodo al seleccionarlo</span>
+            <span class="settings-info-icon" tabindex="0" role="button" data-i18n-aria-label="settings.flyToNodeInfo" aria-label="Info" onclick="event.stopPropagation(); toggleSettingInfo(event, 'settings.flyToNodeInfo')">ⓘ</span>
+          </span>
+          <span class="settings-switch-track"></span>
+        </button>
+
+        <button class="settings-toggle-row" data-setting-toggle="showPrecisionCircle" onclick="toggleMapSetting('showPrecisionCircle')">
+          <span class="settings-label-info">
+            <span data-i18n="settings.showPrecisionCircle">Círculo de precisión</span>
+            <span class="settings-info-icon" tabindex="0" role="button" data-i18n-aria-label="settings.showPrecisionCircleInfo" aria-label="Info" onclick="event.stopPropagation(); toggleSettingInfo(event, 'settings.showPrecisionCircleInfo')">ⓘ</span>
+          </span>
+          <span class="settings-switch-track"></span>
+        </button>
+
+        <button class="settings-toggle-row" data-setting-toggle="showMalIcons" onclick="toggleMapSetting('showMalIcons')">
+          <span class="settings-label-info">
+            <span data-i18n="settings.showMalIcons">Iconos de no optimizados</span>
+            <span class="settings-info-icon" tabindex="0" role="button" data-i18n-aria-label="settings.showMalIconsInfo" aria-label="Info" onclick="event.stopPropagation(); toggleSettingInfo(event, 'settings.showMalIconsInfo')">ⓘ</span>
+          </span>
+          <span class="settings-switch-track"></span>
+        </button>
+
+        <hr class="filter-sep">
+
+        <button class="settings-kiosk-btn" onclick="enterKioskMode()">
+          <span class="settings-label-info">
+            <span data-i18n="settings.kioskEnter">Activar modo kiosko</span>
+            <span class="settings-info-icon" tabindex="0" role="button" data-i18n-aria-label="settings.kioskInfo" aria-label="Info" onclick="event.stopPropagation(); toggleSettingInfo(event, 'settings.kioskInfo')">ⓘ</span>
+          </span>
+        </button>
+
+        <div class="settings-info-popover" id="settings-info-popover"></div>
+      </div>
+    </div>
+
   </div>
 </header>
+
+<!-- Botón flotante de salida del modo kiosko -->
+<button class="kiosk-exit-btn" id="kiosk-exit-btn" onclick="exitKioskMode()">
+  <span data-i18n="settings.kioskExit">✕ Salir del modo kiosko</span>
+</button>
 
 <!-- Main -->
 <div class="main">
@@ -260,6 +335,7 @@
 <script src="js/search.js?v=1.5.0"></script>
 <script src="js/ui.js?v=1.5.0"></script>
 <script src="js/malconfig.js?v=1.5.0"></script>
+<script src="js/settings.js?v=1.5.0"></script>
 <script src="js/app.js?v=1.5.0"></script>
 </body>
 </html>

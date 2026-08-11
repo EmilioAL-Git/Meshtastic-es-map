@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>En directo · Red Meshtastic España</title>
+<title data-i18n="live.pageTitle">En directo · Red Meshtastic España</title>
 
 <!-- Leaflet (self-hosted: sin dependencia de disponibilidad de unpkg) -->
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=1.9.4"/>
@@ -19,103 +19,109 @@
 <!-- Header -->
 <header>
   <a class="back-link" href="index.html">
-    ← <span>Volver al mapa</span>
+    ← <span data-i18n="live.backToMap">Volver al mapa</span>
   </a>
   <div class="logo">
-    <span>MESHTASTIC ESPAÑA <em>/ En directo</em></span>
+    <span data-i18n-html="live.brand">MESHTASTIC ESPAÑA <em>/ En directo</em></span>
   </div>
 
   <div class="stats-bar">
     <div class="pf-dropdown-wrap" id="portnum-filter-wrap">
-      <button class="pf-dropdown-btn" id="portnum-filter-btn" onclick="togglePortnumFilterPanel()" title="Filtrar por tipo de paquete">
+      <button class="pf-dropdown-btn" id="portnum-filter-btn" onclick="togglePortnumFilterPanel()" data-i18n-title="live.filterByType" title="Filtrar por tipo de paquete">
         <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 3h12M4.5 8h7M7 13h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-        <span>Filtros</span>
+        <span data-i18n="live.filters">Filtros</span>
         <span class="pf-dropdown-count" id="portnum-filter-count"></span>
       </button>
       <div class="pf-dropdown-panel" id="portnum-filter-panel">
         <div class="pf-bulk-row">
-          <button class="pf-bulk-btn" onclick="selectAllPortnumFilters()">Todos</button>
-          <button class="pf-bulk-btn" onclick="clearAllPortnumFilters()">Ninguno</button>
+          <button class="pf-bulk-btn" onclick="selectAllPortnumFilters()" data-i18n="live.all">Todos</button>
+          <button class="pf-bulk-btn" onclick="clearAllPortnumFilters()" data-i18n="live.none">Ninguno</button>
         </div>
         <button class="pf-row active" data-cat="POSITION_APP" onclick="togglePortnumFilter('POSITION_APP')">
           <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 14.2s5-4.3 5-8.2A5 5 0 0 0 3 6c0 3.9 5 8.2 5 8.2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="8" cy="6" r="1.7" stroke="currentColor" stroke-width="1.5"/></svg>
-          <span class="pf-label">Posición</span>
+          <span class="pf-label" data-i18n="live.portnum.position">Posición</span>
           <span class="pf-check">✓</span>
         </button>
         <button class="pf-row active" data-cat="TEXT_MESSAGE_APP" onclick="togglePortnumFilter('TEXT_MESSAGE_APP')">
           <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="3" width="12" height="7.4" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M5 10.4v2.3l3-2.3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
-          <span class="pf-label">Mensajes</span>
+          <span class="pf-label" data-i18n="live.portnum.text">Mensajes</span>
           <span class="pf-check">✓</span>
         </button>
         <button class="pf-row active" data-cat="TELEMETRY_APP" onclick="togglePortnumFilter('TELEMETRY_APP')">
           <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="9" width="2.6" height="5" rx="0.6" fill="currentColor"/><rect x="6.7" y="6" width="2.6" height="8" rx="0.6" fill="currentColor"/><rect x="11.4" y="2.5" width="2.6" height="11.5" rx="0.6" fill="currentColor"/></svg>
-          <span class="pf-label">Telemetría</span>
+          <span class="pf-label" data-i18n="live.portnum.telemetry">Telemetría</span>
           <span class="pf-check">✓</span>
         </button>
         <button class="pf-row active" data-cat="NODEINFO_APP" onclick="togglePortnumFilter('NODEINFO_APP')">
           <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><rect x="7.3" y="6.9" width="1.4" height="4" rx="0.5" fill="currentColor"/><circle cx="8" cy="5" r="0.9" fill="currentColor"/></svg>
-          <span class="pf-label">Info de nodo</span>
+          <span class="pf-label" data-i18n="live.portnum.nodeinfo">Info de nodo</span>
           <span class="pf-check">✓</span>
         </button>
         <button class="pf-row active" data-cat="WAYPOINT_APP" onclick="togglePortnumFilter('WAYPOINT_APP')">
           <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 14V2M4 2l7 3-7 3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
-          <span class="pf-label">Waypoint</span>
+          <span class="pf-label" data-i18n="live.portnum.waypoint">Waypoint</span>
           <span class="pf-check">✓</span>
         </button>
         <button class="pf-row active" data-cat="TRACEROUTE_APP" onclick="togglePortnumFilter('TRACEROUTE_APP')">
           <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 13c3-6 6 3 9-3" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2 2" stroke-linecap="round"/><circle cx="2" cy="13" r="1.3" fill="currentColor"/><circle cx="11" cy="10" r="1.3" fill="currentColor"/></svg>
-          <span class="pf-label">Traceroute</span>
+          <span class="pf-label" data-i18n="live.portnum.traceroute">Traceroute</span>
           <span class="pf-check">✓</span>
         </button>
         <button class="pf-row active" data-cat="NEIGHBORINFO_APP" onclick="togglePortnumFilter('NEIGHBORINFO_APP')">
           <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="4" cy="4" r="1.6" stroke="currentColor" stroke-width="1.3"/><circle cx="12" cy="4" r="1.6" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="12" r="1.6" stroke="currentColor" stroke-width="1.3"/><path d="M5.3 5.2l1.8 5.5M10.7 5.2l-1.8 5.5M5.6 4h4.8" stroke="currentColor" stroke-width="1"/></svg>
-          <span class="pf-label">Vecinos (NeighborInfo)</span>
+          <span class="pf-label" data-i18n="live.portnum.neighborinfo">Vecinos (NeighborInfo)</span>
           <span class="pf-check">✓</span>
         </button>
         <button class="pf-row active" data-cat="RANGE_TEST_APP" onclick="togglePortnumFilter('RANGE_TEST_APP')">
           <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M3 8l2.2-2.2M3 8l2.2 2.2M13 8l-2.2-2.2M13 8l-2.2 2.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          <span class="pf-label">Test de alcance</span>
+          <span class="pf-label" data-i18n="live.portnum.rangeTest">Test de alcance</span>
           <span class="pf-check">✓</span>
         </button>
         <button class="pf-row active" data-cat="MAP_REPORT_APP" onclick="togglePortnumFilter('MAP_REPORT_APP')">
           <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 4l4-1.5 4 1.5 4-1.5v9l-4 1.5-4-1.5-4 1.5V4z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M6 2.5v9M10 4v9" stroke="currentColor" stroke-width="1"/></svg>
-          <span class="pf-label">Reporte de mapa</span>
+          <span class="pf-label" data-i18n="live.portnum.mapReport">Reporte de mapa</span>
           <span class="pf-check">✓</span>
         </button>
         <button class="pf-row active" data-cat="ENCRYPTED" onclick="togglePortnumFilter('ENCRYPTED')">
           <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="10.3" r="1" fill="currentColor"/></svg>
-          <span class="pf-label">Cifrado (no descifrable)</span>
+          <span class="pf-label" data-i18n="live.portnum.encrypted">Cifrado (no descifrable)</span>
           <span class="pf-check">✓</span>
         </button>
         <button class="pf-row active" data-cat="OTHER" onclick="togglePortnumFilter('OTHER')">
           <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="3" cy="8" r="1.3" fill="currentColor"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="13" cy="8" r="1.3" fill="currentColor"/></svg>
-          <span class="pf-label">Otros tipos</span>
+          <span class="pf-label" data-i18n="live.portnum.other">Otros tipos</span>
           <span class="pf-check">✓</span>
         </button>
       </div>
     </div>
     <div class="focus-wrap" id="focus-wrap">
-      <input type="text" id="focus-input" class="search-input" placeholder="Buscar…" autocomplete="off"
+      <input type="text" id="focus-input" class="search-input" placeholder="Buscar…" data-i18n-placeholder="header.searchPlaceholder" autocomplete="off"
              oninput="onFocusInput()" onkeydown="onFocusKey(event)" onfocus="onFocusInput()">
-      <button class="focus-sound-btn" id="focus-sound-btn" onclick="toggleSound()" title="Aviso sonoro" style="display:none">🔇</button>
-      <button class="focus-clear-btn" id="focus-clear-btn" onclick="clearFocus()" title="Quitar foco" style="display:none">✕</button>
+      <button class="focus-sound-btn" id="focus-sound-btn" onclick="toggleSound()" data-i18n-title="live.soundAlert" title="Aviso sonoro" style="display:none">🔇</button>
+      <button class="focus-clear-btn" id="focus-clear-btn" onclick="clearFocus()" data-i18n-title="live.clearFocus" title="Quitar foco" style="display:none">✕</button>
       <div class="search-dropdown" id="focus-dropdown"></div>
     </div>
-    <button class="live-pause-btn" id="live-pause-btn" onclick="togglePause()" title="Pausar/reanudar el feed">
+    <button class="live-pause-btn" id="live-pause-btn" onclick="togglePause()" data-i18n-title="live.pauseResumeFeed" title="Pausar/reanudar el feed">
       <svg id="pause-icon" viewBox="0 0 16 16" fill="none">
         <rect x="4" y="3" width="3" height="10" rx="1" fill="currentColor"/>
         <rect x="9" y="3" width="3" height="10" rx="1" fill="currentColor"/>
       </svg>
-      <span id="pause-label">Pausar</span>
+      <span id="pause-label" data-i18n="live.pause">Pausar</span>
     </button>
     <div class="conn-badge" id="conn-badge">
       <span class="conn-dot"></span>
-      <span id="conn-label">Conectando…</span>
+      <span id="conn-label" data-i18n="live.connecting">Conectando…</span>
     </div>
-    <div class="packet-rate-badge" id="packet-rate-badge" title="Paquetes por minuto en el último minuto">
+    <div class="packet-rate-badge" id="packet-rate-badge" data-i18n-title="live.packetsPerMinute" title="Paquetes por minuto en el último minuto">
       <span id="packet-rate-value">—</span>/min
     </div>
-    <button class="live-info-btn" id="live-info-btn" onclick="openLiveInfo()" title="Cómo funciona el directo">
+    <div class="lang-switch" id="lang-switch">
+      <button class="lang-btn" id="lang-btn" type="button" data-i18n-title="langSelector.title" title="Idioma / Language" aria-label="Idioma" aria-haspopup="true" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg>
+      </button>
+      <div class="lang-menu" id="lang-menu" role="menu"></div>
+    </div>
+    <button class="live-info-btn" id="live-info-btn" onclick="openLiveInfo()" data-i18n-title="live.howItWorksTitle" title="Cómo funciona el directo">
       <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.3" stroke="currentColor" stroke-width="1.5"/><rect x="7.3" y="6.9" width="1.4" height="4.2" rx="0.5" fill="currentColor"/><circle cx="8" cy="4.9" r="0.9" fill="currentColor"/></svg>
     </button>
   </div>
@@ -124,38 +130,38 @@
 <!-- Main -->
 <div class="main">
   <div id="map">
-    <button class="live-log-toggle-btn" id="live-log-toggle-btn" onclick="toggleLiveLogPanel()" title="Paquetes">
+    <button class="live-log-toggle-btn" id="live-log-toggle-btn" onclick="toggleLiveLogPanel()" data-i18n-title="live.packets" title="Paquetes">
       <svg viewBox="0 0 16 16" fill="none">
         <rect x="2" y="3" width="12" height="2" rx="1" fill="currentColor"/>
         <rect x="2" y="7" width="12" height="2" rx="1" fill="currentColor"/>
         <rect x="2" y="11" width="7" height="2" rx="1" fill="currentColor"/>
       </svg>
-      <span>Ver paquetes</span>
+      <span data-i18n="live.viewPackets">Ver paquetes</span>
     </button>
 
     <div class="legend" id="live-legend">
-      <div class="legend-title legend-collapse-toggle" id="live-legend-handle" onclick="toggleLiveLegendCollapse()" role="button" tabindex="0" title="Mostrar/ocultar leyenda">
-        Leyenda <span class="legend-collapse-chevron">▾</span>
+      <div class="legend-title legend-collapse-toggle" id="live-legend-handle" onclick="toggleLiveLegendCollapse()" role="button" tabindex="0" data-i18n-title="live.legend.toggleTitle" title="Mostrar/ocultar leyenda">
+        <span data-i18n="legend.title">Leyenda</span> <span class="legend-collapse-chevron">▾</span>
       </div>
       <div class="legend-body" id="live-legend-body">
-      <div class="legend-item legend-toggle active" data-layer="nodes" onclick="toggleLiveLayer('nodes')" role="button" tabindex="0"><div class="legend-dot" style="background:#64748b"></div> Nodo</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#5eead4;box-shadow:0 0 6px #5eead4"></div> Nodo enfocado</div>
+      <div class="legend-item legend-toggle active" data-layer="nodes" onclick="toggleLiveLayer('nodes')" role="button" tabindex="0"><div class="legend-dot" style="background:#64748b"></div> <span data-i18n="live.legend.node">Nodo</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#5eead4;box-shadow:0 0 6px #5eead4"></div> <span data-i18n="live.legend.focusedNode">Nodo enfocado</span></div>
       <hr class="legend-sep">
-      <div class="legend-item"><div class="legend-dot" style="background:#38bdf8;border:1.5px solid #fff;font-family:var(--mono);font-size:8px;font-weight:700;color:#0b0f1a;display:flex;align-items:center;justify-content:center">2</div> Paquete en tránsito</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#38bdf8;border:1.5px solid #fff;font-family:var(--mono);font-size:8px;font-weight:700;color:#0b0f1a;display:flex;align-items:center;justify-content:center">2</div> <span data-i18n="live.legend.packetInTransit">Paquete en tránsito</span></div>
       <div class="legend-item legend-toggle active" data-layer="trail" onclick="toggleLiveLayer('trail')" role="button" tabindex="0">
         <svg class="legend-line" width="24" height="10" viewBox="0 0 24 10"><line x1="0" y1="5" x2="24" y2="5" stroke="#38bdf8" stroke-width="2.5"/></svg>
-        Ruta trazada del paquete
+        <span data-i18n="live.legend.packetTrail">Ruta trazada del paquete</span>
       </div>
       <div class="legend-item legend-toggle active" data-layer="siblings" onclick="toggleLiveLayer('siblings')" role="button" tabindex="0">
         <svg class="legend-line" width="24" height="10" viewBox="0 0 24 10"><line x1="0" y1="5" x2="24" y2="5" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="3 4"/></svg>
-        Mismo salto oído por varios gateways
+        <span data-i18n="live.legend.sameHop">Mismo salto oído por varios gateways</span>
       </div>
-      <div class="legend-item"><div class="legend-dot" style="background:transparent;border:2px solid #38bdf8"></div> Origen del paquete (anillo)</div>
-      <div class="legend-item"><span>⚡</span> Salto con 0 Hop</div>
+      <div class="legend-item"><div class="legend-dot" style="background:transparent;border:2px solid #38bdf8"></div> <span data-i18n="live.legend.origin">Origen del paquete (anillo)</span></div>
+      <div class="legend-item"><span>⚡</span> <span data-i18n="live.legend.zeroHop">Salto con 0 Hop</span></div>
       <hr class="legend-sep">
-      <div class="legend-item"><span style="color:#facc15">●</span> Ruta exacta (traceroute real)</div>
-      <div class="legend-item"><span style="color:var(--accent)">●</span> Ruta confirmada (relay_node real)</div>
-      <div class="legend-item"><span style="color:var(--accent2)">●</span> Ruta aproximada (heurística de gateways)</div>
+      <div class="legend-item"><span style="color:#facc15">●</span> <span data-i18n="live.legend.exactRoute">Ruta exacta (traceroute real)</span></div>
+      <div class="legend-item"><span style="color:var(--accent)">●</span> <span data-i18n="live.legend.confirmedRoute">Ruta confirmada (relay_node real)</span></div>
+      <div class="legend-item"><span style="color:var(--accent2)">●</span> <span data-i18n="live.legend.approxRoute">Ruta aproximada (heurística de gateways)</span></div>
       </div>
     </div>
 
@@ -167,7 +173,7 @@
       </div>
       <div class="timeline-axis" id="timeline-axis"></div>
       <div class="timeline-controls">
-        <button class="tl-btn tl-play-btn" id="timeline-play-btn" onclick="toggleReplay()" title="Reproducir/pausar">▶</button>
+        <button class="tl-btn tl-play-btn" id="timeline-play-btn" onclick="toggleReplay()" data-i18n-title="live.timeline.playPause" title="Reproducir/pausar">▶</button>
 
         <div class="tl-group" id="timeline-speed-group">
           <button class="tl-chip" data-speed="0.25" onclick="setReplaySpeed(0.25)">0.25x</button>
@@ -178,30 +184,30 @@
         </div>
 
         <div class="tl-group" id="timeline-range-group">
-          <button class="tl-chip active" data-range="3600" onclick="setTimelineRange(3600)">1h</button>
-          <button class="tl-chip" data-range="43200" onclick="setTimelineRange(43200)">12h</button>
-          <button class="tl-chip" data-range="604800" onclick="setTimelineRange(604800)">7d</button>
+          <button class="tl-chip active" data-range="3600" onclick="setTimelineRange(3600)" data-i18n="live.timeline.range1h">1h</button>
+          <button class="tl-chip" data-range="43200" onclick="setTimelineRange(43200)" data-i18n="live.timeline.range12h">12h</button>
+          <button class="tl-chip" data-range="604800" onclick="setTimelineRange(604800)" data-i18n="live.timeline.range7d">7d</button>
         </div>
 
         <span class="timeline-cursor-label" id="timeline-cursor-label"></span>
 
-        <button class="tl-btn tl-live-btn active" id="timeline-live-btn" onclick="goLive()" title="Volver a en directo">
-          <span class="live-dot"></span> En directo
+        <button class="tl-btn tl-live-btn active" id="timeline-live-btn" onclick="goLive()" data-i18n-title="live.timeline.backToLive" title="Volver a en directo">
+          <span class="live-dot"></span> <span data-i18n="live.timeline.live">En directo</span>
         </button>
       </div>
     </div>
   </div>
   <div class="live-log" id="live-log">
     <div class="live-log-header">
-      <span>Paquetes de la sesión</span>
+      <span data-i18n="live.sessionPackets">Paquetes de la sesión</span>
       <div class="llh-actions">
-        <button onclick="exportSessionJSON()" title="Exportar como JSON">JSON</button>
-        <button onclick="exportSessionCSV()" title="Exportar como CSV">CSV</button>
+        <button onclick="exportSessionJSON()" data-i18n-title="live.exportJson" title="Exportar como JSON">JSON</button>
+        <button onclick="exportSessionCSV()" data-i18n-title="live.exportCsv" title="Exportar como CSV">CSV</button>
       </div>
     </div>
     <div class="live-log-top" id="live-log-top"></div>
     <div id="live-log-rows">
-      <div class="live-log-empty" id="live-log-empty">Esperando paquetes…</div>
+      <div class="live-log-empty" id="live-log-empty" data-i18n="live.waitingPackets">Esperando paquetes…</div>
     </div>
   </div>
 </div>
@@ -210,10 +216,10 @@
 <div class="malconfig-modal" id="packet-detail-modal" onclick="if(event.target===this) closePacketDetail()">
   <div class="malconfig-inner pkt-detail-inner">
     <div class="malconfig-header">
-      <div class="malconfig-title">Desglose del paquete</div>
+      <div class="malconfig-title" data-i18n="live.packetDetail.title">Desglose del paquete</div>
       <div class="malconfig-header-right">
-        <button class="malconfig-close" onclick="copyCurrentLink()" title="Copiar enlace a este paquete">🔗</button>
-        <button class="malconfig-close" onclick="closePacketDetail()" aria-label="Cerrar">✕</button>
+        <button class="malconfig-close" onclick="copyCurrentLink()" data-i18n-title="live.packetDetail.copyLink" title="Copiar enlace a este paquete">🔗</button>
+        <button class="malconfig-close" onclick="closePacketDetail()" data-i18n-aria-label="common.close" aria-label="Cerrar">✕</button>
       </div>
     </div>
     <div class="malconfig-content pkt-detail-layout">
@@ -227,43 +233,43 @@
 <div class="malconfig-modal" id="live-info-modal" onclick="if(event.target===this) closeLiveInfo()">
   <div class="malconfig-inner live-info-inner">
     <div class="malconfig-header">
-      <div class="malconfig-title">Cómo funciona el visualizador de la actividad en directo</div>
+      <div class="malconfig-title" data-i18n="live.info.title">Cómo funciona el visualizador de la actividad en directo</div>
       <div class="malconfig-header-right">
-        <button class="malconfig-close" onclick="closeLiveInfo()" aria-label="Cerrar">✕</button>
+        <button class="malconfig-close" onclick="closeLiveInfo()" data-i18n-aria-label="common.close" aria-label="Cerrar">✕</button>
       </div>
     </div>
     <div class="malconfig-content live-info-content">
-      <h4>Qué se ve aquí</h4>
-      <p>Esta página escucha en directo el broker MQTT de la red Meshtastic
+      <h4 data-i18n="live.info.whatH">Qué se ve aquí</h4>
+      <p data-i18n-html="live.info.whatP">Esta página escucha en directo el broker MQTT de la red Meshtastic
       España y realiza una aproximación visual sobre cómo viajan los
       paquetes por la red.</p>
 
-      <h4>Cómo se reconstruye la ruta</h4>
-      <p>Un mismo paquete puede ser oído por varios gateways MQTT. Se
+      <h4 data-i18n="live.info.routeH">Cómo se reconstruye la ruta</h4>
+      <p data-i18n-html="live.info.routeP1">Un mismo paquete puede ser oído por varios gateways MQTT. Se
       identifica y se ordenan las apariciones por <code>hop_limit</code>
       descendente para aproximar el camino salto a salto.</p>
-      <p>Si el paquete incluye información de la ruta, se marca como
+      <p data-i18n-html="live.info.routeP2">Si el paquete incluye información de la ruta, se marca como
       <strong>confirmada</strong>; si no, es una <strong>estimación</strong>
       basada en qué gateways oyeron cada salto.</p>
-      <p>Solo se ve un salto cuando lo oye un nodo que <strong>además</strong>
+      <p data-i18n-html="live.info.routeP3">Solo se ve un salto cuando lo oye un nodo que <strong>además</strong>
       tiene el puente MQTT activado. Si un paquete pasa de un nodo normal a
       otro nodo normal sin que ninguno de los dos sea gateway MQTT, ese salto
       ocurre por radio pero nunca llega a la web: no falta información
       nuestra, es que no existe ningún dato que lo reporte. Por eso el
       desglose casi nunca muestra <em>todos</em> los saltos reales, solo los
       puntos donde algún gateway MQTT lo "pescó" de camino.</p>
-      <p>Si ningún gateway MQTT oye un paquete en todo su recorrido, el
+      <p data-i18n-html="live.info.routeP4">Si ningún gateway MQTT oye un paquete en todo su recorrido, el
       paquete no aparece aquí. Aunque haya llegado bien a su destino por
       radio.</p>
 
-      <h4>Qué contenido se puede leer</h4>
-      <p>Solo se decodifica lo necesario para saber el <em>tipo</em> de
+      <h4 data-i18n="live.info.contentH">Qué contenido se puede leer</h4>
+      <p data-i18n-html="live.info.contentP1">Solo se decodifica lo necesario para saber el <em>tipo</em> de
       paquete. En canales sin contraseña propia (LongFast, MediumFast…) se
       puede recuperar el tipo real e incluso el texto si es un mensaje
       (<code>TEXT_MESSAGE_APP</code>) — es la única excepción. Un canal con
       PSK propia se queda como <code>ENCRYPTED</code>, sin revelar nada de
       su contenido.</p>
-      <p>Un <code>TRACEROUTE_APP</code> es distinto: su contenido es en sí
+      <p data-i18n-html="live.info.contentP2">Un <code>TRACEROUTE_APP</code> es distinto: su contenido es en sí
       mismo la lista de nodos por los que pasó — metadato de enrutamiento,
       no un mensaje — así que cuando alguien lanza un traceroute se
       muestra la ruta <strong>exacta</strong> registrada por el propio
@@ -271,12 +277,12 @@
       tiene posición conocida, se marca con "❓" en vez de dibujarlo donde
       no toca.</p>
 
-      <h4>Limitaciones</h4>
+      <h4 data-i18n="live.info.limitsH">Limitaciones</h4>
       <ul>
-        <li>La mayoría de saltos reales no se ven: solo se registran los que pasan por un nodo con MQTT activado.</li>
-        <li>La ruta sin <code>relay_node</code> ni traceroute es aproximada, estimada por qué gateways oyeron cada salto.</li>
-        <li>En el mapa solo se dibujan los últimos 20 paquetes en vuelo a la vez.</li>
-        <li>El histórico de la línea de tiempo guarda 7 días.</li>
+        <li data-i18n="live.info.limit1">La mayoría de saltos reales no se ven: solo se registran los que pasan por un nodo con MQTT activado.</li>
+        <li data-i18n-html="live.info.limit2">La ruta sin <code>relay_node</code> ni traceroute es aproximada, estimada por qué gateways oyeron cada salto.</li>
+        <li data-i18n="live.info.limit3">En el mapa solo se dibujan los últimos 20 paquetes en vuelo a la vez.</li>
+        <li data-i18n="live.info.limit4">El histórico de la línea de tiempo guarda 7 días.</li>
       </ul>
     </div>
   </div>
@@ -285,6 +291,10 @@
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
+<script src="js/i18n/es.js?v=1.5.0"></script>
+<script src="js/i18n/gl.js?v=1.5.0"></script>
+<script src="js/i18n/en.js?v=1.5.0"></script>
+<script src="js/i18n.js?v=1.5.0"></script>
 <script src="js/state.js?v=1.5.0"></script>
 <script src="js/live.js?v=1.5.0"></script>
 </body>

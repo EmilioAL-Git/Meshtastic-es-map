@@ -85,15 +85,10 @@ async function loadAll() {
       t('header.lastUpdate', { time: now.toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' }) });
 
     if (MAP_AUTO_FIT && !autoFitDone) {
-      const nodesWithPos = allNodes.filter(n => n.latitude != null);
-      if (nodesWithPos.length > 1 && Object.keys(markers).length > 0) {
-        const bounds = L.latLngBounds(nodesWithPos.map(n => [n.latitude, n.longitude]));
-        if (bounds.isValid()) {
-          map.fitBounds(bounds, { padding: [40, 40] });
-          autoFitDone = true;
-        }
-      }
+      autoFitDone = fitAllNodes();
     }
+
+    if (kioskActive) refreshKioskPulses();
 
     // Enlace directo a un nodo: ?node=!abcd1234
     if (firstLoad) {
@@ -202,6 +197,7 @@ fetch(API_BASE + '/data/config.json')
     initMap();
     syncFilterChips();
     syncEdgeFilterChips();
+    if (mapSettings.autoLocate) locateUser({ onFound: () => { autoFitDone = true; } });
     loadAll();
   });
 
@@ -209,7 +205,8 @@ fetch(API_BASE + '/data/config.json')
 // Escape cierra los modales (el del informe tiene prioridad: está encima)
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
-  if (document.getElementById('node-report-modal').classList.contains('open')) closeNodeReport();
+  if (kioskActive) exitKioskMode();
+  else if (document.getElementById('node-report-modal').classList.contains('open')) closeNodeReport();
   else if (document.getElementById('malconfig-modal').classList.contains('open')) closeMalConfigModal();
 });
 
@@ -221,6 +218,11 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#filter-panel') && !e.target.closest('#filter-toggle-btn')) {
     document.getElementById('filter-panel').classList.remove('open');
     document.getElementById('filter-toggle-btn').classList.remove('active');
+  }
+  if (!e.target.closest('#settings-panel') && !e.target.closest('#settings-btn')) {
+    closeSettingsPanel();
+  } else if (!e.target.closest('.settings-info-icon') && !e.target.closest('#settings-info-popover')) {
+    closeSettingInfo();
   }
 });
 

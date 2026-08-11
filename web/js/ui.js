@@ -9,6 +9,33 @@ function _flyToCircle(nodeId, lat, lng, circle, duration) {
   map.flyToBounds(circle.getBounds(), { animate: true, duration, padding: [40, 40] });
 }
 
+function _makePrecisionCircle(node) {
+  const radius = precisionRadiusMeters(node.precision_bits, node.latitude);
+  if (radius <= 10) return null;
+  const color = nodeColor(node);
+  return L.circle([node.latitude, node.longitude], {
+    radius,
+    color,
+    weight: 1.5,
+    opacity: 0.55,
+    fillColor: color,
+    fillOpacity: 0.08,
+    interactive: false,
+    pane: 'overlayPane',
+  });
+}
+
+// Aplica el ajuste showPrecisionCircle al vuelo, sin esperar a la próxima
+// selección de nodo (el propio toggle del panel de ajustes llama a esto)
+function refreshPrecisionCircle() {
+  if (precisionCircle) { map.removeLayer(precisionCircle); precisionCircle = null; }
+  if (!selectedNodeId) return;
+  const node = nodesById.get(selectedNodeId);
+  if (!node || node.latitude == null || !mapSettings.showPrecisionCircle) return;
+  const circle = _makePrecisionCircle(node);
+  if (circle) precisionCircle = circle.addTo(map);
+}
+
 // ─── Selección de nodo ────────────────────────────────────────────────────────
 function selectNode(nodeId, fly = false) {
   const node = nodesById.get(nodeId);
@@ -46,7 +73,7 @@ function selectNode(nodeId, fly = false) {
 
     // Círculo de incertidumbre de posición
     const radius = precisionRadiusMeters(node.precision_bits, node.latitude);
-    if (radius > 10) {
+    if (mapSettings.showPrecisionCircle && radius > 10) {
       const color = nodeColor(node);
       precisionCircle = L.circle([node.latitude, node.longitude], {
         radius,
@@ -60,7 +87,7 @@ function selectNode(nodeId, fly = false) {
       }).addTo(map);
     }
 
-    if (fly) {
+    if (fly && mapSettings.flyToNode) {
       map.stop();
       if (precisionCircle) {
         _flyToCircle(nodeId, node.latitude, node.longitude, precisionCircle, 0.7);
@@ -76,7 +103,7 @@ function selectNode(nodeId, fly = false) {
           map.flyTo([node.latitude, node.longitude], zoom, { animate: true, duration: 0.6 });
         }
       }
-    } else if (precisionCircle) {
+    } else if (precisionCircle && mapSettings.flyToNode) {
       _flyToCircle(nodeId, node.latitude, node.longitude, precisionCircle, 0.5);
     }
 

@@ -2295,6 +2295,205 @@ body.embed-mode .lang-switch { display: none; }
   100% { transform: scale(1.3); opacity: 0; }
 }
 
+/* ── Tema oscuro del mapa: las teselas de CARTO Dark Matter son muy tenues
+   por defecto, se realza el contraste de calles/etiquetas ── */
+body.theme-dark #map .leaflet-tile-pane {
+  filter: brightness(1.6) contrast(1.25);
+}
+
+/* ── Modo kiosko: pulso en nodos con actividad reciente ── */
+.kiosk-pulse-marker {
+  position: relative;
+  width: 32px;
+  height: 32px;
+}
+
+.kiosk-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid;
+  animation: sel-pulse 2.2s ease-out infinite;
+}
+
+.kiosk-pulse2 { animation-delay: 1.1s; }
+
+/* ── Botón + panel de ajustes ── */
+.settings-switch { position: relative; flex-shrink: 0; }
+
+.settings-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+.settings-btn:hover,
+.settings-switch.open .settings-btn { color: var(--accent); border-color: var(--accent); }
+
+.settings-panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 240px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 10px;
+  z-index: 1200;
+}
+.settings-switch.open .settings-panel { display: block; }
+
+.settings-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  margin-bottom: 8px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.settings-label {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+}
+
+.settings-seg { display: flex; gap: 4px; }
+.settings-seg .fchip { opacity: 1; text-decoration: none; padding: 4px 9px; }
+.settings-seg .fchip.active { border-color: var(--accent); color: var(--accent); }
+
+.settings-label-info {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.settings-info-icon {
+  color: var(--muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+.settings-info-icon:hover { color: var(--accent); }
+
+.settings-info-popover {
+  display: none;
+  position: absolute;
+  width: 200px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 8px 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text);
+  z-index: 1300;
+}
+.settings-info-popover.open { display: block; }
+
+.settings-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 8px;
+  padding: 6px 0;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  text-align: left;
+}
+
+.settings-switch-track {
+  position: relative;
+  flex-shrink: 0;
+  width: 32px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--border);
+  transition: background .15s;
+}
+.settings-switch-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text);
+  transition: transform .15s;
+}
+.settings-toggle-row.active .settings-switch-track { background: var(--accent); }
+.settings-toggle-row.active .settings-switch-track::after { transform: translateX(14px); }
+
+.settings-kiosk-btn {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px;
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.settings-kiosk-btn:hover { border-color: var(--accent); }
+
+/* ── Modo kiosko ── */
+.kiosk-exit-btn {
+  display: none;
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 9500;
+  padding: 8px 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+}
+.kiosk-exit-btn.visible { display: block; }
+
+body.kiosk-mode .search-wrap,
+body.kiosk-mode #filter-toggle-btn,
+body.kiosk-mode .filter-panel,
+body.kiosk-mode .noopt-btn,
+body.kiosk-mode .live-link,
+body.kiosk-mode .settings-switch,
+body.kiosk-mode .lang-switch {
+  display: none !important;
+}
+
 /* ── Leaflet overrides ── */
 .leaflet-popup-content-wrapper {
   background: var(--panel) !important;

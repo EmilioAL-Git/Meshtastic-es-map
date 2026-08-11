@@ -953,6 +953,8 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   border-color: var(--accent);
   color: var(--accent);
 }
+.focus-wrap:focus-within .search-icon,
+.focus-wrap.active .search-icon { color: var(--accent); }
 
 .back-link {
   display: flex;

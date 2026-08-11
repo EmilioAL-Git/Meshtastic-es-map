@@ -1453,14 +1453,21 @@ function resolvePacketRelays(stages) {
   return stages.map((_, i) => ({ id: resolved[i], confidence: confidence[i] }));
 }
 
-// Un paquete solo se marca como "confirmado" si al menos una etapa resuelve
-// su relay_node a un único nodo con certeza ('confirmed') — un 'estimated'
-// (mejor candidato entre varios) no basta para esa etiqueta, aunque sí se
-// muestra como pista en el desglose de saltos.
+// Un paquete solo se marca como "confirmado" si TODAS las etapas que traían
+// relay_node (es decir, todos los saltos que de verdad necesitaban
+// retransmisión — los de hop 0/"salto libre" no tienen relay_node porque no
+// hizo falta que nadie reenviara nada) resuelven a un único nodo con
+// certeza ('confirmed'). Con que una sola quede en 'estimated' (mejor
+// candidato entre varios, no un hecho) ya no se puede presentar la ruta
+// entera como confirmada — sí se sigue mostrando esa pista por salto en el
+// desglose.
 function effectiveConfidence(path_confidence, stages) {
   if (path_confidence !== 'relay_node') return path_confidence;
-  const confirmed = resolvePacketRelays(stages || []).some(r => r.confidence === 'confirmed');
-  return confirmed ? 'relay_node' : 'gateway_heuristic';
+  const relayed = (stages || []).filter(s => s.relay_node);
+  if (!relayed.length) return 'gateway_heuristic';
+  const relays = resolvePacketRelays(stages || []);
+  const allConfirmed = (stages || []).every((s, i) => !s.relay_node || relays[i].confidence === 'confirmed');
+  return allConfirmed ? 'relay_node' : 'gateway_heuristic';
 }
 
 // meshview identifica un paquete solo por su packet_id (32 bits, sin el
@@ -2442,8 +2449,51 @@ async function initTimeline() {
 // ─── Boot ───────────────────────────────────────────────────────────────────
 
 function toggleLiveLogPanel() {
-  document.getElementById('live-log').classList.toggle('open');
+  const panel = document.getElementById('live-log');
+  const open = panel.classList.toggle('open');
   document.getElementById('live-log-toggle-btn').classList.toggle('active');
+  // Cada apertura arranca con la altura por defecto (CSS) — el arrastre
+  // del tirador es un ajuste puntual, no un tamaño que deba persistir.
+  if (open) panel.style.height = '';
+}
+
+// ─── Panel de paquetes en móvil: estirable desde el tirador superior ───────
+function initLiveLogResize() {
+  const handle = document.getElementById('live-log-handle');
+  const panel = document.getElementById('live-log');
+  if (!handle || !panel) return;
+  let dragging = false, startY = 0, startH = 0;
+
+  function onPointerDown(e) {
+    if (!window.matchMedia('(max-width: 768px)').matches) return;
+    dragging = true;
+    startY = e.clientY;
+    startH = panel.getBoundingClientRect().height;
+    handle.classList.add('dragging');
+    try { handle.setPointerCapture(e.pointerId); } catch {}
+    e.preventDefault();
+  }
+  function onPointerMove(e) {
+    if (!dragging) return;
+    // El tirador está arriba del panel: subir el dedo/ratón (deltaY
+    // negativo) debe agrandar el panel, de ahí startY - clientY.
+    const delta = startY - e.clientY;
+    const minH = 120;
+    const maxH = window.innerHeight * 0.9;
+    const h = Math.min(maxH, Math.max(minH, startH + delta));
+    panel.style.height = h + 'px';
+  }
+  function onPointerUp(e) {
+    if (!dragging) return;
+    dragging = false;
+    handle.classList.remove('dragging');
+    try { handle.releasePointerCapture(e.pointerId); } catch {}
+  }
+
+  handle.addEventListener('pointerdown', onPointerDown);
+  handle.addEventListener('pointermove', onPointerMove);
+  handle.addEventListener('pointerup', onPointerUp);
+  handle.addEventListener('pointercancel', onPointerUp);
 }
 
 function togglePause() {
@@ -2584,6 +2634,7 @@ async function bootLive() {
   syncLiveLegendToggles();
   syncPortnumFilterButtons();
   initLegendCollapse();
+  initLiveLogResize();
   try { await loadNodes(); } catch (e) { console.error(e); }
   connectLive();
   await initTimeline();

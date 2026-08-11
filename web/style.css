@@ -1358,6 +1358,8 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   scrollbar-color: var(--border) transparent;
 }
 
+.live-log-handle { display: none; } /* solo en móvil, ver media query */
+
 .live-log-empty {
   padding: 20px 14px;
   color: var(--muted);
@@ -2804,7 +2806,9 @@ body.embed-mode .malconfig-table td:nth-child(3) { display: none; }
     right: 0;
     bottom: 0;
     width: 100%;
-    max-height: 45vh;
+    height: 45vh; /* valor de partida; arrastrando el tirador se ajusta a gusto */
+    min-height: 120px;
+    max-height: 90vh;
     border-left: none;
     border-top: 1px solid var(--border);
     border-radius: 14px 14px 0 0;
@@ -2817,6 +2821,23 @@ body.embed-mode .malconfig-table td:nth-child(3) { display: none; }
     display: block;
     animation: slideUpMobile .25s ease;
   }
+
+  /* Tirador para estirar el panel desde arriba y ajustar su altura */
+  body.live-page .live-log-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 20px;
+    cursor: ns-resize;
+    touch-action: none;
+  }
+  body.live-page .live-log-handle span {
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+  }
+  body.live-page .live-log-handle.dragging span { background: var(--accent); }
 
   body.live-page .back-link span { display: none; }
 

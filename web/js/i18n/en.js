@@ -335,7 +335,7 @@ window.I18N.en = {
     backToMap: 'Back to map',
     brand: 'MESHTASTIC SPAIN <em>/ Live</em>',
     filterByType: 'Filter by packet type',
-    filters: 'Filters',
+    filters: 'Filter',
     all: 'All',
     none: 'None',
     portnum: {

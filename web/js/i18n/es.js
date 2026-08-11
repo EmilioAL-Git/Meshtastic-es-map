@@ -337,7 +337,7 @@ window.I18N.es = {
     backToMap: 'Volver al mapa',
     brand: 'MESHTASTIC ESPAÑA <em>/ En directo</em>',
     filterByType: 'Filtrar por tipo de paquete',
-    filters: 'Filtros',
+    filters: 'Filtrar',
     all: 'Todos',
     none: 'Ninguno',
     portnum: {

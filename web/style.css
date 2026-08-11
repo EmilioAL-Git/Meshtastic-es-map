@@ -2861,7 +2861,6 @@ body.embed-mode .malconfig-table td:nth-child(3) { display: none; }
   /* Ahora es un botón compacto ("Filtros") en vez de 6 chips en fila, cabe
      bien junto al buscador — ya no hace falta ocultarlo en móvil. */
   body.live-page .pf-dropdown-wrap { order: 2; }
-  body.live-page .pf-dropdown-btn span:not(.pf-dropdown-count) { display: none; } /* solo icono + contador, ahorra sitio */
 
   /* Solo icono, sin texto de placeholder — pegado al borde derecho de la
      fila; se expande al enfocarlo para poder escribir */

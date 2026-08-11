@@ -1335,10 +1335,18 @@ function nodeLabel(nodeId) {
 //      'estimated', nunca como si fuera un hecho verificado.
 const RELAY_RANGE_M = 50000;
 
+// Un nodo apagado hace días sigue siendo el candidato más cercano si nunca
+// se mueve, así que sin este filtro "gana" el desempate por distancia aunque
+// no pudiera haber retransmitido nada. Se descartan candidatos sin actividad
+// en las últimas 24h (mismo umbral que el resto del proyecto).
+const RELAY_CANDIDATE_MAX_AGE_MIN = 1440;
+
 function relayCandidatesByByte(lastByte) {
   const out = [];
-  for (const id of nodesById.keys()) {
-    if (id.slice(-2).toLowerCase() === lastByte) out.push(id);
+  for (const [id, n] of nodesById) {
+    if (id.slice(-2).toLowerCase() !== lastByte) continue;
+    if (n.last_seen_ago_min != null && n.last_seen_ago_min >= RELAY_CANDIDATE_MAX_AGE_MIN) continue;
+    out.push(id);
   }
   return out;
 }

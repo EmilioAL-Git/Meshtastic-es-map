@@ -108,6 +108,13 @@ header {
   display: flex;
   flex: 1;
   overflow: hidden;
+  /* Establece su propio contexto de apilamiento: sin esto, los botones
+     flotantes del mapa (z-index:1000, dentro de #map, que NO crea contexto
+     propio) empataban en z-index con el header (también 1000) y ganaban el
+     desempate por ir después en el DOM — quedaban por encima de paneles
+     desplegables del header como el de filtros. */
+  position: relative;
+  z-index: 1;
 }
 
 /* ── Mapa ── */

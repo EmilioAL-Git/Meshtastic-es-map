@@ -88,8 +88,6 @@ async function loadAll() {
       autoFitDone = fitAllNodes();
     }
 
-    if (kioskActive) refreshKioskPulses();
-
     // Enlace directo a un nodo: ?node=!abcd1234
     if (firstLoad) {
       const nodeParam = new URLSearchParams(location.search).get('node');
@@ -205,8 +203,7 @@ fetch(API_BASE + '/data/config.json')
 // Escape cierra los modales (el del informe tiene prioridad: está encima)
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
-  if (kioskActive) exitKioskMode();
-  else if (document.getElementById('node-report-modal').classList.contains('open')) closeNodeReport();
+  if (document.getElementById('node-report-modal').classList.contains('open')) closeNodeReport();
   else if (document.getElementById('malconfig-modal').classList.contains('open')) closeMalConfigModal();
 });
 

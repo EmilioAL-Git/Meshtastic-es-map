@@ -124,8 +124,16 @@
     <button class="live-info-btn" id="live-info-btn" onclick="openLiveInfo()" data-i18n-title="live.howItWorksTitle" title="Cómo funciona el directo">
       <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.3" stroke="currentColor" stroke-width="1.5"/><rect x="7.3" y="6.9" width="1.4" height="4.2" rx="0.5" fill="currentColor"/><circle cx="8" cy="4.9" r="0.9" fill="currentColor"/></svg>
     </button>
+    <button class="live-info-btn" id="live-kiosk-btn" onclick="enterLiveKiosk()" data-i18n-title="live.kioskEnter" title="Modo kiosko">
+      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 3h12v8H2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M5.5 13.5h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M8 11v2.5" stroke="currentColor" stroke-width="1.5"/></svg>
+    </button>
   </div>
 </header>
+
+<!-- Botón flotante de salida del modo kiosko -->
+<button class="kiosk-exit-btn" id="live-kiosk-exit-btn" onclick="exitLiveKiosk()">
+  <span data-i18n="settings.kioskExit">✕ Salir del modo kiosko</span>
+</button>
 
 <!-- Main -->
 <div class="main">

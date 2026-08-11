@@ -57,8 +57,6 @@ const _savedSettings = (() => { try { return JSON.parse(localStorage.getItem(SET
 const mapSettings = { ...DEFAULT_SETTINGS, ..._savedSettings };
 const MARKER_SIZE_MULT = { small: 0.75, normal: 1, large: 1.35 };
 
-let kioskActive      = false;  // no persistido: siempre empieza apagado
-let kioskPulseGroup  = null;   // L.layerGroup de pulsos del modo kiosko
 
 // ─── Colores ──────────────────────────────────────────────────────────────────
 const C_RECENT  = '#5eead4';

@@ -2301,23 +2301,6 @@ body.theme-dark #map .leaflet-tile-pane {
   filter: brightness(1.6) contrast(1.25);
 }
 
-/* ── Modo kiosko: pulso en nodos con actividad reciente ── */
-.kiosk-pulse-marker {
-  position: relative;
-  width: 32px;
-  height: 32px;
-}
-
-.kiosk-pulse {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 2px solid;
-  animation: sel-pulse 2.2s ease-out infinite;
-}
-
-.kiosk-pulse2 { animation-delay: 1.1s; }
-
 /* ── Botón + panel de ajustes ── */
 .settings-switch { position: relative; flex-shrink: 0; }
 
@@ -2448,24 +2431,7 @@ body.theme-dark #map .leaflet-tile-pane {
 .settings-toggle-row.active .settings-switch-track { background: var(--accent); }
 .settings-toggle-row.active .settings-switch-track::after { transform: translateX(14px); }
 
-.settings-kiosk-btn {
-  display: flex;
-  justify-content: center;
-  width: 100%;
-  margin-top: 4px;
-  padding: 8px;
-  background: var(--panel2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  color: var(--accent);
-  font-family: var(--mono);
-  font-size: 12px;
-  cursor: pointer;
-  transition: border-color .15s;
-}
-.settings-kiosk-btn:hover { border-color: var(--accent); }
-
-/* ── Modo kiosko ── */
+/* ── Modo kiosko (live.html) ── */
 .kiosk-exit-btn {
   display: none;
   position: fixed;
@@ -2484,13 +2450,11 @@ body.theme-dark #map .leaflet-tile-pane {
 }
 .kiosk-exit-btn.visible { display: block; }
 
-body.kiosk-mode .search-wrap,
-body.kiosk-mode #filter-toggle-btn,
-body.kiosk-mode .filter-panel,
-body.kiosk-mode .noopt-btn,
-body.kiosk-mode .live-link,
-body.kiosk-mode .settings-switch,
-body.kiosk-mode .lang-switch {
+body.live-kiosk-mode header,
+body.live-kiosk-mode #live-legend,
+body.live-kiosk-mode #timeline-bar,
+body.live-kiosk-mode #live-log-toggle-btn,
+body.live-kiosk-mode #live-log {
   display: none !important;
 }
 

@@ -64,8 +64,6 @@ window.I18N.en = {
     showPrecisionCircleInfo: 'When selecting a node, draws a circle showing the margin of error of its reported GPS position — smaller the more precise the node is.',
     showMalIcons: 'Not-optimized icons',
     showMalIconsInfo: 'Shows a warning triangle over nodes with detected configuration issues. Turning it off only hides the map icon: the header’s "Not optimized" list keeps working the same.',
-    kioskEnter: 'Enable kiosk mode',
-    kioskInfo: 'Meant for leaving the map running at a booth or fair: hides the controls, fits the whole network in view, and pulses nodes with recent activity. Exit with the floating button or Esc.',
     kioskExit: '✕ Exit kiosk mode',
   },
 
@@ -363,6 +361,7 @@ window.I18N.en = {
     reconnectingIn: 'Reconnecting in {s}s…',
     packetsPerMinute: 'Packets per minute over the last minute',
     howItWorksTitle: 'How the live view works',
+    kioskEnter: 'Kiosk mode',
     packets: 'Packets',
     viewPackets: 'View packets',
     sessionPackets: 'Session packets',

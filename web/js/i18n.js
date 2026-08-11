@@ -174,8 +174,7 @@ function _buildLangSelector() {
   // Listeners del botón y de cierre: solo una vez (el menú se reconstruye al cambiar de idioma)
   if (!btn._wired) {
     btn._wired = true;
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
+    btn.addEventListener('click', () => {
       const open = document.getElementById('lang-switch').classList.toggle('open');
       btn.setAttribute('aria-expanded', open ? 'true' : 'false');
     });

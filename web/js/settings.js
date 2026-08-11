@@ -26,10 +26,12 @@ function toggleSettingInfo(event, key) {
   popover.dataset.key = key;
   popover.classList.add('open');
 
-  const panelRect = document.getElementById('settings-panel').getBoundingClientRect();
-  const iconRect  = icon.getBoundingClientRect();
+  const panelRect   = document.getElementById('settings-panel').getBoundingClientRect();
+  const iconRect    = icon.getBoundingClientRect();
+  const maxLeft     = panelRect.width - popover.offsetWidth;
+  const desiredLeft = iconRect.left - panelRect.left - 90;
   popover.style.top  = (iconRect.bottom - panelRect.top + 6) + 'px';
-  popover.style.left = Math.max(0, iconRect.left - panelRect.left - 90) + 'px';
+  popover.style.left = Math.min(Math.max(0, desiredLeft), Math.max(0, maxLeft)) + 'px';
 }
 
 function closeSettingInfo() {
@@ -78,52 +80,3 @@ function toggleMapSetting(key) {
   }
 }
 
-// ─── Modo kiosko ──────────────────────────────────────────────────────────────
-function makeKioskPulseIcon(color) {
-  return L.divIcon({
-    html: `<div class="kiosk-pulse-marker">
-        <div class="kiosk-pulse" style="border-color:${color}"></div>
-        <div class="kiosk-pulse kiosk-pulse2" style="border-color:${color}"></div>
-      </div>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 16],
-    className: '',
-  });
-}
-
-function refreshKioskPulses() {
-  if (!kioskActive) return;
-  if (kioskPulseGroup) kioskPulseGroup.clearLayers();
-  else kioskPulseGroup = L.layerGroup().addTo(map);
-
-  allNodes.forEach(n => {
-    if (!n.is_recent || n.latitude == null || n.longitude == null) return;
-    L.marker([n.latitude, n.longitude], {
-      icon: makeKioskPulseIcon(nodeColor(n)),
-      interactive: false,
-      zIndexOffset: -100,
-    }).addTo(kioskPulseGroup);
-  });
-}
-
-function enterKioskMode() {
-  closeSettingsPanel();
-  document.getElementById('filter-panel').classList.remove('open');
-  document.getElementById('filter-toggle-btn').classList.remove('active');
-  if (selectedNodeId) closeDetail();
-
-  document.body.classList.add('kiosk-mode');
-  map.stop();
-  fitAllNodes();
-
-  kioskActive = true;
-  refreshKioskPulses();
-  document.getElementById('kiosk-exit-btn').classList.add('visible');
-}
-
-function exitKioskMode() {
-  kioskActive = false;
-  if (kioskPulseGroup) { map.removeLayer(kioskPulseGroup); kioskPulseGroup = null; }
-  document.body.classList.remove('kiosk-mode');
-  document.getElementById('kiosk-exit-btn').classList.remove('visible');
-}

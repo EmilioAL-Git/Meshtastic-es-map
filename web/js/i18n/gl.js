@@ -66,8 +66,6 @@ window.I18N.gl = {
     showPrecisionCircleInfo: 'Ao seleccionar un nodo, debuxa un círculo coa marxe de erro da súa posición GPS reportada — máis pequeno canta máis precisión teña o nodo.',
     showMalIcons: 'Iconas de non optimizados',
     showMalIconsInfo: 'Mostra un triángulo de aviso sobre os nodos con problemas de configuración detectados. Desactivalo só oculta a icona no mapa: o listado "Non optimizados" da cabeceira segue funcionando igual.',
-    kioskEnter: 'Activar modo quiosco',
-    kioskInfo: 'Pensado para deixar o mapa posto nun stand ou feira: oculta os controis, encadra toda a rede e resalta cun pulso os nodos con actividade recente. Sáese co botón flotante ou premendo Esc.',
     kioskExit: '✕ Saír do modo quiosco',
   },
 
@@ -355,6 +353,7 @@ window.I18N.gl = {
     reconnectingIn: 'Reconectando en {s}s…',
     packetsPerMinute: 'Paquetes por minuto no último minuto',
     howItWorksTitle: 'Como funciona o directo',
+    kioskEnter: 'Modo quiosco',
     packets: 'Paquetes',
     viewPackets: 'Ver paquetes',
     sessionPackets: 'Paquetes da sesión',

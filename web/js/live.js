@@ -26,6 +26,9 @@ let livePaused = false;
 let liveFocusNodeId = null;   // !xxxxxxxx del nodo enfocado, o null (sin filtro)
 let liveFocusLayer;           // L.layerGroup con el resaltado del nodo enfocado
 let currentDetailPacketId = null; // pktKey() del desglose abierto ahora mismo, o null
+
+// ─── Modo kiosko: pantalla limpia, sin mover la cámara automáticamente ─────────
+let liveKioskActive = false;
 const LIVE_BACKOFF_MAX_MS = 30000;
 const LIVE_LOG_MAX = 200;
 
@@ -1952,6 +1955,41 @@ function clearFocus() {
   syncUrl();
 }
 
+// ─── Modo kiosko ────────────────────────────────────────────────────────────
+// Solo pantalla limpia (oculta header/leyenda/timeline/log) + encuadre
+// general al entrar. Sin cámara automática: los paquetes ya se animan solos
+// sobre el mapa, seguirlos con la cámara daba saltos que no aportaban nada.
+function liveKioskFitAll() {
+  const pts = allNodes.filter(n => n.latitude != null).map(n => [n.latitude, n.longitude]);
+  if (pts.length < 2) return;
+  const bounds = L.latLngBounds(pts);
+  if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40] });
+}
+
+function enterLiveKiosk() {
+  closePortnumFilterPanel();
+  document.getElementById('focus-dropdown').classList.remove('open');
+
+  document.body.classList.add('live-kiosk-mode');
+  liveKioskActive = true;
+  document.getElementById('live-kiosk-exit-btn').classList.add('visible');
+
+  // Ocultar header/leyenda/timeline cambia el tamaño del contenedor del
+  // mapa, lo que dispara el ResizeObserver de initLiveMap() (líneas ~327):
+  // hace un map.setView(centro, zoom, {animate:false}) para compensar, y si
+  // eso llega justo antes de nuestro fitBounds lo cancela en seco. Se
+  // espera a que ese ajuste se asiente antes de encuadrar la red.
+  setTimeout(() => {
+    if (liveKioskActive) liveKioskFitAll();
+  }, 250);
+}
+
+function exitLiveKiosk() {
+  liveKioskActive = false;
+  document.body.classList.remove('live-kiosk-mode');
+  document.getElementById('live-kiosk-exit-btn').classList.remove('visible');
+}
+
 // ─── Aviso sonoro (opcional, ligado al Modo Focus) ──────────────────────────
 let soundEnabled = false;
 let audioCtx = null;
@@ -2486,6 +2524,7 @@ async function bootLive() {
 
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
+    if (liveKioskActive) { exitLiveKiosk(); return; }
     closePacketDetail();
     closeLiveInfo();
     closePortnumFilterPanel();

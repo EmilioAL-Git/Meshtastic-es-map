@@ -145,6 +145,45 @@ function renderTopNodes() {
       </div>`).join('')}`;
 }
 
+// ─── "Latido" del mapa: destello breve en el gateway que sube un paquete ───────
+// La atribución de gateway solo se conoce por etapa (stage.gateway_ids, ver
+// packet_stage más abajo) — packet_new no trae esa información todavía.
+let gatewayHeartbeatLayer; // L.layerGroup de destellos, cada uno se autodestruye
+const GATEWAY_UPLOAD_FLASH_MS = 900; // debe casar con @keyframes gw-upload-ring-out/dot-fade
+
+function makeGatewayUploadIcon() {
+  return L.divIcon({
+    html: `<div class="gw-upload-marker">
+        <div class="gw-upload-ring"></div>
+        <div class="gw-upload-dot">
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M8 15V9" stroke="#1e293b" stroke-width="1.4" stroke-linecap="round"/>
+            <circle cx="8" cy="6.6" r="1.2" fill="#1e293b"/>
+            <path d="M5.6 5A3.2 3.2 0 0 1 8 3.7 3.2 3.2 0 0 1 10.4 5" stroke="#1e293b" stroke-width="1.2" stroke-linecap="round"/>
+            <path d="M3.9 3.2A5.8 5.8 0 0 1 8 1.4a5.8 5.8 0 0 1 4.1 1.8" stroke="#1e293b" stroke-width="1.2" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+    className: '',
+  });
+}
+
+// Destello puntual: aparece, se marca y se autodestruye — no queda nada fijo
+// en el mapa, solo el instante en que el gateway sube el paquete al broker.
+function flashGatewayUpload(gatewayId) {
+  const pos = nodeLatLng(gatewayId);
+  if (!pos) return;
+  const marker = L.marker(pos, {
+    pane: 'livePane',
+    icon: makeGatewayUploadIcon(),
+    interactive: false,
+    zIndexOffset: 300,
+  }).addTo(gatewayHeartbeatLayer);
+  setTimeout(() => gatewayHeartbeatLayer.removeLayer(marker), GATEWAY_UPLOAD_FLASH_MS);
+}
+
 // Solo se dibujan en el mapa los últimos MAX_VISIBLE_PACKETS paquetes — el
 // que se sale de esa ventana arranca una cuenta atrás de TRAIL_GRACE_MS
 // antes de desvanecerse, en vez de desaparecer de golpe.
@@ -305,6 +344,7 @@ function initLiveMap() {
   liveLayer = L.layerGroup().addTo(map);
   livePingLayer = L.layerGroup().addTo(map);
   liveFocusLayer = L.layerGroup().addTo(map);
+  gatewayHeartbeatLayer = L.layerGroup().addTo(map);
 
   applyAllLiveLayerVisibility();
 
@@ -478,6 +518,7 @@ function handleLiveEvent(event) {
       traceHopsSeen: -1, traceIncludeDest: false, traceFinalTimer: null,
       gatewayLegs: null, drawTimer: null, drawDeadline: performance.now() + TRAIL_MAX_WAIT_MS,
       trailStarted: false, trailLine: null, hitLine: null, trailConfirmed: [],
+      firedGateways: new Set(), // gateways ya destellados para este paquete — 1 pulso cada uno, no más
     });
     liveOrder.push(key);
     enforceLiveWindow();
@@ -493,6 +534,17 @@ function handleLiveEvent(event) {
     tracked.info.route = event.route;
     tracked.info.route_back = event.route_back;
     updateLogRow(event);
+    if (!inReplayView) {
+      const lastStage = event.stages[event.stages.length - 1];
+      // El mismo salto puede llegar en varios packet_stage según se suman
+      // más gateways que lo oyeron — sin este filtro, cada uno de esos
+      // eventos repetía el destello de los gateways ya vistos.
+      if (lastStage) (lastStage.gateway_ids || []).forEach(gw => {
+        if (tracked.firedGateways.has(gw)) return;
+        tracked.firedGateways.add(gw);
+        flashGatewayUpload(gw);
+      });
+    }
     // Una vez el paquete se confirma como traceroute (route/route_back del
     // propio firmware, salto a salto real) dejamos de animar por la
     // heurística de gateways — no coincide con la ruta real y confundía
@@ -1916,6 +1968,7 @@ function resetLiveState() {
   document.getElementById('live-log-rows').innerHTML = `<div class="live-log-empty" id="live-log-empty">${t('live.waitingPackets')}</div>`;
   nodeActivityCount.clear();
   renderTopNodes();
+  gatewayHeartbeatLayer.clearLayers();
 }
 
 function updateFocusHighlight() {

@@ -382,6 +382,7 @@ window.I18N.gl = {
       sameHop: 'Mesmo salto oído por varios gateways',
       origin: 'Orixe do paquete (anel)',
       zeroHop: 'Salto con 0 Hop',
+      gatewayUpload: 'Gateway subindo un paquete',
       exactRoute: 'Ruta exacta (traceroute real)',
       confirmedRoute: 'Ruta confirmada (relay_node real)',
       approxRoute: 'Ruta aproximada (heurística de gateways)',

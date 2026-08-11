@@ -2295,6 +2295,47 @@ body.embed-mode .lang-switch { display: none; }
   100% { transform: scale(1.3); opacity: 0; }
 }
 
+/* ── "Latido" del mapa (live.html): destello al subir un paquete ── */
+.gw-upload-marker {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gw-upload-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fbbf24;
+  box-shadow: 0 0 5px #fbbf24;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: gw-upload-dot-fade .9s ease-out forwards;
+}
+
+.gw-upload-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid #fbbf24;
+  animation: gw-upload-ring-out .9s ease-out forwards;
+}
+
+@keyframes gw-upload-dot-fade {
+  0%   { transform: scale(.4); opacity: 0; }
+  30%  { transform: scale(1); opacity: 1; }
+  100% { transform: scale(1); opacity: 0; }
+}
+
+@keyframes gw-upload-ring-out {
+  0%   { transform: scale(.3); opacity: .9; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
 /* ── Tema oscuro del mapa: las teselas de CARTO Dark Matter son muy tenues
    por defecto, se realza el contraste de calles/etiquetas ── */
 body.theme-dark #map .leaflet-tile-pane {

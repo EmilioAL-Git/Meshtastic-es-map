@@ -392,6 +392,7 @@ window.I18N.es = {
       sameHop: 'Mismo salto oído por varios gateways',
       origin: 'Origen del paquete (anillo)',
       zeroHop: 'Salto con 0 Hop',
+      gatewayUpload: 'Gateway subiendo un paquete',
       exactRoute: 'Ruta exacta (traceroute real)',
       confirmedRoute: 'Ruta confirmada (relay_node real)',
       approxRoute: 'Ruta aproximada (heurística de gateways)',

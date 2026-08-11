@@ -390,6 +390,7 @@ window.I18N.en = {
       sameHop: 'Same hop heard by several gateways',
       origin: 'Packet origin (ring)',
       zeroHop: 'Hop with 0 Hop',
+      gatewayUpload: 'Gateway uploading a packet',
       exactRoute: 'Exact route (real traceroute)',
       confirmedRoute: 'Confirmed route (real relay_node)',
       approxRoute: 'Approximate route (gateway heuristic)',

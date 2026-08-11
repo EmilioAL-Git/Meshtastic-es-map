@@ -2516,6 +2516,17 @@ function initLegendCollapse() {
   legend.classList.toggle('collapsed', collapsed);
 }
 
+// ─── Leyenda en móvil: botón flotante, sin persistir estado (siempre
+// cerrada al cargar la página) — en pantallas pequeñas no hay sitio para
+// tenerla siempre visible como en escritorio.
+function toggleLiveLegendMobile() {
+  const legend = document.getElementById('live-legend');
+  const btn = document.getElementById('live-legend-toggle-btn');
+  if (!legend || !btn) return;
+  const open = legend.classList.toggle('mobile-open');
+  btn.classList.toggle('active', open);
+}
+
 // La leyenda debe quedar lo más abajo posible sin tapar la línea de
 // tiempo — se mide la altura real de .timeline-bar y se apoya justo
 // encima. Un valor fijo no vale: la barra cambia de alto según cuánto
@@ -2524,6 +2535,10 @@ function positionLegendAboveTimeline() {
   const legend = document.getElementById('live-legend');
   const bar = document.getElementById('timeline-bar');
   if (!legend || !bar) return;
+  // En móvil la leyenda es un panel flotante anclado arriba (botón
+  // toggleable), no pegada abajo junto a la línea de tiempo — no tocar su
+  // "bottom" aquí o se pisa el posicionamiento fijado por CSS.
+  if (window.matchMedia('(max-width: 768px)').matches) return;
   // La línea de tiempo va centrada y con un ancho máximo (min(560px, ...)),
   // la leyenda pegada a la derecha — en ventanas anchas ni se tocan. Subir
   // la leyenda para esquivarla solo hace falta cuando de verdad se

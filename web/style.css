@@ -1096,6 +1096,31 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
   background: rgba(94,234,212,.1);
 }
 
+.legend-toggle-btn {
+  display: none; /* solo visible en móvil, posicionado sobre el mapa */
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  transition: all .15s;
+}
+.legend-toggle-btn svg { width: 16px; height: 16px; }
+.legend-toggle-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(94,234,212,.1);
+}
+
 /* ── Línea de tiempo: tarjeta compacta y centrada sobre el mapa ── */
 .timeline-bar {
   position: absolute;
@@ -2817,6 +2842,10 @@ body.embed-mode .malconfig-table td:nth-child(3) { display: none; }
   body.live-page #pause-label { display: none; } /* solo icono, ahorra sitio */
   body.live-page .packet-rate-badge { display: none; } /* sitio justo en móvil, es un dato secundario */
 
+  /* Modo kiosko y selector de idioma: sin sitio en móvil, se ocultan */
+  body.live-page #live-kiosk-btn,
+  body.live-page #lang-switch { display: none; }
+
   /* Ahora es un botón compacto ("Filtros") en vez de 6 chips en fila, cabe
      bien junto al buscador — ya no hace falta ocultarlo en móvil. */
   body.live-page .pf-dropdown-wrap { order: 2; }
@@ -2826,7 +2855,20 @@ body.embed-mode .malconfig-table td:nth-child(3) { display: none; }
   body.live-page .focus-wrap .search-input { width: 110px; }
   body.live-page .focus-wrap .search-dropdown { width: min(260px, calc(100vw - 24px)); }
 
-  /* live.html no tiene nada que enseñar en la leyenda de "edges" del mapa
-     principal — sin esto quedaba un recuadro vacío flotando en el mapa */
+  /* Leyenda de live.html: sin sitio para tenerla siempre visible como en
+     escritorio — botón flotante que la abre como panel superpuesto,
+     siempre cerrada al cargar (sin persistir estado, a diferencia del
+     colapsado de escritorio). */
   body.live-page .legend { display: none; }
+  body.live-page .legend-toggle-btn { display: flex; }
+  body.live-page .legend.mobile-open {
+    display: block;
+    position: absolute;
+    top: 50px;
+    left: 10px;
+    right: 10px;
+    bottom: auto;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
 }

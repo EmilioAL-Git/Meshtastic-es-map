@@ -454,7 +454,7 @@ window.I18N.es = {
       whatP: 'Esta página escucha en directo el broker MQTT de la red Meshtastic España y realiza una aproximación visual sobre cómo viajan los paquetes por la red.',
       routeH: 'Cómo se reconstruye la ruta',
       routeP1: 'Un mismo paquete puede ser oído por varios gateways MQTT. Se identifica y se ordenan las apariciones por <code>hop_limit</code> descendente para aproximar el camino salto a salto.',
-      routeP2: 'Si el paquete incluye información de la ruta, se marca como <strong>confirmada</strong>; si no, es una <strong>estimación</strong> basada en qué gateways oyeron cada salto.',
+      routeP2: 'Si el paquete incluye pistas de qué nodo retransmitió cada salto, se marca como <strong>confirmada</strong>; si no, es una <strong>estimación</strong> basada en qué gateways oyeron cada salto. Incluso una ruta "confirmada" es nuestra mejor aproximación con los datos disponibles, no una certeza absoluta, en casos raros puede señalar al nodo equivocado.',
       routeP3: 'Solo se ve un salto cuando lo oye un nodo que <strong>además</strong> tiene el puente MQTT activado. Si un paquete pasa de un nodo normal a otro nodo normal sin que ninguno de los dos sea gateway MQTT, ese salto ocurre por radio pero nunca llega a la web: no falta información nuestra, es que no existe ningún dato que lo reporte. Por eso el desglose casi nunca muestra <em>todos</em> los saltos reales, solo los puntos donde algún gateway MQTT lo "pescó" de camino.',
       routeP4: 'Si ningún gateway MQTT oye un paquete en todo su recorrido, el paquete no aparece aquí. Aunque haya llegado bien a su destino por radio.',
       contentH: 'Qué contenido se puede leer',
@@ -465,6 +465,7 @@ window.I18N.es = {
       limit2: 'La ruta sin <code>relay_node</code> ni traceroute es aproximada, estimada por qué gateways oyeron cada salto.',
       limit3: 'En el mapa solo se dibujan los últimos 20 paquetes en vuelo a la vez.',
       limit4: 'El histórico de la línea de tiempo guarda 7 días.',
+      limit5: 'Todo lo que ves aquí, incluidas las rutas "confirmadas", es una aproximación con los mejores datos disponibles, no una garantía absoluta de qué nodo participó en cada salto, es una limitación del propio protocolo Meshtastic, no de esta web.',
     },
   },
 

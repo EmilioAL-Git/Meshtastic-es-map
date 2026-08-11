@@ -452,7 +452,7 @@ window.I18N.en = {
       whatP: 'This page listens live to the MQTT broker of the Meshtastic Spain network and produces a visual approximation of how packets travel across the mesh.',
       routeH: 'How the route is reconstructed',
       routeP1: 'The same packet can be heard by several MQTT gateways. Its sightings are identified and sorted by descending <code>hop_limit</code> to approximate the hop-by-hop path.',
-      routeP2: 'If the packet includes route information, it is marked as <strong>confirmed</strong>; otherwise it is an <strong>estimate</strong> based on which gateways heard each hop.',
+      routeP2: 'If the packet includes clues about which node relayed each hop, it is marked as <strong>confirmed</strong>; otherwise it is an <strong>estimate</strong> based on which gateways heard each hop. Even a "confirmed" route is our best approximation with the available data, not an absolute certainty, in rare cases it may point to the wrong node.',
       routeP3: 'A hop is only visible when it is heard by a node that <strong>also</strong> has the MQTT bridge enabled. If a packet goes from one normal node to another normal node without either being an MQTT gateway, that hop happens over radio but never reaches the website: it is not missing information on our part, there is simply no data reporting it. That is why the breakdown almost never shows <em>every</em> real hop, only the points where some MQTT gateway "caught" it along the way.',
       routeP4: 'If no MQTT gateway hears a packet anywhere along its path, the packet does not appear here — even if it reached its destination fine over radio.',
       contentH: 'What content can be read',
@@ -463,6 +463,7 @@ window.I18N.en = {
       limit2: 'The route without <code>relay_node</code> or traceroute is approximate, estimated from which gateways heard each hop.',
       limit3: 'The map only draws the last 20 packets in flight at a time.',
       limit4: 'The timeline history keeps 7 days.',
+      limit5: 'Everything you see here, including "confirmed" routes, is an approximation based on the best available data, not an absolute guarantee of which node took part in each hop, this is a limitation of the Meshtastic protocol itself, not of this website.',
     },
   },
 

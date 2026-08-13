@@ -344,9 +344,20 @@ def parse_edges(raw: list | dict) -> list[dict]:
     return edges
 
 
-def fetch_precision_bits(base_url: str, conn: sqlite3.Connection) -> dict[str, int]:
+def fetch_position_reports(base_url: str, conn: sqlite3.Connection) -> dict[str, dict]:
     """
-    Consulta /api/packets?portnum=3 y devuelve {node_id: precision_bits}.
+    Consulta /api/packets?portnum=3 (paquetes POSITION_APP, los que usa cada
+    nodo para enrutar dentro de su propia malla) y devuelve
+    {node_id: {"latitude": float, "longitude": float, "precision_bits": int}}.
+
+    A diferencia de last_lat/last_long de /api/nodes —que viene del MapReport
+    del nodo, el cual el firmware limita SIEMPRE a 12-15 bits de precisión
+    antes de transmitirlo, sea cual sea el GPS real del nodo (ver
+    src/mqtt/MQTT.cpp del firmware de Meshtastic, map_position_precision)—
+    estos paquetes no tienen ese techo y pueden traer hasta 32 bits (GPS
+    exacto). Por eso se usan para mejorar la posición cuando son más
+    precisos que lo que ya tenemos (ver update_positions_from_reports).
+
     Usa polling incremental con el parámetro 'since' para no refetchear
     paquetes ya procesados. El timestamp se persiste en la tabla meta.
     """
@@ -365,7 +376,7 @@ def fetch_precision_bits(base_url: str, conn: sqlite3.Connection) -> dict[str, i
     packets = raw.get("packets", []) if isinstance(raw, dict) else raw
     latest  = raw.get("latest_import_time") if isinstance(raw, dict) else None
 
-    result: dict[str, int] = {}
+    result: dict[str, dict] = {}
     for pkt in packets:
         node_id_int = pkt.get("from_node_id")
         if node_id_int is None:
@@ -374,9 +385,24 @@ def fetch_precision_bits(base_url: str, conn: sqlite3.Connection) -> dict[str, i
         if node_id in result:
             continue  # la API devuelve desc; nos quedamos con el más reciente
         payload = pkt.get("payload") or ""
-        m = re.search(r'precision_bits:\s*(\d+)', payload)
-        if m:
-            result[node_id] = int(m.group(1))
+        m_lat = re.search(r'latitude_i:\s*(-?\d+)', payload)
+        m_lon = re.search(r'longitude_i:\s*(-?\d+)', payload)
+        m_pb  = re.search(r'precision_bits:\s*(\d+)', payload)
+        if not (m_lat and m_lon and m_pb):
+            continue
+
+        lat = _decode_coord(int(m_lat.group(1)))
+        lon = _decode_coord(int(m_lon.group(1)))
+        # Mismo criterio "null island" que en parse_nodes (colector.py: solo
+        # mirar la latitud, ver commit de fix de null-island).
+        if lat is None or lon is None or abs(lat) < 0.5:
+            continue
+
+        result[node_id] = {
+            "latitude": lat,
+            "longitude": lon,
+            "precision_bits": int(m_pb.group(1)),
+        }
 
     if latest:
         conn.execute(
@@ -389,14 +415,27 @@ def fetch_precision_bits(base_url: str, conn: sqlite3.Connection) -> dict[str, i
     return result
 
 
-def update_precision_bits(conn: sqlite3.Connection, precision_map: dict[str, int]) -> int:
+def update_positions_from_reports(conn: sqlite3.Connection, position_map: dict[str, dict]) -> int:
+    """
+    Sube latitude/longitude/precision_bits desde paquetes POSITION_APP,
+    solo cuando su precisión es igual o mejor que la ya guardada (nunca
+    degradamos una posición mejor con una peor). Ver fetch_position_reports.
+    """
     updated = 0
-    for node_id, pb in precision_map.items():
+    for node_id, info in position_map.items():
         rows = conn.execute(
-            "UPDATE nodes SET precision_bits = ? WHERE node_id = ?",
-            (pb, node_id),
-        ).rowcount
-        updated += rows
+            """
+            UPDATE nodes SET
+                latitude       = ?,
+                longitude      = ?,
+                precision_bits = ?
+            WHERE node_id = ?
+              AND (precision_bits IS NULL OR precision_bits <= ?)
+            """,
+            (info["latitude"], info["longitude"], info["precision_bits"],
+             node_id, info["precision_bits"]),
+        )
+        updated += rows.rowcount
     conn.commit()
     return updated
 
@@ -467,8 +506,19 @@ def upsert_nodes(conn: sqlite3.Connection, nodes: list[dict]) -> int:
                 long_name       = excluded.long_name,
                 hardware        = excluded.hardware,
                 role            = excluded.role,
-                latitude        = COALESCE(excluded.latitude,   nodes.latitude),
-                longitude       = COALESCE(excluded.longitude,  nodes.longitude),
+                -- Si ya tenemos una posición mejor que la que puede dar el MapReport
+                -- (precision_bits > 15: ver fetch_position_reports/CLAUDE.md), no la
+                -- pisamos con la de /api/nodes, que siempre viene del MapReport.
+                latitude        = CASE
+                    WHEN nodes.precision_bits IS NOT NULL AND nodes.precision_bits > 15
+                        THEN nodes.latitude
+                    ELSE COALESCE(excluded.latitude, nodes.latitude)
+                END,
+                longitude       = CASE
+                    WHEN nodes.precision_bits IS NOT NULL AND nodes.precision_bits > 15
+                        THEN nodes.longitude
+                    ELSE COALESCE(excluded.longitude, nodes.longitude)
+                END,
                 altitude        = COALESCE(excluded.altitude,   nodes.altitude),
                 battery_level   = COALESCE(excluded.battery_level, nodes.battery_level),
                 voltage         = COALESCE(excluded.voltage,    nodes.voltage),
@@ -727,13 +777,14 @@ def collect_once(conn: sqlite3.Connection):
         edges_saved = upsert_edges(conn, all_edges)
         log.info(f"  → {edges_saved} edges guardados/actualizados")
 
-    # 3. Precision bits de paquetes de posición
+    # 3. Posición + precisión de paquetes POSITION_APP (más precisos que el
+    #    MapReport de /api/nodes, que el firmware limita siempre a 12-15 bits)
     packets_url = f"{MESHVIEW_BASE}/api/packets?portnum=3&limit=1000"
     log.info(f"Pidiendo paquetes de posición a {packets_url} …")
-    precision_map = fetch_precision_bits(MESHVIEW_BASE, conn)
-    if precision_map:
-        pb_updated = update_precision_bits(conn, precision_map)
-        log.info(f"  → precision_bits actualizado en {pb_updated} nodos ({len(precision_map)} en paquetes)")
+    position_map = fetch_position_reports(MESHVIEW_BASE, conn)
+    if position_map:
+        pos_updated = update_positions_from_reports(conn, position_map)
+        log.info(f"  → posición/precision_bits actualizado en {pos_updated} nodos ({len(position_map)} en paquetes)")
     else:
         log.warning("  No se obtuvieron paquetes de posición")
 

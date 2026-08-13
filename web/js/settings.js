@@ -73,6 +73,7 @@ function toggleMapSetting(key) {
   syncSettingsPanel();
   if (key === 'showMalIcons') renderNodes(allNodes);
   if (key === 'showPrecisionCircle') refreshPrecisionCircle();
+  if (key === 'hideOutsideSpain') { renderNodes(allNodes); applyFilters(); }
   // Al activarlo a mitad de sesión, centra ya mismo (si no, solo se nota
   // la próxima vez que se cargue la página, ver app.js boot)
   if (key === 'autoLocate' && mapSettings.autoLocate) {

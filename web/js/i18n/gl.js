@@ -7,7 +7,10 @@
 window.I18N = window.I18N || {};
 window.I18N.gl = {
 
-  loading: { text: 'CARGANDO A REDE MESHTASTIC…' },
+  loading: {
+    text: 'CARGANDO A REDE MESHTASTIC…',
+    warmupText: 'Aínda non hai nodos publicados — o recolector pode seguir arrancando. Reintentando automaticamente…',
+  },
 
   header: {
     brand: 'MESHTASTIC ESPAÑA <em>/ Mapa de nodos</em>',
@@ -66,6 +69,8 @@ window.I18N.gl = {
     showPrecisionCircleInfo: 'Ao seleccionar un nodo, debuxa un círculo coa marxe de erro da súa posición GPS reportada — máis pequeno canta máis precisión teña o nodo.',
     showMalIcons: 'Iconas de non optimizados',
     showMalIconsInfo: 'Mostra un triángulo de aviso sobre os nodos con problemas de configuración detectados. Desactivalo só oculta a icona no mapa: o listado "Non optimizados" da cabeceira segue funcionando igual.',
+    hideOutsideSpain: 'Ocultar nodos fóra de España',
+    hideOutsideSpainInfo: 'Oculta no mapa os nodos cuxa posición cae claramente fóra de España (con marxe ampla, incluíndo Canarias). É só un filtro visual: non borra nada, e o nodo segue aparecendo no buscador.',
     kioskExit: '✕ Saír do modo quiosco',
   },
 
@@ -101,6 +106,14 @@ window.I18N.gl = {
   footer: {
     source: 'Datos obtidos de:',
     github: 'GitHub',
+  },
+
+  favorites: {
+    toggle: 'Marcar/quitar como favorito',
+    onlyFavorites: 'Amosar só paquetes dos teus nodos favoritos',
+    onlyFavoritesShort: 'Favoritos',
+    viewList: 'Ver os teus nodos favoritos',
+    empty: 'Aínda non marcaches ningún nodo como favorito. Usa a ⭐ do panel de detalle ou do buscador.',
   },
 
   detail: {
@@ -357,6 +370,7 @@ window.I18N.gl = {
     packets: 'Paquetes',
     viewPackets: 'Ver paquetes',
     sessionPackets: 'Paquetes da sesión',
+    dragHandleHint: '↕ Arrastra para axustar o tamaño',
     exportJson: 'Exportar como JSON',
     exportCsv: 'Exportar como CSV',
     waitingPackets: 'Agardando paquetes…',
@@ -372,6 +386,7 @@ window.I18N.gl = {
     historyLoadError: 'Non se puido cargar o histórico dese intervalo',
     hopCount: { one: '{n} salto', other: '{n} saltos' },
     packetCount: { one: '{n} paquete', other: '{n} paquetes' },
+    reachedCount: { one: '~{n} nodo confirmado', other: '~{n} nodos confirmados' },
 
     legend: {
       toggleTitle: 'Amosar/agochar a lenda',
@@ -395,6 +410,26 @@ window.I18N.gl = {
       range7d: '7d',
       backToLive: 'Volver ao directo',
       live: 'En directo',
+    },
+
+    routePatterns: {
+      title: 'Rutas máis frecuentes',
+      subtitle: 'só saltos confirmados (traceroute ou relay_node)',
+      range6h: '6h',
+      range24h: '24h',
+      loading: 'Cargando…',
+      empty: 'Non hai rutas confirmadas nesta ventá de tempo.',
+      timesCount: { one: '{n} vez', other: '{n} veces' },
+    },
+
+    gatewayCompare: {
+      title: 'Comparar gateways',
+      vs: 'vs',
+      pickBoth: 'Escolle dous gateways para comparar.',
+      sameNode: 'Escolle dous gateways distintos.',
+      empty: 'Ningún dos dous oíu paquetes nesta ventá de tempo.',
+      only: '(só este)',
+      both: 'Ambos',
     },
 
     route: {

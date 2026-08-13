@@ -1,3 +1,9 @@
+// ─── Aviso de arranque en frío ────────────────────────────────────────────────
+function updateWarmupBanner(show) {
+  const el = document.getElementById('warmup-banner');
+  if (el) el.classList.toggle('visible', show);
+}
+
 // ─── Carga de datos ───────────────────────────────────────────────────────────
 async function fetchJSON(path) {
   const r = await fetch(API_BASE + path + '?t=' + Date.now());
@@ -58,6 +64,12 @@ async function loadAll() {
         if (markers[selectedNodeId].setStyle)
           markers[selectedNodeId].setStyle({ fillOpacity: 0, opacity: 0 });
       }
+      // El fetch fue correcto pero sin nodos: no es un error de red (ya
+      // cubierto por el catch/toast de abajo), sino que el recolector
+      // probablemente aún no ha completado su primer ciclo — el auto-refresh
+      // de 5 min ya reintenta solo, esto solo se lo indica al usuario en vez
+      // de dejar el mapa vacío sin explicación.
+      updateWarmupBanner(allNodes.length === 0);
     } else {
       console.error('Error cargando nodos:', nodesResp.reason);
       showToast(t('toast.nodesError'));
@@ -195,6 +207,7 @@ fetch(API_BASE + '/data/config.json')
     initMap();
     syncFilterChips();
     syncEdgeFilterChips();
+    updateFavListCount();
     if (mapSettings.autoLocate) locateUser({ onFound: () => { autoFitDone = true; } });
     loadAll();
   });
@@ -212,6 +225,7 @@ document.addEventListener('click', e => {
     document.getElementById('search-dropdown').classList.remove('open');
     searchIndex = -1;
   }
+  if (!e.target.closest('#fav-list-wrap')) closeFavoritesList();
   if (!e.target.closest('#filter-panel') && !e.target.closest('#filter-toggle-btn')) {
     document.getElementById('filter-panel').classList.remove('open');
     document.getElementById('filter-toggle-btn').classList.remove('active');

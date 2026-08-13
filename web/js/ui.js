@@ -123,6 +123,7 @@ function selectNode(nodeId, fly = false) {
   const name = node.long_name || node.short_name || nodeId;
   document.getElementById('detail-title').textContent = name;
   document.getElementById('detail-dot').className = `node-dot dot-${nodeCategory(node)}`;
+  _syncDetailFavButton(nodeId);
 
   const ago = node.last_seen_ago_min != null
     ? (node.last_seen_ago_min < 60
@@ -226,6 +227,88 @@ function selectNode(nodeId, fly = false) {
   const url = new URL(location.href);
   url.searchParams.set('node', nodeId);
   history.replaceState(null, '', url);
+}
+
+function _syncDetailFavButton(nodeId) {
+  const btn = document.getElementById('detail-fav-btn');
+  if (!btn) return;
+  const active = isFavoriteNode(nodeId);
+  btn.classList.toggle('active', active);
+  btn.textContent = active ? '★' : '☆';
+}
+
+function toggleFavoriteFromDetail() {
+  if (!selectedNodeId) return;
+  toggleFavoriteNode(selectedNodeId);
+  _syncDetailFavButton(selectedNodeId);
+  updateFavListCount();
+  if (document.getElementById('fav-list-dropdown').classList.contains('open')) renderFavoritesList();
+}
+
+// ─── Lista de nodos favoritos ("mis nodos") ───────────────────────────────────
+function updateFavListCount() {
+  const el = document.getElementById('fav-list-count');
+  if (el) el.textContent = favoriteNodes.size ? String(favoriteNodes.size) : '';
+}
+
+// En móvil el desplegable pasa a position:fixed (ver .fav-list-dropdown en
+// style.css) porque .fav-list-wrap no está pegado al borde del header —
+// hay otros botones detrás — así que un simple "right:0" relativo a él se
+// salía de la pantalla. Con fixed hace falta fijar el "top" a mano.
+function positionFavDropdown() {
+  const dd = document.getElementById('fav-list-dropdown');
+  const wrap = document.getElementById('fav-list-wrap');
+  if (!dd || !wrap) return;
+  if (!window.matchMedia('(max-width: 768px)').matches) { dd.style.top = ''; return; }
+  dd.style.top = (wrap.getBoundingClientRect().bottom + 6) + 'px';
+}
+
+function toggleFavoritesList() {
+  const dd = document.getElementById('fav-list-dropdown');
+  if (!dd) return;
+  const open = dd.classList.toggle('open');
+  if (open) { positionFavDropdown(); renderFavoritesList(); }
+}
+
+function closeFavoritesList() {
+  const dd = document.getElementById('fav-list-dropdown');
+  if (dd) dd.classList.remove('open');
+}
+
+function renderFavoritesList() {
+  const dd = document.getElementById('fav-list-dropdown');
+  if (!dd) return;
+  if (!favoriteNodes.size) {
+    dd.innerHTML = `<div class="search-no-results">${escHtml(t('favorites.empty'))}</div>`;
+    return;
+  }
+  const items = [...favoriteNodes]
+    .map(id => nodesById.get(id))
+    .filter(Boolean)
+    .sort((a, b) => (a.long_name || a.node_id).localeCompare(b.long_name || b.node_id));
+  dd.innerHTML = items.map(n => `
+    <div class="search-result fav-list-row" data-id="${escHtml(n.node_id)}">
+      <div class="node-dot dot-${nodeCategory(n)}"></div>
+      <div class="result-name">${escHtml(n.long_name || n.short_name || n.node_id)}</div>
+      <button class="search-fav-star active" data-fav-id="${escHtml(n.node_id)}" title="${escHtml(t('favorites.toggle'))}">★</button>
+    </div>`).join('');
+
+  dd.querySelectorAll('.fav-list-row').forEach(el => {
+    el.addEventListener('click', (e) => {
+      if (e.target.closest('.search-fav-star')) return;
+      selectNode(el.dataset.id, true);
+      closeFavoritesList();
+    });
+  });
+  dd.querySelectorAll('.search-fav-star').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleFavoriteNode(el.dataset.favId);
+      updateFavListCount();
+      renderFavoritesList();
+      if (el.dataset.favId === selectedNodeId) _syncDetailFavButton(selectedNodeId);
+    });
+  });
 }
 
 function closeDetail() {

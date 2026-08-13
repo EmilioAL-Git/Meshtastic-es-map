@@ -5,7 +5,10 @@
 window.I18N = window.I18N || {};
 window.I18N.en = {
 
-  loading: { text: 'LOADING MESHTASTIC NETWORK…' },
+  loading: {
+    text: 'LOADING MESHTASTIC NETWORK…',
+    warmupText: 'No nodes published yet — the collector may still be starting up. Retrying automatically…',
+  },
 
   header: {
     brand: 'MESHTASTIC SPAIN <em>/ Node map</em>',
@@ -64,6 +67,8 @@ window.I18N.en = {
     showPrecisionCircleInfo: 'When selecting a node, draws a circle showing the margin of error of its reported GPS position — smaller the more precise the node is.',
     showMalIcons: 'Not-optimized icons',
     showMalIconsInfo: 'Shows a warning triangle over nodes with detected configuration issues. Turning it off only hides the map icon: the header’s "Not optimized" list keeps working the same.',
+    hideOutsideSpain: 'Hide nodes outside Spain',
+    hideOutsideSpainInfo: 'Hides nodes on the map whose position clearly falls outside Spain (with a generous margin, including the Canary Islands). This is only a display filter: nothing is deleted, and the node still shows up in search.',
     kioskExit: '✕ Exit kiosk mode',
   },
 
@@ -99,6 +104,14 @@ window.I18N.en = {
   footer: {
     source: 'Data sourced from:',
     github: 'GitHub',
+  },
+
+  favorites: {
+    toggle: 'Toggle favorite',
+    onlyFavorites: 'Show only packets from your favorite nodes',
+    onlyFavoritesShort: 'Favorites',
+    viewList: 'View your favorite nodes',
+    empty: "You haven't starred any nodes yet. Use the ⭐ in the detail panel or the search box.",
   },
 
   // Panel de detalle del nodo (js/ui.js)
@@ -365,6 +378,7 @@ window.I18N.en = {
     packets: 'Packets',
     viewPackets: 'View packets',
     sessionPackets: 'Session packets',
+    dragHandleHint: '↕ Drag to resize',
     exportJson: 'Export as JSON',
     exportCsv: 'Export as CSV',
     waitingPackets: 'Waiting for packets…',
@@ -380,6 +394,7 @@ window.I18N.en = {
     historyLoadError: 'Could not load the history for that range',
     hopCount: { one: '{n} hop', other: '{n} hops' },
     packetCount: { one: '{n} packet', other: '{n} packets' },
+    reachedCount: { one: '~{n} confirmed node', other: '~{n} confirmed nodes' },
 
     legend: {
       toggleTitle: 'Show/hide legend',
@@ -403,6 +418,26 @@ window.I18N.en = {
       range7d: '7d',
       backToLive: 'Back to live',
       live: 'Live',
+    },
+
+    routePatterns: {
+      title: 'Most frequent routes',
+      subtitle: 'confirmed hops only (traceroute or relay_node)',
+      range6h: '6h',
+      range24h: '24h',
+      loading: 'Loading…',
+      empty: 'No confirmed routes in this time window.',
+      timesCount: { one: '{n} time', other: '{n} times' },
+    },
+
+    gatewayCompare: {
+      title: 'Compare gateways',
+      vs: 'vs',
+      pickBoth: 'Pick two gateways to compare.',
+      sameNode: 'Pick two different gateways.',
+      empty: 'Neither one heard any packets in this time window.',
+      only: '(only this one)',
+      both: 'Both',
     },
 
     route: {

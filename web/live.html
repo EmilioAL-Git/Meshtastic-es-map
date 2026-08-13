@@ -103,6 +103,14 @@
       <button class="focus-clear-btn" id="focus-clear-btn" onclick="clearFocus()" data-i18n-title="live.clearFocus" title="Quitar foco" style="display:none">✕</button>
       <div class="search-dropdown" id="focus-dropdown"></div>
     </div>
+    <div class="fav-list-wrap" id="fav-list-wrap">
+      <button class="live-pause-btn fav-filter-btn" id="live-favorites-btn" onclick="toggleFavoritesOnly()" data-i18n-title="favorites.onlyFavorites" title="Mostrar solo paquetes de tus nodos favoritos">
+        <span>★</span>
+        <span data-i18n="favorites.onlyFavoritesShort">Favoritos</span>
+      </button>
+      <button class="fav-list-chevron" id="fav-list-chevron" onclick="toggleFavoritesList()" data-i18n-title="favorites.viewList" title="Ver mis nodos favoritos">▾</button>
+      <div class="fav-list-dropdown" id="fav-list-dropdown"></div>
+    </div>
     <button class="live-pause-btn" id="live-pause-btn" onclick="togglePause()" data-i18n-title="live.pauseResumeFeed" title="Pausar/reanudar el feed">
       <svg id="pause-icon" viewBox="0 0 16 16" fill="none">
         <rect x="4" y="3" width="3" height="10" rx="1" fill="currentColor"/>
@@ -123,6 +131,12 @@
       </button>
       <div class="lang-menu" id="lang-menu" role="menu"></div>
     </div>
+    <button class="live-info-btn" id="route-patterns-btn" onclick="openRoutePatterns()" data-i18n-title="live.routePatterns.title" title="Rutas más frecuentes">
+      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="3" cy="4" r="1.6" fill="currentColor"/><circle cx="13" cy="4" r="1.6" fill="currentColor"/><circle cx="8" cy="12" r="1.6" fill="currentColor"/><path d="M4.4 4.8L7.3 11M11.6 4.8L8.7 11M4.6 4H11.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
+    </button>
+    <button class="live-info-btn" id="gateway-compare-btn" onclick="openGatewayCompare()" data-i18n-title="live.gatewayCompare.title" title="Comparar gateways">
+      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="4" cy="8" r="2.4" stroke="currentColor" stroke-width="1.4"/><circle cx="12" cy="8" r="2.4" stroke="currentColor" stroke-width="1.4"/><path d="M6.4 8h3.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </button>
     <button class="live-info-btn" id="live-info-btn" onclick="openLiveInfo()" data-i18n-title="live.howItWorksTitle" title="Cómo funciona el directo">
       <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.3" stroke="currentColor" stroke-width="1.5"/><rect x="7.3" y="6.9" width="1.4" height="4.2" rx="0.5" fill="currentColor"/><circle cx="8" cy="4.9" r="0.9" fill="currentColor"/></svg>
     </button>
@@ -252,6 +266,57 @@
     <div class="malconfig-content pkt-detail-layout">
       <div id="packet-detail-map" class="pkt-detail-map"></div>
       <div id="packet-detail-tables"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: rutas más frecuentes -->
+<div class="malconfig-modal" id="route-patterns-modal" onclick="if(event.target===this) closeRoutePatterns()">
+  <div class="malconfig-inner">
+    <div class="malconfig-header">
+      <div class="malconfig-title">
+        <span data-i18n="live.routePatterns.title">Rutas más frecuentes</span>
+        <span class="malconfig-subtitle" data-i18n="live.routePatterns.subtitle">solo saltos confirmados (traceroute o relay_node)</span>
+      </div>
+      <div class="malconfig-header-right">
+        <button class="malconfig-close" onclick="closeRoutePatterns()" data-i18n-aria-label="common.close" aria-label="Cerrar">✕</button>
+      </div>
+    </div>
+    <div class="malconfig-tabs">
+      <div class="tl-group" id="route-patterns-range-group">
+        <button class="tl-chip" data-range="3600" onclick="setRoutePatternsWindow(3600)" data-i18n="live.timeline.range1h">1h</button>
+        <button class="tl-chip active" data-range="21600" onclick="setRoutePatternsWindow(21600)" data-i18n="live.routePatterns.range6h">6h</button>
+        <button class="tl-chip" data-range="86400" onclick="setRoutePatternsWindow(86400)" data-i18n="live.routePatterns.range24h">24h</button>
+        <button class="tl-chip" data-range="604800" onclick="setRoutePatternsWindow(604800)" data-i18n="live.timeline.range7d">7d</button>
+      </div>
+    </div>
+    <div class="malconfig-content" id="route-patterns-content">
+      <p class="malconfig-empty" data-i18n="live.routePatterns.loading">Cargando…</p>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: comparar dos gateways -->
+<div class="malconfig-modal" id="gateway-compare-modal" onclick="if(event.target===this) closeGatewayCompare()">
+  <div class="malconfig-inner">
+    <div class="malconfig-header">
+      <div class="malconfig-title" data-i18n="live.gatewayCompare.title">Comparar gateways</div>
+      <div class="malconfig-header-right">
+        <button class="malconfig-close" onclick="closeGatewayCompare()" data-i18n-aria-label="common.close" aria-label="Cerrar">✕</button>
+      </div>
+    </div>
+    <div class="malconfig-tabs gwc-pickers">
+      <select class="malconfig-filter-select" id="gw-compare-a" onchange="runGatewayCompare()"><option value="">—</option></select>
+      <span class="gwc-vs" data-i18n="live.gatewayCompare.vs">vs</span>
+      <select class="malconfig-filter-select" id="gw-compare-b" onchange="runGatewayCompare()"><option value="">—</option></select>
+      <div class="tl-group" id="gw-compare-range-group">
+        <button class="tl-chip" data-range="3600" onclick="setGatewayCompareWindow(3600)" data-i18n="live.timeline.range1h">1h</button>
+        <button class="tl-chip active" data-range="21600" onclick="setGatewayCompareWindow(21600)" data-i18n="live.routePatterns.range6h">6h</button>
+        <button class="tl-chip" data-range="86400" onclick="setGatewayCompareWindow(86400)" data-i18n="live.routePatterns.range24h">24h</button>
+      </div>
+    </div>
+    <div class="malconfig-content" id="gw-compare-content">
+      <p class="malconfig-empty" data-i18n="live.gatewayCompare.pickBoth">Elige dos gateways para comparar.</p>
     </div>
   </div>
 </div>

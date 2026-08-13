@@ -7,7 +7,10 @@
 window.I18N = window.I18N || {};
 window.I18N.es = {
 
-  loading: { text: 'CARGANDO RED MESHTASTIC…' },
+  loading: {
+    text: 'CARGANDO RED MESHTASTIC…',
+    warmupText: 'Todavía no hay nodos publicados — el recolector puede seguir arrancando. Reintentando automáticamente…',
+  },
 
   header: {
     brand: 'MESHTASTIC ESPAÑA <em>/ Mapa de nodos</em>',
@@ -66,6 +69,8 @@ window.I18N.es = {
     showPrecisionCircleInfo: 'Al seleccionar un nodo, dibuja un círculo con el margen de error de su posición GPS reportada — más pequeño cuanta más precisión tenga el nodo.',
     showMalIcons: 'Iconos de no optimizados',
     showMalIconsInfo: 'Muestra un triángulo de aviso sobre los nodos con problemas de configuración detectados. Desactivarlo solo oculta el icono en el mapa: el listado "No optimizados" del header sigue funcionando igual.',
+    hideOutsideSpain: 'Ocultar nodos fuera de España',
+    hideOutsideSpainInfo: 'Oculta en el mapa los nodos cuya posición cae claramente fuera de España (con margen amplio, incluyendo Canarias). Es solo un filtro visual: no borra nada, y el nodo sigue apareciendo en el buscador.',
     kioskExit: '✕ Salir del modo kiosko',
   },
 
@@ -101,6 +106,14 @@ window.I18N.es = {
   footer: {
     source: 'Datos extraídos de:',
     github: 'GitHub',
+  },
+
+  favorites: {
+    toggle: 'Marcar/quitar como favorito',
+    onlyFavorites: 'Mostrar solo paquetes de tus nodos favoritos',
+    onlyFavoritesShort: 'Favoritos',
+    viewList: 'Ver mis nodos favoritos',
+    empty: 'Todavía no has marcado ningún nodo como favorito. Usa la ⭐ del panel de detalle o del buscador.',
   },
 
   // Panel de detalle del nodo (js/ui.js)
@@ -367,6 +380,7 @@ window.I18N.es = {
     packets: 'Paquetes',
     viewPackets: 'Ver paquetes',
     sessionPackets: 'Paquetes de la sesión',
+    dragHandleHint: '↕ Arrastra para ajustar el tamaño',
     exportJson: 'Exportar como JSON',
     exportCsv: 'Exportar como CSV',
     waitingPackets: 'Esperando paquetes…',
@@ -382,6 +396,7 @@ window.I18N.es = {
     historyLoadError: 'No se pudo cargar el histórico de ese rango',
     hopCount: { one: '{n} salto', other: '{n} saltos' },
     packetCount: { one: '{n} paquete', other: '{n} paquetes' },
+    reachedCount: { one: '~{n} nodo confirmado', other: '~{n} nodos confirmados' },
 
     legend: {
       toggleTitle: 'Mostrar/ocultar leyenda',
@@ -405,6 +420,26 @@ window.I18N.es = {
       range7d: '7d',
       backToLive: 'Volver a en directo',
       live: 'En directo',
+    },
+
+    routePatterns: {
+      title: 'Rutas más frecuentes',
+      subtitle: 'solo saltos confirmados (traceroute o relay_node)',
+      range6h: '6h',
+      range24h: '24h',
+      loading: 'Cargando…',
+      empty: 'No hay rutas confirmadas en esta ventana de tiempo.',
+      timesCount: { one: '{n} vez', other: '{n} veces' },
+    },
+
+    gatewayCompare: {
+      title: 'Comparar gateways',
+      vs: 'vs',
+      pickBoth: 'Elige dos gateways para comparar.',
+      sameNode: 'Elige dos gateways distintos.',
+      empty: 'Ninguno de los dos oyó paquetes en esta ventana de tiempo.',
+      only: '(solo este)',
+      both: 'Ambos',
     },
 
     route: {

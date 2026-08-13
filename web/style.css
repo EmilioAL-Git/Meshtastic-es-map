@@ -170,13 +170,14 @@ header {
   font-family: var(--sans);
   font-size: 13px;
   outline: none;
-  width: 220px;
-  transition: border-color .2s, box-shadow .2s;
+  width: 150px;
+  transition: border-color .2s, box-shadow .2s, width .2s;
 }
 
 .search-input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(94,234,212,.12);
+  width: 220px;
 }
 
 .search-input::placeholder { color: var(--muted); }
@@ -219,6 +220,19 @@ header {
   border-radius: 50%;
   flex-shrink: 0;
 }
+
+.search-fav-star {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px;
+}
+.search-fav-star:hover { color: #facc15; }
+.search-fav-star.active { color: #facc15; }
 
 .dot-recent  { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
 .dot-active  { background: var(--accent2); }
@@ -293,6 +307,18 @@ header {
 }
 
 .detail-close:hover { color: var(--text); }
+
+.detail-fav-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 17px;
+  line-height: 1;
+  padding: 2px 4px;
+}
+.detail-fav-btn:hover { color: #facc15; }
+.detail-fav-btn.active { color: #facc15; }
 
 .detail-body { padding: 14px 16px; }
 
@@ -879,6 +905,45 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 }
 .noopt-btn:hover { background: rgba(249,115,22,.22); }
 
+.fav-list-wrap { position: relative; flex-shrink: 0; display: flex; align-items: center; gap: 4px; }
+#fav-list-btn {
+  background: rgba(250,204,21,.12);
+  border-color: rgba(250,204,21,.35);
+  color: #facc15;
+}
+#fav-list-btn:hover { background: rgba(250,204,21,.22); }
+.fav-list-count { color: var(--muted); }
+.fav-list-chevron {
+  background: var(--panel2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: 10px;
+  padding: 5px 6px;
+  cursor: pointer;
+  line-height: 1;
+  transition: all .15s;
+}
+.fav-list-chevron:hover { color: var(--text); border-color: var(--accent2); }
+.fav-list-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 280px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  z-index: 2000;
+  max-height: 260px;
+  overflow-y: auto;
+  display: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.fav-list-dropdown.open { display: block; }
+.fav-list-row { cursor: pointer; }
+
 
 /* ── Enlace feed en directo ── */
 .live-link {
@@ -991,6 +1056,10 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 }
 .live-pause-btn:hover { color: var(--text); border-color: var(--accent2); }
 .live-pause-btn svg { width: 13px; height: 13px; }
+.fav-filter-btn.active {
+  border-color: rgba(250,204,21,.5);
+  color: #facc15;
+}
 .live-pause-btn.paused {
   border-color: rgba(251,191,36,.4);
   color: var(--warn);
@@ -1454,7 +1523,8 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 .live-log-row .lr-meta {
   margin-top: 3px;
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 4px 8px;
   color: var(--muted);
   font-size: 10px;
 }
@@ -1640,6 +1710,66 @@ body.embed-mode .lang-switch { display: none; }
   font-size: 13px;
 }
 
+.rp-row {
+  border-bottom: 1px solid var(--border);
+}
+.rp-row-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 4px;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.rp-row-main:hover { background: var(--panel2); }
+.rp-rank { color: var(--muted); width: 16px; flex-shrink: 0; }
+.rp-path { flex: 1; color: var(--text); overflow-wrap: anywhere; }
+.rp-arrow { color: var(--muted); }
+.rp-conf { flex-shrink: 0; font-size: 10px; white-space: nowrap; }
+.rp-conf.lr-conf-traceroute { color: #facc15; font-weight: 700; }
+.rp-conf.lr-conf-relay { color: var(--accent); }
+.rp-count { flex-shrink: 0; color: var(--accent); font-weight: 700; font-size: 11px; white-space: nowrap; }
+.rp-detail {
+  display: none;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 4px 10px 30px;
+}
+.rp-detail.open { display: flex; }
+.rp-pkt-link {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.rp-pkt-link:hover { color: var(--accent2); }
+
+.gwc-pickers { flex-wrap: wrap; gap: 10px; }
+.gwc-vs { color: var(--muted); font-family: var(--mono); font-size: 11px; }
+.gwc-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  gap: 14px;
+}
+.gwc-section-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.gwc-count { color: var(--muted); font-weight: 400; }
+.gwc-a    { color: var(--accent2); }
+.gwc-both { color: var(--accent); }
+.gwc-b    { color: #fb923c; }
+.gwc-empty { color: var(--muted); font-size: 11px; font-family: var(--mono); }
+@media (max-width: 640px) {
+  .gwc-grid { grid-template-columns: 1fr; }
+}
+
 .pkt-detail-inner { max-width: 1280px; }
 
 .pkt-detail-layout {
@@ -1720,9 +1850,15 @@ body.embed-mode .lang-switch { display: none; }
   font-family: var(--mono);
   font-size: 11px;
   font-weight: 700;
-  color: var(--muted);
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,.65);
   z-index: 1;
+  transition: transform .15s;
 }
+
+.pkt-hop[data-hop-idx] { cursor: default; }
+.pkt-hop-row-highlight .pkt-hop-num { transform: scale(1.15); box-shadow: 0 0 0 3px rgba(255,255,255,.15); }
+.pkt-hop-row-highlight .pkt-hop-body { color: var(--text); }
 
 .pkt-hop-body {
   flex: 1;
@@ -1807,7 +1943,13 @@ body.embed-mode .lang-switch { display: none; }
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform .15s;
 }
+/* Hover-sync desde la lista de saltos del desglose (solo traceroute, ver
+   bindPacketDetailHopHover en live.js) — se escala el icono interior, no el
+   wrapper del marker, porque Leaflet usa su propio transform en el wrapper
+   para posicionarlo y machacarlo rompería el marcador. */
+.pkt-hop-marker-highlight .pkt-marker-icon { transform: scale(1.4); box-shadow: 0 0 8px rgba(255,255,255,.7); }
 /* Insignia de rayo: salto que no decrementó hop_limit (probable router).
    "certain" = confirmado con hop_limit real visto en los stages; sin esa
    clase, es solo una inferencia por el rol del nodo (contorno, no relleno)
@@ -2568,6 +2710,29 @@ body.live-kiosk-mode #live-log {
 
 #loading.hidden { opacity: 0; pointer-events: none; }
 
+/* ── Aviso de arranque en frío (sin nodos aún) ── */
+#warmup-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 8000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(251,191,36,.14);
+  border-bottom: 1px solid rgba(251,191,36,.35);
+  color: var(--warn);
+  font-family: var(--mono);
+  font-size: 12px;
+  text-align: center;
+  transform: translateY(-100%);
+  transition: transform .3s ease;
+}
+#warmup-banner.visible { transform: translateY(0); }
+
 .loader-ring {
   width: 48px;
   height: 48px;
@@ -2702,6 +2867,19 @@ body.embed-mode .malconfig-table td:nth-child(3) { display: none; }
     border-radius: 0 0 var(--radius) var(--radius);
   }
 
+  /* .fav-list-wrap no está pegado al borde del header (hay otros botones
+     detrás) — un "right:0" relativo a él no basta para no salirse de la
+     pantalla en móvil. position:fixed con el "top" calculado en JS
+     (positionFavDropdown, ver ui.js/live.js) y left/right en viewport
+     evita el desbordamiento sea cual sea la posición del botón. */
+  .fav-list-dropdown {
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    width: auto;
+    max-height: 50vh;
+  }
+
   /* ── Panel de detalle: bottom sheet ── */
   .detail-panel {
     left: 0;
@@ -2830,6 +3008,7 @@ body.embed-mode .malconfig-table td:nth-child(3) { display: none; }
     height: 20px;
     cursor: ns-resize;
     touch-action: none;
+    position: relative;
   }
   body.live-page .live-log-handle span {
     width: 36px;
@@ -2838,6 +3017,27 @@ body.embed-mode .malconfig-table td:nth-child(3) { display: none; }
     background: var(--border);
   }
   body.live-page .live-log-handle.dragging span { background: var(--accent); }
+
+  .gesture-hint {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translate(-50%, 6px);
+    background: var(--panel2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    white-space: nowrap;
+    padding: 5px 10px;
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .3s ease, transform .3s ease;
+  }
+  .gesture-hint.show { opacity: 1; transform: translate(-50%, 0); }
+  .gesture-hint.no-anim { transition: none; transform: translate(-50%, 0); }
 
   body.live-page .back-link span { display: none; }
 

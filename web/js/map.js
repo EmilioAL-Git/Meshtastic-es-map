@@ -465,6 +465,7 @@ function renderNodes(nodes) {
 
   nodes.forEach(node => {
     if (node.latitude == null || node.longitude == null) return;
+    if (mapSettings.hideOutsideSpain && !isNodeInSpainBounds(node)) return;
     seen.add(node.node_id);
 
     // Actualizar in situ si ya existe: el auto-refresh no cierra popups abiertos

@@ -319,11 +319,6 @@ function initLiveMap() {
     zoom: MAP_ZOOM,
     zoomControl: true,
     preferCanvas: true,
-    zoomSnap: 0,
-    zoomDelta: 0.5,
-    scrollWheelZoom: false,
-    smoothWheelZoom: true,
-    smoothSensitivity: 1.8,
   });
 
   L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {

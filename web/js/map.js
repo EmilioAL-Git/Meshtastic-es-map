@@ -17,11 +17,6 @@ function initMap() {
     zoom: MAP_ZOOM,
     zoomControl: false,
     preferCanvas: true,
-    zoomSnap: 0,
-    zoomDelta: 0.5,
-    scrollWheelZoom: false,
-    smoothWheelZoom: true,
-    smoothSensitivity: 1.8,
   });
 
   baseTileLayer = L.tileLayer(TILE_URLS[mapSettings.theme], {

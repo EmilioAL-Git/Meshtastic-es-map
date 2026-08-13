@@ -381,6 +381,21 @@ header {
 .mal-config-issue.issue-medium { color: #eab308; }
 .mal-config-issue.issue-medium::before { color: #eab308; }
 
+.location-manual-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  background: rgba(234,179,8,.08);
+  border: 1px solid rgba(234,179,8,.35);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+.location-manual-banner svg { flex-shrink: 0; }
+
 /* ── Issue chips (tabla modal) ── */
 .mc-issues { min-width: 180px; }
 

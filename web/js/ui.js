@@ -203,7 +203,14 @@ function selectNode(nodeId, fly = false) {
       <span class="live-dot"></span> ${escHtml(t('detail.viewLive'))}
     </a>`;
 
-  document.getElementById('detail-body').innerHTML = malBanner + fieldsHtml + liveLinkHtml;
+  const locationManualBanner = node.location_source === 'LOC_MANUAL'
+    ? `<div class="location-manual-banner">
+        <svg width="14" height="13" viewBox="0 0 22 20" aria-hidden="true"><polygon points="11,1 21,19 1,19" fill="#eab308" stroke="#ca8a04" stroke-width="2" stroke-linejoin="round"/><text x="11" y="15.5" text-anchor="middle" font-size="10" font-weight="bold" font-family="monospace" fill="#1e293b">!</text></svg>
+        <span>${t('detail.locationManualBanner')}</span>
+      </div>`
+    : '';
+
+  document.getElementById('detail-body').innerHTML = malBanner + locationManualBanner + fieldsHtml + liveLinkHtml;
 
   document.getElementById('detail-panel').classList.add('visible');
   document.body.classList.add('detail-open');

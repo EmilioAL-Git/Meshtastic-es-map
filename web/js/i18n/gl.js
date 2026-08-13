@@ -144,6 +144,7 @@ window.I18N.gl = {
     connections: { one: '{n} conexión', other: '{n} conexións' },
     malBannerText: 'Este nodo pode <strong>non estar optimizado</strong>.',
     malBannerLink: 'Ver recomendacións →',
+    locationManualBanner: 'Posición fixada <strong>a man</strong> polo propietario, non ven do GPS. Pode non ser exacta.',
     viewLive: 'Ver nodo en directo',
   },
 

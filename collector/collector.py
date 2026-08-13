@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS nodes (
     is_mqtt_gateway INTEGER DEFAULT 0,
     hops_away       INTEGER,
     precision_bits  INTEGER,   -- bits de precisión del paquete de posición (1-32)
+    location_source TEXT,      -- LOC_MANUAL | LOC_INTERNAL | LOC_EXTERNAL | LOC_UNSET
     last_seen       INTEGER,   -- unix timestamp (segundos)
     first_seen      INTEGER,   -- unix timestamp primera vez que lo vimos
     updated_at      INTEGER    -- unix timestamp última actualización en nuestra BD
@@ -127,6 +128,7 @@ def get_db(db_path: Path) -> sqlite3.Connection:
         "ALTER TABLE nodes ADD COLUMN channel TEXT",
         "ALTER TABLE snapshots ADD COLUMN active_nodes INTEGER",
         "ALTER TABLE nodes ADD COLUMN precision_bits INTEGER",
+        "ALTER TABLE nodes ADD COLUMN location_source TEXT",
     ]:
         try:
             conn.execute(migration)
@@ -348,7 +350,14 @@ def fetch_position_reports(base_url: str, conn: sqlite3.Connection) -> dict[str,
     """
     Consulta /api/packets?portnum=3 (paquetes POSITION_APP, los que usa cada
     nodo para enrutar dentro de su propia malla) y devuelve
-    {node_id: {"latitude": float, "longitude": float, "precision_bits": int}}.
+    {node_id: {"latitude": float, "longitude": float, "precision_bits": int,
+    "location_source": str | None}}.
+
+    location_source indica de dónde sale la coordenada (LOC_MANUAL: el
+    usuario la tecleó a mano, sin ningún sensor de por medio; LOC_INTERNAL/
+    LOC_EXTERNAL: GPS real). No podemos saber si una posición LOC_MANUAL es
+    correcta —el protocolo no lo garantiza—, así que solo se usa para avisar
+    en el frontend, nunca para descartar ni "corregir" la posición.
 
     A diferencia de last_lat/last_long de /api/nodes —que viene del MapReport
     del nodo, el cual el firmware limita SIEMPRE a 12-15 bits de precisión
@@ -388,6 +397,7 @@ def fetch_position_reports(base_url: str, conn: sqlite3.Connection) -> dict[str,
         m_lat = re.search(r'latitude_i:\s*(-?\d+)', payload)
         m_lon = re.search(r'longitude_i:\s*(-?\d+)', payload)
         m_pb  = re.search(r'precision_bits:\s*(\d+)', payload)
+        m_src = re.search(r'location_source:\s*(\w+)', payload)
         if not (m_lat and m_lon and m_pb):
             continue
 
@@ -402,6 +412,7 @@ def fetch_position_reports(base_url: str, conn: sqlite3.Connection) -> dict[str,
             "latitude": lat,
             "longitude": lon,
             "precision_bits": int(m_pb.group(1)),
+            "location_source": m_src.group(1) if m_src else None,
         }
 
     if latest:
@@ -426,14 +437,15 @@ def update_positions_from_reports(conn: sqlite3.Connection, position_map: dict[s
         rows = conn.execute(
             """
             UPDATE nodes SET
-                latitude       = ?,
-                longitude      = ?,
-                precision_bits = ?
+                latitude        = ?,
+                longitude       = ?,
+                precision_bits  = ?,
+                location_source = ?
             WHERE node_id = ?
               AND (precision_bits IS NULL OR precision_bits <= ?)
             """,
             (info["latitude"], info["longitude"], info["precision_bits"],
-             node_id, info["precision_bits"]),
+             info["location_source"], node_id, info["precision_bits"]),
         )
         updated += rows.rowcount
     conn.commit()
@@ -623,7 +635,7 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
                latitude, longitude, altitude,
                battery_level, voltage, snr, rssi,
                channel_util, air_util_tx, firmware, channel,
-               is_mqtt_gateway, hops_away, precision_bits,
+               is_mqtt_gateway, hops_away, precision_bits, location_source,
                last_seen, first_seen, updated_at
         FROM nodes
         WHERE last_seen >= ?

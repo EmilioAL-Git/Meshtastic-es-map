@@ -145,6 +145,7 @@ window.I18N.es = {
     connections: { one: '{n} conexión', other: '{n} conexiones' },
     malBannerText: 'Este nodo puede estar <strong>no optimizado</strong>.',
     malBannerLink: 'Ver recomendaciones →',
+    locationManualBanner: 'Posición fijada <strong>a mano</strong> por el propietario, no viene de GPS. Puede no ser exacta.',
     viewLive: 'Ver nodo en directo',
   },
 

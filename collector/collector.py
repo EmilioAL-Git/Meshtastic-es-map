@@ -231,7 +231,12 @@ def parse_nodes(raw: list | dict) -> list[dict]:
         lon = _decode_coord(lon_raw)
         # Null island (0,0): algunos nodos mandan esta posición por GPS sin fix.
         # Se descarta para no machacar con COALESCE una posición válida anterior.
-        if lat is not None and lon is not None and abs(lat) < 0.5 and abs(lon) < 0.5:
+        # Basta con mirar la latitud: ningún nodo real de esta red (España, incl.
+        # Canarias) tiene latitud cercana a 0, mientras que la longitud sí puede
+        # serlo de forma legítima (el meridiano de Greenwich cruza España por
+        # Castellón/Burgos) — comprobar ambas con AND dejaba pasar glitches de
+        # GPS que solo ponían a 0 la latitud.
+        if lat is not None and abs(lat) < 0.5:
             lat = None
             lon = None
         alt = _safe_float(_first_not_none(n.get("altitude"), n.get("last_alt")))
@@ -572,8 +577,7 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
                last_seen, first_seen, updated_at
         FROM nodes
         WHERE last_seen >= ?
-          AND (latitude IS NULL OR longitude IS NULL
-               OR NOT (ABS(latitude) < 0.5 AND ABS(longitude) < 0.5))
+          AND (latitude IS NULL OR longitude IS NULL OR ABS(latitude) >= 0.5)
         ORDER BY last_seen DESC
     """, (cutoff,))
     cols  = [d[0] for d in cur.description]
@@ -602,8 +606,8 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
         WHERE e.last_seen >= ?
           AND fn.latitude IS NOT NULL AND fn.longitude IS NOT NULL
           AND tn.latitude IS NOT NULL AND tn.longitude IS NOT NULL
-          AND NOT (ABS(fn.latitude) < 0.5 AND ABS(fn.longitude) < 0.5)
-          AND NOT (ABS(tn.latitude) < 0.5 AND ABS(tn.longitude) < 0.5)
+          AND ABS(fn.latitude) >= 0.5
+          AND ABS(tn.latitude) >= 0.5
         ORDER BY e.last_seen DESC
     """, (cutoff,))
     cols  = [d[0] for d in cur.description]

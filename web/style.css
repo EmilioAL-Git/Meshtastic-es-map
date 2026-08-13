@@ -3113,4 +3113,13 @@ body.embed-mode .malconfig-table td:nth-child(3) { display: none; }
     max-height: 60vh;
     overflow-y: auto;
   }
+  /* La regla genérica de arriba ("Leyenda: solo líneas en móvil") es del
+     mapa principal — oculta título y todo lo que no sea .legend-edge para
+     dejar solo un par de líneas compactas. En directo no tiene ninguna
+     entrada .legend-edge (son todo .legend-item normales), así que sin
+     este contra-override el panel abierto se quedaba vacío: solo el
+     recuadro, sin título ni filas — una fina línea sin contenido. */
+  body.live-page .legend.mobile-open .legend-title { display: block; }
+  body.live-page .legend.mobile-open .legend-item { display: flex; }
+  body.live-page .legend.mobile-open .legend-sep { display: block; }
 }

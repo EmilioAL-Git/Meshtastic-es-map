@@ -598,9 +598,12 @@ function stageSiblingLines(stage, refPos) {
   const repId = pickStageGateway(stage, refPos);
   if (!repId) return [];
   const rep = nodeLatLng(repId);
-  const rest = stage.gateway_ids.filter(id => id !== repId).map(nodeLatLng).filter(Boolean);
+  const rest = stage.gateway_ids
+    .filter(id => id !== repId)
+    .map(id => [id, nodeLatLng(id)])
+    .filter(([, pos]) => pos);
   if (!rest.length) return [];
-  return rest.map(pos => [rep, pos]);
+  return rest.map(([id, pos]) => [rep, pos, id]);
 }
 
 // Anillo que se expande y se desvanece sobre un nodo — usado tanto en el
@@ -1777,11 +1780,14 @@ function renderDetailMiniMap(packetId) {
     points.forEach((p, i) => {
       if (!p.stage) return; // origen: sin etapa asociada
       const refPos = points[i - 1].pos;
-      for (const [a, b] of stageSiblingLines(p.stage, refPos)) {
+      for (const [a, b, siblingId] of stageSiblingLines(p.stage, refPos)) {
         L.polyline([a, b], { color, weight: 1.5, opacity: 0.45, dashArray: '3 4' }).addTo(detailMapLayer);
         L.circleMarker(b, {
           radius: 4, color: '#fff', weight: 1, fillColor: color, fillOpacity: 0.7,
-        }).bindTooltip(`hop_limit ${p.stage.hop_limit} — también oído aquí`, { direction: 'top' }).addTo(detailMapLayer);
+        }).bindTooltip(
+          `Escuchado en "${nodeLabel(siblingId)}", ${p.hops != null ? p.hops : p.stage.hop_limit} hops`,
+          { direction: 'top' },
+        ).addTo(detailMapLayer);
         allPositions.push(b);
       }
     });

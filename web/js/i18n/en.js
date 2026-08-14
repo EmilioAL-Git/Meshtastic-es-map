@@ -485,6 +485,7 @@ window.I18N.en = {
 
     info: {
       title: 'How the live activity visualizer works',
+      warnBanner: '⚠️ <strong>This visualization may not be real:</strong> only hops that pass through a node with MQTT enabled are shown, or the exact route when a traceroute is available. The rest of the real radio path is not visible.',
       whatH: 'What you are seeing here',
       whatP: 'This page listens live to the MQTT broker of the Meshtastic Spain network and produces a visual approximation of how packets travel across the mesh.',
       routeH: 'How the route is reconstructed',

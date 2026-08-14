@@ -487,6 +487,7 @@ window.I18N.es = {
 
     info: {
       title: 'Cómo funciona el visualizador de la actividad en directo',
+      warnBanner: '⚠️ <strong>Esta visualización puede no ser real:</strong> solo se representan los saltos que pasan por un nodo con MQTT activado, o la ruta exacta cuando hay un traceroute disponible. El resto del camino real por radio no se ve.',
       whatH: 'Qué se ve aquí',
       whatP: 'Esta página escucha en directo el broker MQTT de la red Meshtastic España y realiza una aproximación visual sobre cómo viajan los paquetes por la red.',
       routeH: 'Cómo se reconstruye la ruta',

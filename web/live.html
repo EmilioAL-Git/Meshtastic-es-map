@@ -16,7 +16,7 @@
 
 <!-- Header -->
 <header>
-  <a class="back-link" href="index.html">
+  <a class="back-link" href="/">
     ← <span data-i18n="live.backToMap">Volver al mapa</span>
   </a>
   <div class="logo">
@@ -331,6 +331,10 @@
       </div>
     </div>
     <div class="malconfig-content live-info-content">
+      <div class="live-info-warning" data-i18n-html="live.info.warnBanner">⚠️ <strong>Esta visualización puede no ser real:</strong> solo se representan
+      los saltos que pasan por un nodo con MQTT activado, o la ruta exacta cuando hay un traceroute disponible.
+      El resto del camino real por radio no se ve.</div>
+
       <h4 data-i18n="live.info.whatH">Qué se ve aquí</h4>
       <p data-i18n-html="live.info.whatP">Esta página escucha en directo el broker MQTT de la red Meshtastic
       España y realiza una aproximación visual sobre cómo viajan los

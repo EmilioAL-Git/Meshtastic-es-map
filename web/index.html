@@ -5,14 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Red Meshtastic España</title>
 
-<!-- Leaflet -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-
+<!-- Leaflet (self-hosted: sin dependencia de disponibilidad de unpkg) -->
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=1.9.4"/>
+<script src="vendor/leaflet/leaflet.js?v=1.9.4"></script>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="stylesheet" href="style.css?v=1.4.0"/>
+<link rel="stylesheet" href="style.css?v=1.5.0"/>
 </head>
 
 <body>
@@ -27,6 +24,11 @@
 <div id="loading">
   <div class="loader-ring"></div>
   <div class="loader-text" data-i18n="loading.text">CARGANDO RED MESHTASTIC…</div>
+</div>
+
+<!-- Aviso: el recolector aún no ha publicado ningún nodo (arranque en frío) -->
+<div id="warmup-banner" role="status" aria-live="polite">
+  <span data-i18n="loading.warmupText">Todavía no hay nodos publicados — el recolector puede seguir arrancando. Reintentando automáticamente…</span>
 </div>
 
 <!-- Header -->
@@ -62,16 +64,23 @@
       <div class="stat-lbl" data-i18n="header.gateways">Gateways</div>
     </div>
     <div class="sep"></div>
-    <div class="stat">
-      <div class="stat-val" id="hdr-edges">—</div>
-      <div class="stat-lbl" data-i18n="header.connections">Conexiones</div>
-    </div>
-    <div class="sep"></div>
     <span class="last-update" id="last-update">—</span>
     <button class="noopt-btn" onclick="openMalConfigModal()" data-i18n-title="header.notOptimizedTitle" title="Ver nodos no optimizados">
       <svg width="13" height="12" viewBox="0 0 22 20" aria-hidden="true"><polygon points="11,1 21,19 1,19" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round" opacity=".9"/><text x="11" y="15.5" text-anchor="middle" font-size="9" font-weight="bold" font-family="monospace" fill="#1e293b">!</text></svg>
       <span class="noopt-label" id="noopt-label" data-i18n="header.notOptimized">No optimizados</span>
     </button>
+    <div class="fav-list-wrap" id="fav-list-wrap">
+      <button class="noopt-btn" id="fav-list-btn" onclick="toggleFavoritesList()" data-i18n-title="favorites.viewList" title="Ver mis nodos favoritos">
+        <span>★</span>
+        <span class="noopt-label" data-i18n="favorites.onlyFavoritesShort">Favoritos</span>
+        <span class="fav-list-count" id="fav-list-count"></span>
+      </button>
+      <div class="fav-list-dropdown" id="fav-list-dropdown"></div>
+    </div>
+    <a class="live-link" href="live.html" data-i18n-title="header.liveTitle" title="Ver paquetes en directo">
+      <span class="live-dot"></span>
+      <span class="live-label" data-i18n="header.live">En directo</span>
+    </a>
     <div class="search-wrap">
       <svg class="search-icon" viewBox="0 0 16 16" fill="none">
         <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/>
@@ -86,6 +95,75 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 6.371c0 4.418 -2.239 6.629 -5 6.629"/><path d="M4 6.371h7"/><path d="M5 9c0 2.144 2.252 3.908 6 4"/><path d="M12 20l4 -9l4 9"/><path d="M19.1 18h-6.2"/><path d="M6.694 3l.793 .582"/></svg>
       </button>
       <div class="lang-menu" id="lang-menu" role="menu"></div>
+    </div>
+
+    <div class="settings-switch" id="settings-switch">
+      <button class="settings-btn" id="settings-btn" type="button" onclick="toggleSettingsPanel()" data-i18n-title="settings.title" title="Ajustes del mapa" aria-haspopup="true" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"/><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></svg>
+      </button>
+
+      <div class="settings-panel" id="settings-panel">
+        <div class="settings-title" data-i18n="settings.title">Ajustes del mapa</div>
+
+        <div class="settings-row">
+          <span class="settings-label" data-i18n="settings.theme">Tema</span>
+          <div class="settings-seg">
+            <button class="fchip" data-theme="light" onclick="setTheme('light')" data-i18n="settings.themeLight">Claro</button>
+            <button class="fchip" data-theme="dark" onclick="setTheme('dark')" data-i18n="settings.themeDark">Oscuro</button>
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <span class="settings-label" data-i18n="settings.markerSize">Tamaño de marcadores</span>
+          <div class="settings-seg">
+            <button class="fchip" data-marker-size="small" onclick="setMarkerSize('small')" data-i18n="settings.markerSizeSmall">S</button>
+            <button class="fchip" data-marker-size="normal" onclick="setMarkerSize('normal')" data-i18n="settings.markerSizeNormal">M</button>
+            <button class="fchip" data-marker-size="large" onclick="setMarkerSize('large')" data-i18n="settings.markerSizeLarge">L</button>
+          </div>
+        </div>
+
+        <button class="settings-toggle-row" data-setting-toggle="autoLocate" onclick="toggleMapSetting('autoLocate')">
+          <span class="settings-label-info">
+            <span data-i18n="settings.autoLocate">Auto-centrar en mi ubicación</span>
+            <span class="settings-info-icon" tabindex="0" role="button" data-i18n-aria-label="settings.autoLocateInfo" aria-label="Info" onclick="event.stopPropagation(); toggleSettingInfo(event, 'settings.autoLocateInfo')">ⓘ</span>
+          </span>
+          <span class="settings-switch-track"></span>
+        </button>
+
+        <button class="settings-toggle-row" data-setting-toggle="flyToNode" onclick="toggleMapSetting('flyToNode')">
+          <span class="settings-label-info">
+            <span data-i18n="settings.flyToNode">Volar al nodo al seleccionarlo</span>
+            <span class="settings-info-icon" tabindex="0" role="button" data-i18n-aria-label="settings.flyToNodeInfo" aria-label="Info" onclick="event.stopPropagation(); toggleSettingInfo(event, 'settings.flyToNodeInfo')">ⓘ</span>
+          </span>
+          <span class="settings-switch-track"></span>
+        </button>
+
+        <button class="settings-toggle-row" data-setting-toggle="showPrecisionCircle" onclick="toggleMapSetting('showPrecisionCircle')">
+          <span class="settings-label-info">
+            <span data-i18n="settings.showPrecisionCircle">Círculo de precisión</span>
+            <span class="settings-info-icon" tabindex="0" role="button" data-i18n-aria-label="settings.showPrecisionCircleInfo" aria-label="Info" onclick="event.stopPropagation(); toggleSettingInfo(event, 'settings.showPrecisionCircleInfo')">ⓘ</span>
+          </span>
+          <span class="settings-switch-track"></span>
+        </button>
+
+        <button class="settings-toggle-row" data-setting-toggle="showMalIcons" onclick="toggleMapSetting('showMalIcons')">
+          <span class="settings-label-info">
+            <span data-i18n="settings.showMalIcons">Iconos de no optimizados</span>
+            <span class="settings-info-icon" tabindex="0" role="button" data-i18n-aria-label="settings.showMalIconsInfo" aria-label="Info" onclick="event.stopPropagation(); toggleSettingInfo(event, 'settings.showMalIconsInfo')">ⓘ</span>
+          </span>
+          <span class="settings-switch-track"></span>
+        </button>
+
+        <button class="settings-toggle-row" data-setting-toggle="hideOutsideSpain" onclick="toggleMapSetting('hideOutsideSpain')">
+          <span class="settings-label-info">
+            <span data-i18n="settings.hideOutsideSpain">Ocultar nodos fuera de España</span>
+            <span class="settings-info-icon" tabindex="0" role="button" data-i18n-aria-label="settings.hideOutsideSpainInfo" aria-label="Info" onclick="event.stopPropagation(); toggleSettingInfo(event, 'settings.hideOutsideSpainInfo')">ⓘ</span>
+          </span>
+          <span class="settings-switch-track"></span>
+        </button>
+
+        <div class="settings-info-popover" id="settings-info-popover"></div>
+      </div>
     </div>
 
   </div>
@@ -142,6 +220,7 @@
   <div class="detail-header">
     <div class="node-dot dot-recent" id="detail-dot"></div>
     <div class="detail-title" id="detail-title">—</div>
+    <button class="detail-fav-btn" id="detail-fav-btn" onclick="toggleFavoriteFromDetail()" data-i18n-title="favorites.toggle" title="Marcar como favorito">☆</button>
     <button class="detail-close" onclick="closeDetail()">✕</button>
   </div>
   <div class="detail-body" id="detail-body"></div>
@@ -177,7 +256,7 @@
 <!-- Banner novedades -->
 <div class="hint-bubble hidden" id="hint-novedades">
   <button class="hint-bubble-close" onclick="dismissEdgeHint()" data-i18n-aria-label="hint.close" aria-label="Cerrar">✕</button>
-  <span data-i18n-html="hint.novedades"><strong>Nuevo</strong> — los enlaces del mapa son filtrables. Pulsa en la leyenda o usa el panel de filtros para activar o desactivar <strong>Vecino directo</strong> y <strong>Traceroute</strong>.</span>
+  <span data-i18n-html="hint.novedades"><strong>Nuevo</strong> — pestaña <strong>En directo</strong>: sigue los paquetes de la red en tiempo real.</span>
 </div>
 
 <!-- Modal: Reporte de nodo individual -->
@@ -243,19 +322,21 @@
       <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.34c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.88-1.17-.88-1.17-.72-.5.05-.48.05-.48.8.06 1.22.82 1.22.82.71 1.22 1.87.87 2.32.66.07-.52.28-.87.5-1.07-1.77-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.66 7.66 0 018 3.8c.68 0 1.36.09 2 .26 1.52-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
       <span data-i18n="footer.github">GitHub</span>
     </a>
-    <span class="footer-version">v1.4.0</span>
+    <span class="footer-version">v1.5.0</span>
   </div>
 </footer>
 
-<script src="js/i18n/es.js?v=1.4.0"></script>
-<script src="js/i18n/gl.js?v=1.4.0"></script>
-<script src="js/i18n.js?v=1.4.0"></script>
-<script src="js/state.js?v=1.4.0"></script>
-<script src="js/map.js?v=1.4.0"></script>
-<script src="js/filters.js?v=1.4.0"></script>
-<script src="js/search.js?v=1.4.0"></script>
-<script src="js/ui.js?v=1.4.0"></script>
-<script src="js/malconfig.js?v=1.4.0"></script>
-<script src="js/app.js?v=1.4.0"></script>
+<script src="js/i18n/es.js?v=1.5.0"></script>
+<script src="js/i18n/gl.js?v=1.5.0"></script>
+<script src="js/i18n/en.js?v=1.5.0"></script>
+<script src="js/i18n.js?v=1.5.0"></script>
+<script src="js/state.js?v=1.5.0"></script>
+<script src="js/map.js?v=1.5.0"></script>
+<script src="js/filters.js?v=1.5.0"></script>
+<script src="js/search.js?v=1.5.0"></script>
+<script src="js/ui.js?v=1.5.0"></script>
+<script src="js/malconfig.js?v=1.5.0"></script>
+<script src="js/settings.js?v=1.5.0"></script>
+<script src="js/app.js?v=1.5.0"></script>
 </body>
 </html>

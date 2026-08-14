@@ -373,6 +373,17 @@ def analyze_node(node_id):
             "is_fixed":          max_dist < 1000,
         }
 
+    # Nodos móviles por diseño (T1000-E, tags RAK, wearables...): nunca deben
+    # detectarse ni alertarse como "fijo". Si aún no hay suficientes posiciones
+    # para confirmarlo por GPS, is_fixed queda en None ("no disponible") en
+    # lugar de asumir False sin evidencia; con >=2 posiciones si se fuerza a
+    # False, porque el diseño del hardware prevalece sobre una quietud puntual.
+    if is_mobile_by_design(_node_meta.get(node_id, {}).get("hw_model")):
+        if mobility is None:
+            mobility = {"max_distance_m": None, "positions_checked": len(coords), "is_fixed": None}
+        else:
+            mobility["is_fixed"] = False
+
     # ── 5. hop_start del último paquete ──────────────────────────────────────
     hop_start = None
     if packets:
@@ -600,7 +611,7 @@ def main():
                 print(f"  {name}")
                 print(f"    pkts={sum(v for v in result['packets'].values() if v)} "
                       f"issues={len(issues)} "
-                      f"fijo={'sí (±' + str(mob['max_distance_m']) + 'm)' if mob and mob['is_fixed'] else 'móvil' if mob and not mob['is_fixed'] else '—'}")
+                      f"fijo={'sí (±' + str(mob['max_distance_m']) + 'm)' if mob and mob['is_fixed'] else 'pendiente' if mob and mob['is_fixed'] is None else 'móvil' if mob else '—'}")
                 for iss in issues:
                     print(f"      [{iss['severity']}] {iss['label']}")
             else:

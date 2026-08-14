@@ -1,3 +1,9 @@
+// ─── Aviso de arranque en frío ────────────────────────────────────────────────
+function updateWarmupBanner(show) {
+  const el = document.getElementById('warmup-banner');
+  if (el) el.classList.toggle('visible', show);
+}
+
 // ─── Carga de datos ───────────────────────────────────────────────────────────
 async function fetchJSON(path) {
   const r = await fetch(API_BASE + path + '?t=' + Date.now());
@@ -58,6 +64,12 @@ async function loadAll() {
         if (markers[selectedNodeId].setStyle)
           markers[selectedNodeId].setStyle({ fillOpacity: 0, opacity: 0 });
       }
+      // El fetch fue correcto pero sin nodos: no es un error de red (ya
+      // cubierto por el catch/toast de abajo), sino que el recolector
+      // probablemente aún no ha completado su primer ciclo — el auto-refresh
+      // de 5 min ya reintenta solo, esto solo se lo indica al usuario en vez
+      // de dejar el mapa vacío sin explicación.
+      updateWarmupBanner(allNodes.length === 0);
     } else {
       console.error('Error cargando nodos:', nodesResp.reason);
       showToast(t('toast.nodesError'));
@@ -77,7 +89,6 @@ async function loadAll() {
       document.getElementById('hdr-nodes').textContent  = s.nodes?.with_position ?? '—';
       document.getElementById('hdr-active').textContent = s.nodes?.active_1h     ?? '—';
       document.getElementById('hdr-gw').textContent     = s.nodes?.mqtt_gateways ?? '—';
-      document.getElementById('hdr-edges').textContent  = s.edges?.active_24h    ?? '—';
     }
 
     const now = new Date();
@@ -85,14 +96,7 @@ async function loadAll() {
       t('header.lastUpdate', { time: now.toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' }) });
 
     if (MAP_AUTO_FIT && !autoFitDone) {
-      const nodesWithPos = allNodes.filter(n => n.latitude != null);
-      if (nodesWithPos.length > 1 && Object.keys(markers).length > 0) {
-        const bounds = L.latLngBounds(nodesWithPos.map(n => [n.latitude, n.longitude]));
-        if (bounds.isValid()) {
-          map.fitBounds(bounds, { padding: [40, 40] });
-          autoFitDone = true;
-        }
-      }
+      autoFitDone = fitAllNodes();
     }
 
     // Enlace directo a un nodo: ?node=!abcd1234
@@ -125,30 +129,23 @@ async function loadAll() {
 // ─── Hint: banner novedades ───────────────────────────────────────────────────
 function positionEdgeHint() {
   const bubble = document.getElementById('hint-novedades');
-  const legend = document.querySelector('.legend');
-  if (!bubble || !legend || bubble.classList.contains('hidden')) return;
-  const r = legend.getBoundingClientRect();
-  if (window.innerWidth <= 768) {
-    bubble.classList.add('arrow-down');
-    bubble.classList.remove('arrow-right');
-    bubble.style.left   = r.left + 'px';
-    bubble.style.bottom = (window.innerHeight - r.top + 10) + 'px';
-    bubble.style.right  = 'auto';
-    bubble.style.top    = 'auto';
-  } else {
-    bubble.classList.add('arrow-right');
-    bubble.classList.remove('arrow-down');
-    bubble.style.right  = (window.innerWidth - r.left + 10) + 'px';
-    bubble.style.top    = (r.top + r.height / 2 - 35) + 'px';
-    bubble.style.left   = 'auto';
-    bubble.style.bottom = 'auto';
-  }
+  const target = document.querySelector('.live-link');
+  if (!bubble || !target || bubble.classList.contains('hidden')) return;
+  const r = target.getBoundingClientRect();
+  bubble.classList.add('arrow-up');
+  bubble.classList.remove('arrow-down', 'arrow-right');
+  const left = Math.max(10, Math.min(r.right - 200, window.innerWidth - 200 - 10));
+  bubble.style.left   = left + 'px';
+  bubble.style.top    = (r.bottom + 10) + 'px';
+  bubble.style.right  = 'auto';
+  bubble.style.bottom = 'auto';
+  bubble.style.setProperty('--arrow-left', (r.left + r.width / 2 - left - 7) + 'px');
 }
 
 (function() {
   if (document.body.classList.contains('embed-mode')) return;
   try {
-    if (!localStorage.getItem('mesh_hint_novedades')) {
+    if (!localStorage.getItem('mesh_hint_live')) {
       document.getElementById('hint-novedades').classList.remove('hidden');
       requestAnimationFrame(positionEdgeHint);
     }
@@ -156,7 +153,7 @@ function positionEdgeHint() {
 })();
 
 function dismissEdgeHint() {
-  try { localStorage.setItem('mesh_hint_novedades', '1'); } catch {}
+  try { localStorage.setItem('mesh_hint_live', '1'); } catch {}
   document.getElementById('hint-novedades').classList.add('hidden');
 }
 
@@ -209,6 +206,8 @@ fetch(API_BASE + '/data/config.json')
     initMap();
     syncFilterChips();
     syncEdgeFilterChips();
+    updateFavListCount();
+    if (mapSettings.autoLocate) locateUser({ onFound: () => { autoFitDone = true; } });
     loadAll();
   });
 
@@ -225,9 +224,15 @@ document.addEventListener('click', e => {
     document.getElementById('search-dropdown').classList.remove('open');
     searchIndex = -1;
   }
+  if (!e.target.closest('#fav-list-wrap')) closeFavoritesList();
   if (!e.target.closest('#filter-panel') && !e.target.closest('#filter-toggle-btn')) {
     document.getElementById('filter-panel').classList.remove('open');
     document.getElementById('filter-toggle-btn').classList.remove('active');
+  }
+  if (!e.target.closest('#settings-panel') && !e.target.closest('#settings-btn')) {
+    closeSettingsPanel();
+  } else if (!e.target.closest('.settings-info-icon') && !e.target.closest('#settings-info-popover')) {
+    closeSettingInfo();
   }
 });
 

@@ -32,6 +32,18 @@ services:
       - JSON_OUT=/data/json
       - CCAA_CACHE_PATH=/data/ccaa-cache.json
 
+  livefeed:
+    build:
+      context: .
+      dockerfile: livefeed/Dockerfile
+    volumes:
+      - livefeed-data:/data
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - LIVE_WS_PORT=8765
+      - LIVEFEED_DB_PATH=/data/livefeed.db
+
   web:
     image: nginx:alpine
     ports:
@@ -46,7 +58,10 @@ services:
         # service_started (no service_healthy): si meshview está caído al
         # arrancar, la web sirve los JSON viejos del volumen en vez de no levantar
         condition: service_started
+      livefeed:
+        condition: service_started
 
 volumes:
   db-data:
   json-data:
+  livefeed-data:

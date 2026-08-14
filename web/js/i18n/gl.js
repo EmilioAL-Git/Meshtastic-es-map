@@ -7,7 +7,10 @@
 window.I18N = window.I18N || {};
 window.I18N.gl = {
 
-  loading: { text: 'CARGANDO A REDE MESHTASTIC…' },
+  loading: {
+    text: 'CARGANDO A REDE MESHTASTIC…',
+    warmupText: 'Aínda non hai nodos publicados — o recolector pode seguir arrancando. Reintentando automaticamente…',
+  },
 
   header: {
     brand: 'MESHTASTIC ESPAÑA <em>/ Mapa de nodos</em>',
@@ -20,6 +23,8 @@ window.I18N.gl = {
     notOptimizedTitle: 'Ver nodos non optimizados',
     searchPlaceholder: 'Buscar un nodo…',
     lastUpdate: 'actualizado ás {time}',
+    live: 'En directo',
+    liveTitle: 'Ver paquetes en directo',
   },
 
   langSelector: { title: 'Idioma / Language' },
@@ -47,6 +52,28 @@ window.I18N.gl = {
     traceroute: 'Traceroute',
   },
 
+  settings: {
+    title: 'Axustes do mapa',
+    theme: 'Tema',
+    themeLight: 'Claro',
+    themeDark: 'Escuro',
+    markerSize: 'Tamaño dos marcadores',
+    markerSizeSmall: 'S',
+    markerSizeNormal: 'M',
+    markerSizeLarge: 'L',
+    autoLocate: 'Auto-centrar na miña localización',
+    autoLocateInfo: 'Ao activalo, pide permiso de localización ao navegador e centra o mapa aí (ao activalo e en cada carga de páxina). Se o denegas ou falla, non cambia nada.',
+    flyToNode: 'Voar ao nodo ao seleccionalo',
+    flyToNodeInfo: 'Ao elixir un nodo (buscador, ligazón directa…) o mapa desprázase e fai zoom automaticamente ata el. Desactívao se prefires que só se abra o panel de detalle sen mover o mapa.',
+    showPrecisionCircle: 'Círculo de precisión',
+    showPrecisionCircleInfo: 'Ao seleccionar un nodo, debuxa un círculo coa marxe de erro da súa posición GPS reportada — máis pequeno canta máis precisión teña o nodo.',
+    showMalIcons: 'Iconas de non optimizados',
+    showMalIconsInfo: 'Mostra un triángulo de aviso sobre os nodos con problemas de configuración detectados. Desactivalo só oculta a icona no mapa: o listado "Non optimizados" da cabeceira segue funcionando igual.',
+    hideOutsideSpain: 'Ocultar nodos fóra de España',
+    hideOutsideSpainInfo: 'Oculta no mapa os nodos cuxa posición cae claramente fóra de España (con marxe ampla, incluíndo Canarias). É só un filtro visual: non borra nada, e o nodo segue aparecendo no buscador.',
+    kioskExit: '✕ Saír do modo quiosco',
+  },
+
   zoom: { in: 'Achegar', out: 'Afastar', locate: 'A miña localización' },
 
   map: { locationError: 'Non se puido obter a túa localización' },
@@ -68,7 +95,7 @@ window.I18N.gl = {
 
   hint: {
     close: 'Pechar',
-    novedades: '<strong>Novo</strong> — as ligazóns do mapa pódense filtrar. Preme na lenda ou usa o panel de filtros para activar ou desactivar <strong>Veciño directo</strong> e <strong>Traceroute</strong>.',
+    novedades: '<strong>Novo</strong> — pestana <strong>En directo</strong>: segue os paquetes da rede en tempo real.',
   },
 
   cookie: {
@@ -79,6 +106,14 @@ window.I18N.gl = {
   footer: {
     source: 'Datos obtidos de:',
     github: 'GitHub',
+  },
+
+  favorites: {
+    toggle: 'Marcar/quitar como favorito',
+    onlyFavorites: 'Amosar só paquetes dos teus nodos favoritos',
+    onlyFavoritesShort: 'Favoritos',
+    viewList: 'Ver os teus nodos favoritos',
+    empty: 'Aínda non marcaches ningún nodo como favorito. Usa a ⭐ do panel de detalle ou do buscador.',
   },
 
   detail: {
@@ -109,6 +144,8 @@ window.I18N.gl = {
     connections: { one: '{n} conexión', other: '{n} conexións' },
     malBannerText: 'Este nodo pode <strong>non estar optimizado</strong>.',
     malBannerLink: 'Ver recomendacións →',
+    locationManualBanner: 'Posición fixada <strong>a man</strong> polo propietario, non ven do GPS. Pode non ser exacta.',
+    viewLive: 'Ver nodo en directo',
   },
 
   popup: {
@@ -136,6 +173,7 @@ window.I18N.gl = {
     issueAll: 'Problema: Todos',
     mobFixed: '📍 Fixo',
     mobMobile: '🚶 Móbil',
+    mobPending: '⏳ Non dispoñible',
     viewLink: 'Ver →',
     table: {
       rank: '#',
@@ -158,6 +196,7 @@ window.I18N.gl = {
     nodeFixed: 'nodo fixo',
     nodeMobile: 'nodo móbil',
     mobilityHtml: 'Detectado como <strong>{status}</strong> — desprazamento máximo {dist} ({checks} posicións analizadas)',
+    mobilityPendingHtml: 'Movilidade <strong>non dispoñible</strong> — aínda non hai suficientes posicións para determinala ({checks} analizadas)',
     hopOkHtml: 'Hop Limit configurado: <strong>{hop}</strong> — dentro do rango recomendado',
     problemsTitle: 'Problemas detectados',
     solution: 'Solución:',
@@ -293,6 +332,167 @@ window.I18N.gl = {
     client_mute_mobile: {
       desc: 'Este nodo detectouse como móbil, pero non emprega o rol CLIENT_MUTE. Un nodo móbil que retransmite paquetes alleos xera rutas inestables e tráfico redundante ao cambiar de posición.',
       fix: 'Config → Dispositivo → Rol → CLIENT_MUTE (o nodo segue emitindo a súa posición, pero deixa de reenviar paquetes alleos)',
+    },
+  },
+
+  // Pestana "En directo" (live.html / js/live.js)
+  live: {
+    pageTitle: 'En directo · Rede Meshtastic España',
+    backToMap: 'Volver ao mapa',
+    brand: 'MESHTASTIC ESPAÑA <em>/ En directo</em>',
+    filterByType: 'Filtrar por tipo de paquete',
+    filters: 'Filtrar',
+    all: 'Todos',
+    none: 'Ningún',
+    portnum: {
+      position: 'Posición',
+      text: 'Mensaxes',
+      telemetry: 'Telemetría',
+      nodeinfo: 'Info do nodo',
+      waypoint: 'Waypoint',
+      traceroute: 'Traceroute',
+      neighborinfo: 'Veciños (NeighborInfo)',
+      rangeTest: 'Test de alcance',
+      mapReport: 'Informe de mapa',
+      encrypted: 'Cifrado (non descifrable)',
+      other: 'Outros tipos',
+    },
+    soundAlert: 'Aviso sonoro',
+    clearFocus: 'Quitar foco',
+    pauseResumeFeed: 'Pausar/retomar o feed',
+    pause: 'Pausar',
+    resume: 'Retomar',
+    connecting: 'Conectando…',
+    connected: 'Conectado',
+    reconnectingIn: 'Reconectando en {s}s…',
+    packetsPerMinute: 'Paquetes por minuto no último minuto',
+    howItWorksTitle: 'Como funciona o directo',
+    kioskEnter: 'Modo quiosco',
+    packets: 'Paquetes',
+    viewPackets: 'Ver paquetes',
+    sessionPackets: 'Paquetes da sesión',
+    dragHandleHint: '↕ Arrastra para axustar o tamaño',
+    exportJson: 'Exportar como JSON',
+    exportCsv: 'Exportar como CSV',
+    waitingPackets: 'Agardando paquetes…',
+    noPacketsYet: 'Aínda non hai paquetes na sesión',
+    errorLoadingNodes: 'Non se puido cargar nodes.json',
+    topActiveSession: 'Máis activos nesta sesión',
+    broadcastAll: 'Todos',
+    broadcastAllFull: 'Todos (broadcast)',
+    linkCopied: 'Ligazón copiada',
+    copyFailed: 'Non se puido copiar — usa a barra de enderezos',
+    packetExpired: 'Ese paquete xa non está dispoñible (caducou)',
+    sharedPacketError: 'Non se puido cargar o paquete compartido',
+    historyLoadError: 'Non se puido cargar o histórico dese intervalo',
+    hopCount: { one: '{n} salto', other: '{n} saltos' },
+    packetCount: { one: '{n} paquete', other: '{n} paquetes' },
+    reachedCount: { one: '~{n} nodo confirmado', other: '~{n} nodos confirmados' },
+
+    legend: {
+      toggleTitle: 'Amosar/agochar a lenda',
+      node: 'Nodo',
+      focusedNode: 'Nodo enfocado',
+      packetInTransit: 'Paquete en tránsito',
+      packetTrail: 'Ruta trazada do paquete',
+      sameHop: 'Mesmo salto oído por varios gateways',
+      origin: 'Orixe do paquete (anel)',
+      zeroHop: 'Salto con 0 Hop',
+      gatewayUpload: 'Gateway subindo un paquete',
+      exactRoute: 'Ruta exacta (traceroute real)',
+      confirmedRoute: 'Ruta confirmada (relay_node real)',
+      approxRoute: 'Ruta aproximada (heurística de gateways)',
+    },
+
+    timeline: {
+      playPause: 'Reproducir/pausar',
+      range1h: '1h',
+      range12h: '12h',
+      range7d: '7d',
+      backToLive: 'Volver ao directo',
+      live: 'En directo',
+    },
+
+    routePatterns: {
+      title: 'Rutas máis frecuentes',
+      subtitle: 'só saltos confirmados (traceroute ou relay_node)',
+      range6h: '6h',
+      range24h: '24h',
+      loading: 'Cargando…',
+      empty: 'Non hai rutas confirmadas nesta ventá de tempo.',
+      timesCount: { one: '{n} vez', other: '{n} veces' },
+    },
+
+    gatewayCompare: {
+      title: 'Comparar gateways',
+      vs: 'vs',
+      pickBoth: 'Escolle dous gateways para comparar.',
+      sameNode: 'Escolle dous gateways distintos.',
+      empty: 'Ningún dos dous oíu paquetes nesta ventá de tempo.',
+      only: '(só este)',
+      both: 'Ambos',
+    },
+
+    route: {
+      exactShort: 'ruta exacta (traceroute)',
+      confirmedShort: 'ruta confirmada',
+      approxShort: 'ruta aproximada',
+      exactLong: 'Ruta exacta — rexistrada polo propio traceroute, salto a salto real (non é unha aproximación)',
+      confirmedLong: 'Ruta confirmada — un salto trae relay_node e resolve a un único nodo real coñecido',
+      approxLong: 'Ruta aproximada — estimada por que gateways oíron cada salto, sen relay_node confirmado',
+    },
+
+    hop: {
+      origin: 'orixe',
+      destination: 'destino',
+      hopN: 'salto {n}',
+      unknownPosition: 'posición descoñecida',
+      reducedCertain: '⚡ salto reducido',
+      reducedGuess: '⚡ posible salto reducido',
+      reducedCertainTitle: 'Confirmado: o hop_limit non baixou neste salto (visto nos stages dos gateways)',
+      reducedGuessTitle: 'Inferido polo rol do nodo (ROUTER/REPEATER) — sen confirmar con hop_limit real',
+      bestCandidateTitle: 'Mellor candidato entre varios nodos posibles — non confirmado',
+      noHopsYet: 'Aínda sen saltos con coordenadas coñecidas',
+    },
+
+    packetDetail: {
+      title: 'Desglose do paquete',
+      copyLink: 'Copiar ligazón a este paquete',
+      noData: 'Sen datos deste paquete (perdeuse do historial).',
+      packetId: 'Packet ID',
+      viewOnMeshview: 'ver en meshview ↗',
+      origin: 'Orixe',
+      destination: 'Destino',
+      channel: 'Canle',
+      type: 'Tipo (portnum)',
+      message: 'Mensaxe',
+      routeConfidence: 'Confianza da ruta',
+      nodesReached: 'Nodos alcanzados',
+      approx: '(aprox.)',
+      reachedHint: 'Cota mínima: só conta nodos que son gateway MQTT (os únicos visibles desde aquí). O alcance real pode ser maior.',
+      hopsDetected: 'Saltos detectados ({n})',
+      hopsHintTraceroute: '🔗 = posición coñecida · ❓ = nodo real, posición descoñecida · ⚡ = salto reducido (router)',
+      hopsHintHeuristic: '🔗 = relay_node confirmado (único candidato) · 🔗? = mellor candidato entre varios, sen confirmar',
+    },
+
+    info: {
+      title: 'Como funciona o visualizador da actividade en directo',
+      whatH: 'Que se ve aquí',
+      whatP: 'Esta páxina escoita en directo o broker MQTT da rede Meshtastic España e fai unha aproximación visual de como viaxan os paquetes pola rede.',
+      routeH: 'Como se reconstrúe a ruta',
+      routeP1: 'Un mesmo paquete pode ser oído por varios gateways MQTT. Identifícanse e ordénanse as aparicións por <code>hop_limit</code> descendente para aproximar o camiño salto a salto.',
+      routeP2: 'Se o paquete inclúe pistas de que nodo retransmitiu cada salto, márcase como <strong>confirmada</strong>; se non, é unha <strong>estimación</strong> baseada en que gateways oíron cada salto. Mesmo unha ruta "confirmada" é a nosa mellor aproximación cos datos dispoñibles, non unha certeza absoluta, en casos raros pode sinalar ao nodo equivocado.',
+      routeP3: 'Só se ve un salto cando o oe un nodo que <strong>ademais</strong> ten a ponte MQTT activada. Se un paquete pasa dun nodo normal a outro nodo normal sen que ningún dos dous sexa gateway MQTT, ese salto ocorre por radio pero nunca chega á web: non falta información nosa, é que non existe ningún dato que o rexistre. Por iso o desglose case nunca amosa <em>todos</em> os saltos reais, só os puntos onde algún gateway MQTT o "pescou" de camiño.',
+      routeP4: 'Se ningún gateway MQTT oe un paquete en todo o seu percorrido, o paquete non aparece aquí. Aínda que chegase ben ao seu destino por radio.',
+      contentH: 'Que contido se pode ler',
+      contentP1: 'Só se decodifica o necesario para saber o <em>tipo</em> de paquete. En canles sen contrasinal propio (LongFast, MediumFast…) pódese recuperar o tipo real e mesmo o texto se é unha mensaxe (<code>TEXT_MESSAGE_APP</code>) — é a única excepción. Unha canle con PSK propia queda como <code>ENCRYPTED</code>, sen revelar nada do seu contido.',
+      contentP2: 'Un <code>TRACEROUTE_APP</code> é distinto: o seu contido é en si mesmo a lista de nodos polos que pasou — metadato de encamiñamento, non unha mensaxe — así que cando alguén lanza un traceroute móstrase a ruta <strong>exacta</strong> rexistrada polo propio firmware, non a aproximación habitual. Se algún nodo desa lista non ten posición coñecida, márcase con "❓" en vez de debuxalo onde non toca.',
+      limitsH: 'Limitacións',
+      limit1: 'A maioría dos saltos reais non se ven: só se rexistran os que pasan por un nodo con MQTT activado.',
+      limit2: 'A ruta sen <code>relay_node</code> nin traceroute é aproximada, estimada por que gateways oíron cada salto.',
+      limit3: 'No mapa só se debuxan os últimos 20 paquetes en voo á vez.',
+      limit4: 'O histórico da liña de tempo garda 7 días.',
+      limit5: 'Todo o que ves aquí, incluídas as rutas "confirmadas", é unha aproximación cos mellores datos dispoñibles, non unha garantía absoluta de que nodo participou en cada salto, é unha limitación do propio protocolo Meshtastic, non desta web.',
     },
   },
 

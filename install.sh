@@ -35,6 +35,8 @@ cp web/style.css          "$INSTALL_DIR/web/"
 cp web/favicon.svg        "$INSTALL_DIR/web/"
 mkdir -p "$INSTALL_DIR/web/js"
 cp web/js/*.js            "$INSTALL_DIR/web/js/"
+mkdir -p "$INSTALL_DIR/web/vendor"
+cp -r web/vendor/leaflet  "$INSTALL_DIR/web/vendor/"
 
 # ─── 4. Entorno Python virtual ────────────────────────────────────────────────
 info "Creando entorno virtual Python…"

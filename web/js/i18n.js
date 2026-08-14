@@ -23,6 +23,7 @@ window.I18N = window.I18N || {};
 const I18N_LANGS = [
   { code: 'es', label: 'Español',  locale: 'es-ES' },
   { code: 'gl', label: 'Galego',   locale: 'gl-ES' },
+  { code: 'en', label: 'English',  locale: 'en-GB' },
 ];
 const I18N_DEFAULT   = 'es';
 const I18N_STORE_KEY = 'mesh_lang';
@@ -173,8 +174,7 @@ function _buildLangSelector() {
   // Listeners del botón y de cierre: solo una vez (el menú se reconstruye al cambiar de idioma)
   if (!btn._wired) {
     btn._wired = true;
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
+    btn.addEventListener('click', () => {
       const open = document.getElementById('lang-switch').classList.toggle('open');
       btn.setAttribute('aria-expanded', open ? 'true' : 'false');
     });

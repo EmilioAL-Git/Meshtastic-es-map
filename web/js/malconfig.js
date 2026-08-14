@@ -363,14 +363,21 @@ function openNodeReport(nodeId) {
     const isFixed = mob.is_fixed;
     const dist    = mob.max_distance_m;
     const checks  = mob.positions_checked;
-    mobHtml = `<div class="nr-mobility nr-mobility-${isFixed ? 'fixed' : 'mobile'}">
-      <span class="nr-mob-icon">${isFixed ? '📍' : '🚶'}</span>
-      <span>${t('report.mobilityHtml', {
-        status: escHtml(isFixed ? t('report.nodeFixed') : t('report.nodeMobile')),
-        dist: dist >= 1000 ? (dist/1000).toFixed(1)+'km' : dist+'m',
-        checks,
-      })}</span>
-    </div>`;
+    if (isFixed === null) {
+      mobHtml = `<div class="nr-mobility nr-mobility-pending">
+        <span class="nr-mob-icon">⏳</span>
+        <span>${t('report.mobilityPendingHtml', { checks })}</span>
+      </div>`;
+    } else {
+      mobHtml = `<div class="nr-mobility nr-mobility-${isFixed ? 'fixed' : 'mobile'}">
+        <span class="nr-mob-icon">${isFixed ? '📍' : '🚶'}</span>
+        <span>${t('report.mobilityHtml', {
+          status: escHtml(isFixed ? t('report.nodeFixed') : t('report.nodeMobile')),
+          dist: dist >= 1000 ? (dist/1000).toFixed(1)+'km' : dist+'m',
+          checks,
+        })}</span>
+      </div>`;
+    }
   }
 
   // Indicador de hop_start (solo si no está ya en la sección de problemas)
@@ -597,7 +604,9 @@ function renderMalConfigTable(nodes) {
           const issues = detectIssues(n);
           const mob    = n.mobility;
           const mobChip = mob != null
-            ? `<span class="mob-chip ${mob.is_fixed ? 'mob-fixed' : 'mob-mobile'}">${escHtml(mob.is_fixed ? t('malconfig.mobFixed') : t('malconfig.mobMobile'))}</span>`
+            ? (mob.is_fixed === null
+                ? `<span class="mob-chip mob-pending">${escHtml(t('malconfig.mobPending'))}</span>`
+                : `<span class="mob-chip ${mob.is_fixed ? 'mob-fixed' : 'mob-mobile'}">${escHtml(mob.is_fixed ? t('malconfig.mobFixed') : t('malconfig.mobMobile'))}</span>`)
             : '';
           return `<tr class="mc-row" onclick="openNodeReport(${n.node_id})">
             <td class="mc-rank">${i + 1}</td>

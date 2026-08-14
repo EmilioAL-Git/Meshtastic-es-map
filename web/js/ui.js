@@ -199,7 +199,7 @@ function selectNode(nodeId, fly = false) {
     </div>`;
   }
 
-  const liveLinkHtml = `<a class="detail-live-link" href="live.html?focus=${encodeURIComponent(node.node_id)}">
+  const liveLinkHtml = `<a class="detail-live-link" href="live?focus=${encodeURIComponent(node.node_id)}">
       <span class="live-dot"></span> ${escHtml(t('detail.viewLive'))}
     </a>`;
 

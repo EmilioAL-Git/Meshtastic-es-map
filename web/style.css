@@ -1133,6 +1133,17 @@ body[data-cookie-ok="1"] .cookie-banner { display: none; }
 .live-info-btn svg { width: 14px; height: 14px; }
 
 .live-info-inner { max-width: 560px; }
+.live-info-warning {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border: 1px solid #f59e0b;
+  border-left: 3px solid #f59e0b;
+  border-radius: 6px;
+  background: rgba(245, 158, 11, 0.1);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+}
 .live-info-content h4 {
   margin: 16px 0 6px;
   font-size: 12px;

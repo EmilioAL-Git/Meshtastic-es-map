@@ -89,7 +89,6 @@ async function loadAll() {
       document.getElementById('hdr-nodes').textContent  = s.nodes?.with_position ?? '—';
       document.getElementById('hdr-active').textContent = s.nodes?.active_1h     ?? '—';
       document.getElementById('hdr-gw').textContent     = s.nodes?.mqtt_gateways ?? '—';
-      document.getElementById('hdr-edges').textContent  = s.edges?.active_24h    ?? '—';
     }
 
     const now = new Date();

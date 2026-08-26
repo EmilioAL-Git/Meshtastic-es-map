@@ -1,10 +1,17 @@
 // ─── Config ───────────────────────────────────────────────────────────────────
 const API_BASE = window.location.pathname.startsWith('/map') ? '/map' : '';
 
-let MAP_AUTO_FIT = true;
-let MAP_LAT      = 40.2;
-let MAP_LNG      = -3.7;
-let MAP_ZOOM     = 8;
+let MAP_AUTO_FIT   = true;
+let MAP_LAT        = 40.2;
+let MAP_LNG        = -3.7;
+let MAP_ZOOM       = 8;
+let CARTO_API_KEY  = null; // se rellena desde config.json (carto_api_key); sin ella CARTO sirve tiles con watermark "API KEY REQUIRED"
+
+// Construye la URL de un estilo de basemap de CARTO añadiendo la API key si está configurada.
+function cartoTilesUrl(style) {
+  return 'https://{s}.basemaps.cartocdn.com/' + style + '/{z}/{x}/{y}{r}.png'
+    + (CARTO_API_KEY ? '?key=' + encodeURIComponent(CARTO_API_KEY) : '');
+}
 
 // ─── Estado global ────────────────────────────────────────────────────────────
 let allNodes       = [];

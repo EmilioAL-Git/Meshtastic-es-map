@@ -200,6 +200,7 @@ fetch(API_BASE + '/data/config.json')
     if (cfg.map_lng        != null) MAP_LNG        = cfg.map_lng;
     if (cfg.map_zoom       != null) MAP_ZOOM       = cfg.map_zoom;
     if (cfg.mal_config_url != null) MAL_CONFIG_URL = cfg.mal_config_url;
+    if (cfg.carto_api_key  != null) CARTO_API_KEY  = cfg.carto_api_key;
     // Idioma por defecto y marca del sitio (antes de renderizar contenido)
     applyDefaultLang(cfg.default_lang);
     applySiteConfig(cfg);

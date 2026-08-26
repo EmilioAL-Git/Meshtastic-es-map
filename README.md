@@ -147,8 +147,9 @@ El mapa queda disponible en `http://localhost:8095`.
 | `BRAND_SECONDARY` | *(sin definir)* | Cabecera, subtítulo en cursiva tras la barra (ej. `Mapa de nodos`) |
 | `SOURCE_URL` | *(sin definir)* | Pie «Datos extraídos de:» — URL del enlace |
 | `SOURCE_NAME` | *(sin definir)* | Pie «Datos extraídos de:» — texto visible del enlace |
+| `CARTO_API_KEY` | *(sin definir)* | Key gratuita de [carto.com/basemaps/apikey](https://carto.com/basemaps/apikey/) para las teselas del mapa base. **Recomendada**: sin ella, CARTO sirve los tiles con un watermark «API KEY REQUIRED» superpuesto |
 
-> Las seis últimas son opcionales: si no se definen, la web mantiene sus valores por defecto y la traducción activa.
+> Las siete últimas son opcionales: si no se definen, la web mantiene sus valores por defecto y la traducción activa (salvo `CARTO_API_KEY`, cuya ausencia degrada el mapa base con el watermark de CARTO).
 
 ---
 

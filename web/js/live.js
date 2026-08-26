@@ -396,7 +396,7 @@ function initLiveMap() {
     preferCanvas: true,
   });
 
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+  L.tileLayer(cartoTilesUrl('rastertiles/voyager'), {
     maxZoom: 19,
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
   }).addTo(map);
@@ -2142,7 +2142,7 @@ function renderDetailMiniMap(packetId) {
       attributionControl: false,
       scrollWheelZoom: true,
     });
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    L.tileLayer(cartoTilesUrl('rastertiles/voyager'), {
       maxZoom: 19,
     }).addTo(detailMap);
     detailMapLayer = L.layerGroup().addTo(detailMap);
@@ -3091,6 +3091,7 @@ async function bootLive() {
     if (cfg.map_lat) MAP_LAT = cfg.map_lat;
     if (cfg.map_lng) MAP_LNG = cfg.map_lng;
     if (cfg.map_zoom) MAP_ZOOM = cfg.map_zoom;
+    if (cfg.carto_api_key) CARTO_API_KEY = cfg.carto_api_key;
   } catch { /* config.json es opcional aquí, se usan los valores por defecto */ }
 
   initLiveMap();

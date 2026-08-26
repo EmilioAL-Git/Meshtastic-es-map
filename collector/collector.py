@@ -45,6 +45,7 @@ BRAND_PRIMARY   = os.environ.get("BRAND_PRIMARY")     # cabecera, parte principa
 BRAND_SECONDARY = os.environ.get("BRAND_SECONDARY")   # cabecera, subtítulo en <em> (ej. Mapa de nodos)
 SOURCE_URL      = os.environ.get("SOURCE_URL")        # pie: URL del enlace "Datos extraídos de:"
 SOURCE_NAME     = os.environ.get("SOURCE_NAME")       # pie: texto visible del enlace
+CARTO_API_KEY   = os.environ.get("CARTO_API_KEY")     # key gratuita de carto.com/basemaps/apikey; sin ella los tiles llevan watermark "API KEY REQUIRED"
 
 REQUEST_TIMEOUT = 20       # segundos
 
@@ -735,6 +736,7 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
         ("brand_secondary", BRAND_SECONDARY),
         ("source_url",      SOURCE_URL),
         ("source_name",     SOURCE_NAME),
+        ("carto_api_key",   CARTO_API_KEY),
     ):
         if val:
             config[key] = val

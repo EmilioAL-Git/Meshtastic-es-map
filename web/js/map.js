@@ -1,12 +1,9 @@
 // ─── Tema del mapa base ────────────────────────────────────────────────────────
-const TILE_URLS = {
-  light: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-  dark:  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-};
+const TILE_STYLES = { light: 'rastertiles/voyager', dark: 'dark_all' };
 let baseTileLayer;
 
 function applyMapTheme(theme) {
-  if (baseTileLayer) baseTileLayer.setUrl(TILE_URLS[theme]);
+  if (baseTileLayer) baseTileLayer.setUrl(cartoTilesUrl(TILE_STYLES[theme]));
   document.body.classList.toggle('theme-dark', theme === 'dark');
 }
 
@@ -19,7 +16,7 @@ function initMap() {
     preferCanvas: true,
   });
 
-  baseTileLayer = L.tileLayer(TILE_URLS[mapSettings.theme], {
+  baseTileLayer = L.tileLayer(cartoTilesUrl(TILE_STYLES[mapSettings.theme]), {
     maxZoom: 19,
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>'
   }).addTo(map);

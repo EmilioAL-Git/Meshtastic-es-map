@@ -147,8 +147,9 @@ El mapa queda disponible en `http://localhost:8095`.
 | `BRAND_SECONDARY` | *(sin definir)* | Cabecera, subtítulo en cursiva tras la barra (ej. `Mapa de nodos`) |
 | `SOURCE_URL` | *(sin definir)* | Pie «Datos extraídos de:» — URL del enlace |
 | `SOURCE_NAME` | *(sin definir)* | Pie «Datos extraídos de:» — texto visible del enlace |
+| `CARTO_API_KEY` | *(sin definir)* | Key gratuita de [carto.com/basemaps/apikey](https://carto.com/basemaps/apikey/) para las teselas del mapa base. **Recomendada**: sin ella, CARTO sirve los tiles con un watermark «API KEY REQUIRED» superpuesto |
 
-> Las seis últimas son opcionales: si no se definen, la web mantiene sus valores por defecto y la traducción activa.
+> Las siete últimas son opcionales: si no se definen, la web mantiene sus valores por defecto y la traducción activa (salvo `CARTO_API_KEY`, cuya ausencia degrada el mapa base con el watermark de CARTO).
 
 ---
 
@@ -266,3 +267,20 @@ La respuesta viene como `{"nodes": [...]}`. De cada nodo se extraen:
 - Docker + Docker Compose (despliegue recomendado)
 - O Python 3.10+ sin Docker
 - Acceso a internet para llegar a meshview.meshtastic.es
+
+---
+
+## Licencia
+
+[![License: CC BY-NC-ND 4.0](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode.es)
+
+Este proyecto está licenciado bajo **CC BY-NC-ND 4.0** (Atribución —
+NoComercial — SinDerivadas). Puedes ver y compartir el código tal cual,
+citando la autoría, pero **no está permitido modificarlo, adaptarlo ni
+distribuir versiones derivadas sin consentimiento previo y por escrito
+del autor**, ni usarlo con fines comerciales. Ver [LICENSE](LICENSE) para
+el texto completo.
+
+---
+
+Diseñado por Emilio Alfaro para la web meshtastic.es

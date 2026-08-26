@@ -2738,26 +2738,27 @@ body.live-kiosk-mode #live-log {
 
 /* ── Aviso de arranque en frío (sin nodos aún) ── */
 #warmup-banner {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 8000;
+  flex-shrink: 0;
+  max-height: 0;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 0 16px;
   background: rgba(251,191,36,.14);
-  border-bottom: 1px solid rgba(251,191,36,.35);
+  border-bottom: 1px solid transparent;
   color: var(--warn);
   font-family: var(--mono);
   font-size: 12px;
   text-align: center;
-  transform: translateY(-100%);
-  transition: transform .3s ease;
+  transition: max-height .3s ease, padding .3s ease;
 }
-#warmup-banner.visible { transform: translateY(0); }
+#warmup-banner.visible {
+  max-height: 80px;
+  padding: 8px 16px;
+  border-bottom-color: rgba(251,191,36,.35);
+}
 
 .loader-ring {
   width: 48px;

@@ -267,3 +267,20 @@ La respuesta viene como `{"nodes": [...]}`. De cada nodo se extraen:
 - Docker + Docker Compose (despliegue recomendado)
 - O Python 3.10+ sin Docker
 - Acceso a internet para llegar a meshview.meshtastic.es
+
+---
+
+## Licencia
+
+[![License: CC BY-NC-ND 4.0](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode.es)
+
+Este proyecto está licenciado bajo **CC BY-NC-ND 4.0** (Atribución —
+NoComercial — SinDerivadas). Puedes ver y compartir el código tal cual,
+citando la autoría, pero **no está permitido modificarlo, adaptarlo ni
+distribuir versiones derivadas sin consentimiento previo y por escrito
+del autor**, ni usarlo con fines comerciales. Ver [LICENSE](LICENSE) para
+el texto completo.
+
+---
+
+Diseñado por Emilio Alfaro para la web meshtastic.es

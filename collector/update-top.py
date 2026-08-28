@@ -10,6 +10,16 @@ detallado:
 Todo a partir de /api/packets por nodo y /api/packets_seen/{id} para hop_start.
 El payload de la API viene en formato proto-text, no bytes.
 
+Los paquetes de cada nodo se guardan en una BD SQLite cíclica propia
+(TOPNODOS_DB_PATH) que se sincroniza de forma incremental en cada ciclo:
+solo se piden a meshview los paquetes nuevos desde la última sincronización
+(cursor por nodo en la tabla fetch_cursor) y se purgan los que superan la
+ventana de 24h. El análisis siempre lee esa ventana rodante desde la BD
+local, no directamente de meshview, así el histórico de 24h es real e
+independiente de cuánto retenga meshview y del límite de 10000 paquetes por
+consulta — y si un ciclo falla por red, se sigue analizando con los datos
+locales ya acumulados en vez de devolver "sin datos".
+
 Checks desactivables vía DISABLED_CHECKS (línea ~21), uno o varios:
   - range_test            Range Test activo
   - position_fixed        Posición muy/algo frecuente en nodo fijo
@@ -26,7 +36,7 @@ Checks desactivables vía DISABLED_CHECKS (línea ~21), uno o varios:
   - client_base_fw        CLIENT_BASE con firmware >= 2.7.17 (actúa como ROUTER_LATE)
   - client_mute_mobile    Nodo móvil sin rol CLIENT_MUTE
 """
-import argparse, datetime, json, math, os, re, statistics, time, urllib.request
+import argparse, datetime, json, math, os, re, sqlite3, statistics, time, urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 _SCRIPT_DIR  = os.path.dirname(os.path.abspath(__file__))
@@ -34,8 +44,13 @@ _REPO_ROOT   = os.path.dirname(_SCRIPT_DIR)
 JSON_OUT     = os.environ.get("JSON_OUT", os.path.join(_REPO_ROOT, "web", "data"))
 OUT          = os.path.join(JSON_OUT, "top-nodos.json")
 BASE         = os.environ.get("MESHVIEW_URL", "http://localhost:18085")
-INTERVAL_MIN = int(os.environ.get("TOP_NODOS_INTERVAL", 60))
+INTERVAL_MIN = int(os.environ.get("TOP_NODOS_INTERVAL", 15))
 BROADCAST_ID = 4294967295  # to_node_id de los paquetes broadcast (^all)
+
+# BD cíclica local de paquetes (ventana rodante de 24h), ver docstring del módulo.
+TOPNODOS_DB_PATH = os.environ.get("TOPNODOS_DB_PATH",
+                                   os.path.join(_REPO_ROOT, "data", "topnodos.db"))
+PACKET_WINDOW_US = 86400 * 1_000_000
 
 # Checks de detect_issues() desactivados. Añade aquí la key (ver THRESHOLDS más abajo)
 # de cualquier detección que quieras quitar, p.ej. {'hop_limit_high', 'range_test'}.
@@ -224,16 +239,120 @@ def fetch_hop_start(packet_id):
     except Exception:
         return None
 
+# ── BD cíclica local de paquetes ──────────────────────────────────────────────
+
+def _db():
+    os.makedirs(os.path.dirname(TOPNODOS_DB_PATH), exist_ok=True)
+    conn = sqlite3.connect(TOPNODOS_DB_PATH, timeout=30)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=30000")
+    return conn
+
+def init_db():
+    conn = _db()
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS packets (
+            node_id        INTEGER NOT NULL,
+            packet_id      INTEGER,
+            portnum        INTEGER,
+            to_node_id     INTEGER,
+            payload        TEXT,
+            import_time_us INTEGER NOT NULL,
+            PRIMARY KEY (node_id, packet_id, import_time_us)
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_packets_node_time ON packets(node_id, import_time_us)")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS fetch_cursor (
+            node_id             INTEGER PRIMARY KEY,
+            last_import_time_us INTEGER NOT NULL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def _sync_packets(node_id):
+    """
+    Descarga solo los paquetes nuevos de este nodo desde la última sincronización
+    (cursor en fetch_cursor) y los añade a la BD local, purgando lo que ya supere
+    la ventana de 24h. Si aún no hay cursor (primera vez), pide la ventana
+    completa de 24h, igual que antes.
+    """
+    conn = _db()
+    try:
+        now_us = int(time.time()) * 1_000_000
+        row    = conn.execute(
+            "SELECT last_import_time_us FROM fetch_cursor WHERE node_id=?", (node_id,)
+        ).fetchone()
+        since = (row[0] + 1) if row else (now_us - PACKET_WINDOW_US)
+
+        url     = f"{BASE}/api/packets?from_node_id={node_id}&since={since}&limit=10000"
+        data    = fetch_json(url)
+        packets = [p for p in data.get("packets", []) if p.get("from_node_id") == node_id]
+
+        rows, max_ts = [], None
+        for p in packets:
+            ts = p.get("import_time_us")
+            if not ts:
+                continue
+            rows.append((node_id, p.get("id"), p.get("portnum"), p.get("to_node_id"), p.get("payload"), ts))
+            if max_ts is None or ts > max_ts:
+                max_ts = ts
+
+        if rows:
+            conn.executemany(
+                "INSERT OR IGNORE INTO packets "
+                "(node_id, packet_id, portnum, to_node_id, payload, import_time_us) "
+                "VALUES (?,?,?,?,?,?)",
+                rows,
+            )
+            conn.execute(
+                "INSERT INTO fetch_cursor (node_id, last_import_time_us) VALUES (?,?) "
+                "ON CONFLICT(node_id) DO UPDATE SET last_import_time_us=excluded.last_import_time_us",
+                (node_id, max_ts),
+            )
+
+        conn.execute(
+            "DELETE FROM packets WHERE node_id=? AND import_time_us < ?",
+            (node_id, now_us - PACKET_WINDOW_US),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+def _read_packets_window(node_id):
+    conn = _db()
+    try:
+        since = int(time.time()) * 1_000_000 - PACKET_WINDOW_US
+        cur = conn.execute(
+            "SELECT packet_id, portnum, to_node_id, payload, import_time_us "
+            "FROM packets WHERE node_id=? AND import_time_us >= ?",
+            (node_id, since),
+        )
+        return [
+            {
+                "id":             r[0],
+                "portnum":        r[1],
+                "to_node_id":     r[2],
+                "payload":        r[3],
+                "import_time_us": r[4],
+                "from_node_id":   node_id,
+            }
+            for r in cur.fetchall()
+        ]
+    finally:
+        conn.close()
+
 # ── Análisis completo de un nodo ──────────────────────────────────────────────
 
 def analyze_node(node_id):
-    since = (int(time.time()) - 86400) * 1_000_000
-    url   = f"{BASE}/api/packets?from_node_id={node_id}&since={since}&limit=10000"
     try:
-        data    = fetch_json(url)
-        packets = [p for p in data.get("packets", []) if p.get("from_node_id") == node_id]
+        _sync_packets(node_id)
     except Exception as e:
-        print(f"  [warn] {node_id}: {e}")
+        print(f"  [warn] {node_id}: sync fallida ({e}), usando datos locales existentes")
+
+    packets = _read_packets_window(node_id)
+    if not packets:
         return None
 
     # ── 1. Conteo por portnum ─────────────────────────────────────────────────
@@ -576,6 +695,7 @@ _node_meta = {}
 
 
 def main():
+    init_db()
     try:
         _nodes_data = fetch_json_retry(f"{BASE}/api/nodes")
         all_nodes   = _nodes_data if isinstance(_nodes_data, list) else _nodes_data.get("nodes", [])

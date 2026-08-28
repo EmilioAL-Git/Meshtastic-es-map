@@ -31,6 +31,7 @@ services:
     environment:
       - JSON_OUT=/data/json
       - CCAA_CACHE_PATH=/data/ccaa-cache.json
+      - TOPNODOS_DB_PATH=/data/topnodos.db
 
   livefeed:
     build:

@@ -195,7 +195,7 @@ function selectNode(nodeId, fly = false) {
         <span>${t('detail.malBannerText')}</span>
       </div>
       ${issuesHtml}
-      <button class="mal-config-link" onclick="openNodeReport('${node.node_id}')">${escHtml(t('detail.malBannerLink'))}</button>
+      <button class="mal-config-link" data-action="open-report" data-node-id="${escHtml(node.node_id)}">${escHtml(t('detail.malBannerLink'))}</button>
     </div>`;
   }
 

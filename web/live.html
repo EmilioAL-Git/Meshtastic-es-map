@@ -9,7 +9,7 @@
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=1.9.4"/>
 <script src="vendor/leaflet/leaflet.js?v=1.9.4"></script>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="stylesheet" href="style.css?v=1.5.1"/>
+<link rel="stylesheet" href="style.css?v=1.5.2"/>
 </head>
 
 <body class="live-page">
@@ -25,67 +25,67 @@
 
   <div class="stats-bar">
     <div class="pf-dropdown-wrap" id="portnum-filter-wrap">
-      <button class="pf-dropdown-btn" id="portnum-filter-btn" onclick="togglePortnumFilterPanel()" data-i18n-title="live.filterByType" title="Filtrar por tipo de paquete">
+      <button class="pf-dropdown-btn" id="portnum-filter-btn" data-on-click='[["togglePortnumFilterPanel",[]]]' data-i18n-title="live.filterByType" title="Filtrar por tipo de paquete">
         <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 3h12M4.5 8h7M7 13h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
         <span data-i18n="live.filters">Filtrar</span>
         <span class="pf-dropdown-count" id="portnum-filter-count"></span>
       </button>
       <div class="pf-dropdown-panel" id="portnum-filter-panel">
         <div class="pf-bulk-row">
-          <button class="pf-bulk-btn" onclick="selectAllPortnumFilters()" data-i18n="live.all">Todos</button>
-          <button class="pf-bulk-btn" onclick="clearAllPortnumFilters()" data-i18n="live.none">Ninguno</button>
+          <button class="pf-bulk-btn" data-on-click='[["selectAllPortnumFilters",[]]]' data-i18n="live.all">Todos</button>
+          <button class="pf-bulk-btn" data-on-click='[["clearAllPortnumFilters",[]]]' data-i18n="live.none">Ninguno</button>
         </div>
-        <button class="pf-row active" data-cat="POSITION_APP" onclick="togglePortnumFilter('POSITION_APP')">
+        <button class="pf-row active" data-cat="POSITION_APP" data-on-click='[["togglePortnumFilter",["POSITION_APP"]]]'>
           <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 14.2s5-4.3 5-8.2A5 5 0 0 0 3 6c0 3.9 5 8.2 5 8.2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="8" cy="6" r="1.7" stroke="currentColor" stroke-width="1.5"/></svg>
           <span class="pf-label" data-i18n="live.portnum.position">Posición</span>
           <span class="pf-check">✓</span>
         </button>
-        <button class="pf-row active" data-cat="TEXT_MESSAGE_APP" onclick="togglePortnumFilter('TEXT_MESSAGE_APP')">
+        <button class="pf-row active" data-cat="TEXT_MESSAGE_APP" data-on-click='[["togglePortnumFilter",["TEXT_MESSAGE_APP"]]]'>
           <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="3" width="12" height="7.4" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M5 10.4v2.3l3-2.3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
           <span class="pf-label" data-i18n="live.portnum.text">Mensajes</span>
           <span class="pf-check">✓</span>
         </button>
-        <button class="pf-row active" data-cat="TELEMETRY_APP" onclick="togglePortnumFilter('TELEMETRY_APP')">
+        <button class="pf-row active" data-cat="TELEMETRY_APP" data-on-click='[["togglePortnumFilter",["TELEMETRY_APP"]]]'>
           <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="2" y="9" width="2.6" height="5" rx="0.6" fill="currentColor"/><rect x="6.7" y="6" width="2.6" height="8" rx="0.6" fill="currentColor"/><rect x="11.4" y="2.5" width="2.6" height="11.5" rx="0.6" fill="currentColor"/></svg>
           <span class="pf-label" data-i18n="live.portnum.telemetry">Telemetría</span>
           <span class="pf-check">✓</span>
         </button>
-        <button class="pf-row active" data-cat="NODEINFO_APP" onclick="togglePortnumFilter('NODEINFO_APP')">
+        <button class="pf-row active" data-cat="NODEINFO_APP" data-on-click='[["togglePortnumFilter",["NODEINFO_APP"]]]'>
           <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/><rect x="7.3" y="6.9" width="1.4" height="4" rx="0.5" fill="currentColor"/><circle cx="8" cy="5" r="0.9" fill="currentColor"/></svg>
           <span class="pf-label" data-i18n="live.portnum.nodeinfo">Info de nodo</span>
           <span class="pf-check">✓</span>
         </button>
-        <button class="pf-row active" data-cat="WAYPOINT_APP" onclick="togglePortnumFilter('WAYPOINT_APP')">
+        <button class="pf-row active" data-cat="WAYPOINT_APP" data-on-click='[["togglePortnumFilter",["WAYPOINT_APP"]]]'>
           <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 14V2M4 2l7 3-7 3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
           <span class="pf-label" data-i18n="live.portnum.waypoint">Waypoint</span>
           <span class="pf-check">✓</span>
         </button>
-        <button class="pf-row active" data-cat="TRACEROUTE_APP" onclick="togglePortnumFilter('TRACEROUTE_APP')">
+        <button class="pf-row active" data-cat="TRACEROUTE_APP" data-on-click='[["togglePortnumFilter",["TRACEROUTE_APP"]]]'>
           <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 13c3-6 6 3 9-3" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2 2" stroke-linecap="round"/><circle cx="2" cy="13" r="1.3" fill="currentColor"/><circle cx="11" cy="10" r="1.3" fill="currentColor"/></svg>
           <span class="pf-label" data-i18n="live.portnum.traceroute">Traceroute</span>
           <span class="pf-check">✓</span>
         </button>
-        <button class="pf-row active" data-cat="NEIGHBORINFO_APP" onclick="togglePortnumFilter('NEIGHBORINFO_APP')">
+        <button class="pf-row active" data-cat="NEIGHBORINFO_APP" data-on-click='[["togglePortnumFilter",["NEIGHBORINFO_APP"]]]'>
           <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="4" cy="4" r="1.6" stroke="currentColor" stroke-width="1.3"/><circle cx="12" cy="4" r="1.6" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="12" r="1.6" stroke="currentColor" stroke-width="1.3"/><path d="M5.3 5.2l1.8 5.5M10.7 5.2l-1.8 5.5M5.6 4h4.8" stroke="currentColor" stroke-width="1"/></svg>
           <span class="pf-label" data-i18n="live.portnum.neighborinfo">Vecinos (NeighborInfo)</span>
           <span class="pf-check">✓</span>
         </button>
-        <button class="pf-row active" data-cat="RANGE_TEST_APP" onclick="togglePortnumFilter('RANGE_TEST_APP')">
+        <button class="pf-row active" data-cat="RANGE_TEST_APP" data-on-click='[["togglePortnumFilter",["RANGE_TEST_APP"]]]'>
           <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8h10M3 8l2.2-2.2M3 8l2.2 2.2M13 8l-2.2-2.2M13 8l-2.2 2.2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
           <span class="pf-label" data-i18n="live.portnum.rangeTest">Test de alcance</span>
           <span class="pf-check">✓</span>
         </button>
-        <button class="pf-row active" data-cat="MAP_REPORT_APP" onclick="togglePortnumFilter('MAP_REPORT_APP')">
+        <button class="pf-row active" data-cat="MAP_REPORT_APP" data-on-click='[["togglePortnumFilter",["MAP_REPORT_APP"]]]'>
           <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 4l4-1.5 4 1.5 4-1.5v9l-4 1.5-4-1.5-4 1.5V4z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/><path d="M6 2.5v9M10 4v9" stroke="currentColor" stroke-width="1"/></svg>
           <span class="pf-label" data-i18n="live.portnum.mapReport">Reporte de mapa</span>
           <span class="pf-check">✓</span>
         </button>
-        <button class="pf-row active" data-cat="ENCRYPTED" onclick="togglePortnumFilter('ENCRYPTED')">
+        <button class="pf-row active" data-cat="ENCRYPTED" data-on-click='[["togglePortnumFilter",["ENCRYPTED"]]]'>
           <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.5"/><path d="M5 7V5a3 3 0 0 1 6 0v2" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="10.3" r="1" fill="currentColor"/></svg>
           <span class="pf-label" data-i18n="live.portnum.encrypted">Cifrado (no descifrable)</span>
           <span class="pf-check">✓</span>
         </button>
-        <button class="pf-row active" data-cat="OTHER" onclick="togglePortnumFilter('OTHER')">
+        <button class="pf-row active" data-cat="OTHER" data-on-click='[["togglePortnumFilter",["OTHER"]]]'>
           <svg class="pf-icon" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="3" cy="8" r="1.3" fill="currentColor"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/><circle cx="13" cy="8" r="1.3" fill="currentColor"/></svg>
           <span class="pf-label" data-i18n="live.portnum.other">Otros tipos</span>
           <span class="pf-check">✓</span>
@@ -98,20 +98,20 @@
         <line x1="10" y1="10" x2="14" y2="14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
       </svg>
       <input type="text" id="focus-input" class="search-input" placeholder="Buscar…" data-i18n-placeholder="header.searchPlaceholder" autocomplete="off"
-             oninput="onFocusInput()" onkeydown="onFocusKey(event)" onfocus="onFocusInput()">
-      <button class="focus-sound-btn" id="focus-sound-btn" onclick="toggleSound()" data-i18n-title="live.soundAlert" title="Aviso sonoro" style="display:none">🔇</button>
-      <button class="focus-clear-btn" id="focus-clear-btn" onclick="clearFocus()" data-i18n-title="live.clearFocus" title="Quitar foco" style="display:none">✕</button>
+             data-on-input='[["onFocusInput",[]]]' data-on-keydown='[["onFocusKey",["$event"]]]' data-on-focus='[["onFocusInput",[]]]'>
+      <button class="focus-sound-btn" id="focus-sound-btn" data-on-click='[["toggleSound",[]]]' data-i18n-title="live.soundAlert" title="Aviso sonoro" style="display:none">🔇</button>
+      <button class="focus-clear-btn" id="focus-clear-btn" data-on-click='[["clearFocus",[]]]' data-i18n-title="live.clearFocus" title="Quitar foco" style="display:none">✕</button>
       <div class="search-dropdown" id="focus-dropdown"></div>
     </div>
     <div class="fav-list-wrap" id="fav-list-wrap">
-      <button class="live-pause-btn fav-filter-btn" id="live-favorites-btn" onclick="toggleFavoritesOnly()" data-i18n-title="favorites.onlyFavorites" title="Mostrar solo paquetes de tus nodos favoritos">
+      <button class="live-pause-btn fav-filter-btn" id="live-favorites-btn" data-on-click='[["toggleFavoritesOnly",[]]]' data-i18n-title="favorites.onlyFavorites" title="Mostrar solo paquetes de tus nodos favoritos">
         <span>★</span>
         <span data-i18n="favorites.onlyFavoritesShort">Favoritos</span>
       </button>
-      <button class="fav-list-chevron" id="fav-list-chevron" onclick="toggleFavoritesList()" data-i18n-title="favorites.viewList" title="Ver mis nodos favoritos">▾</button>
+      <button class="fav-list-chevron" id="fav-list-chevron" data-on-click='[["toggleFavoritesList",[]]]' data-i18n-title="favorites.viewList" title="Ver mis nodos favoritos">▾</button>
       <div class="fav-list-dropdown" id="fav-list-dropdown"></div>
     </div>
-    <button class="live-pause-btn" id="live-pause-btn" onclick="togglePause()" data-i18n-title="live.pauseResumeFeed" title="Pausar/reanudar el feed">
+    <button class="live-pause-btn" id="live-pause-btn" data-on-click='[["togglePause",[]]]' data-i18n-title="live.pauseResumeFeed" title="Pausar/reanudar el feed">
       <svg id="pause-icon" viewBox="0 0 16 16" fill="none">
         <rect x="4" y="3" width="3" height="10" rx="1" fill="currentColor"/>
         <rect x="9" y="3" width="3" height="10" rx="1" fill="currentColor"/>
@@ -131,30 +131,30 @@
       </button>
       <div class="lang-menu" id="lang-menu" role="menu"></div>
     </div>
-    <button class="live-info-btn" id="route-patterns-btn" onclick="openRoutePatterns()" data-i18n-title="live.routePatterns.title" title="Rutas más frecuentes">
+    <button class="live-info-btn" id="route-patterns-btn" data-on-click='[["openRoutePatterns",[]]]' data-i18n-title="live.routePatterns.title" title="Rutas más frecuentes">
       <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="3" cy="4" r="1.6" fill="currentColor"/><circle cx="13" cy="4" r="1.6" fill="currentColor"/><circle cx="8" cy="12" r="1.6" fill="currentColor"/><path d="M4.4 4.8L7.3 11M11.6 4.8L8.7 11M4.6 4H11.4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
     </button>
-    <button class="live-info-btn" id="gateway-compare-btn" onclick="openGatewayCompare()" data-i18n-title="live.gatewayCompare.title" title="Comparar gateways">
+    <button class="live-info-btn" id="gateway-compare-btn" data-on-click='[["openGatewayCompare",[]]]' data-i18n-title="live.gatewayCompare.title" title="Comparar gateways">
       <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="4" cy="8" r="2.4" stroke="currentColor" stroke-width="1.4"/><circle cx="12" cy="8" r="2.4" stroke="currentColor" stroke-width="1.4"/><path d="M6.4 8h3.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
     </button>
-    <button class="live-info-btn" id="live-info-btn" onclick="openLiveInfo()" data-i18n-title="live.howItWorksTitle" title="Cómo funciona el directo">
+    <button class="live-info-btn" id="live-info-btn" data-on-click='[["openLiveInfo",[]]]' data-i18n-title="live.howItWorksTitle" title="Cómo funciona el directo">
       <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="6.3" stroke="currentColor" stroke-width="1.5"/><rect x="7.3" y="6.9" width="1.4" height="4.2" rx="0.5" fill="currentColor"/><circle cx="8" cy="4.9" r="0.9" fill="currentColor"/></svg>
     </button>
-    <button class="live-info-btn" id="live-kiosk-btn" onclick="enterLiveKiosk()" data-i18n-title="live.kioskEnter" title="Modo kiosko">
+    <button class="live-info-btn" id="live-kiosk-btn" data-on-click='[["enterLiveKiosk",[]]]' data-i18n-title="live.kioskEnter" title="Modo kiosko">
       <svg viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 3h12v8H2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M5.5 13.5h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M8 11v2.5" stroke="currentColor" stroke-width="1.5"/></svg>
     </button>
   </div>
 </header>
 
 <!-- Botón flotante de salida del modo kiosko -->
-<button class="kiosk-exit-btn" id="live-kiosk-exit-btn" onclick="exitLiveKiosk()">
+<button class="kiosk-exit-btn" id="live-kiosk-exit-btn" data-on-click='[["exitLiveKiosk",[]]]'>
   <span data-i18n="settings.kioskExit">✕ Salir del modo kiosko</span>
 </button>
 
 <!-- Main -->
 <div class="main">
   <div id="map">
-    <button class="live-log-toggle-btn" id="live-log-toggle-btn" onclick="toggleLiveLogPanel()" data-i18n-title="live.packets" title="Paquetes">
+    <button class="live-log-toggle-btn" id="live-log-toggle-btn" data-on-click='[["toggleLiveLogPanel",[]]]' data-i18n-title="live.packets" title="Paquetes">
       <svg viewBox="0 0 16 16" fill="none">
         <rect x="2" y="3" width="12" height="2" rx="1" fill="currentColor"/>
         <rect x="2" y="7" width="12" height="2" rx="1" fill="currentColor"/>
@@ -163,7 +163,7 @@
       <span data-i18n="live.viewPackets">Ver paquetes</span>
     </button>
 
-    <button class="legend-toggle-btn" id="live-legend-toggle-btn" onclick="toggleLiveLegendMobile()" data-i18n-title="live.legend.toggleTitle" title="Mostrar/ocultar leyenda">
+    <button class="legend-toggle-btn" id="live-legend-toggle-btn" data-on-click='[["toggleLiveLegendMobile",[]]]' data-i18n-title="live.legend.toggleTitle" title="Mostrar/ocultar leyenda">
       <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <line x1="2" y1="4" x2="14" y2="4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         <line x1="4" y1="8" x2="12" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -172,19 +172,19 @@
     </button>
 
     <div class="legend" id="live-legend">
-      <div class="legend-title legend-collapse-toggle" id="live-legend-handle" onclick="toggleLiveLegendCollapse()" role="button" tabindex="0" data-i18n-title="live.legend.toggleTitle" title="Mostrar/ocultar leyenda">
+      <div class="legend-title legend-collapse-toggle" id="live-legend-handle" data-on-click='[["toggleLiveLegendCollapse",[]]]' role="button" tabindex="0" data-i18n-title="live.legend.toggleTitle" title="Mostrar/ocultar leyenda">
         <span data-i18n="legend.title">Leyenda</span> <span class="legend-collapse-chevron">▾</span>
       </div>
       <div class="legend-body" id="live-legend-body">
-      <div class="legend-item legend-toggle active" data-layer="nodes" onclick="toggleLiveLayer('nodes')" role="button" tabindex="0"><div class="legend-dot" style="background:#64748b"></div> <span data-i18n="live.legend.node">Nodo</span></div>
+      <div class="legend-item legend-toggle active" data-layer="nodes" data-on-click='[["toggleLiveLayer",["nodes"]]]' role="button" tabindex="0"><div class="legend-dot" style="background:#64748b"></div> <span data-i18n="live.legend.node">Nodo</span></div>
       <div class="legend-item"><div class="legend-dot" style="background:#5eead4;box-shadow:0 0 6px #5eead4"></div> <span data-i18n="live.legend.focusedNode">Nodo enfocado</span></div>
       <hr class="legend-sep">
       <div class="legend-item"><div class="legend-dot" style="background:#38bdf8;border:1.5px solid #fff;font-family:var(--mono);font-size:8px;font-weight:700;color:#0b0f1a;display:flex;align-items:center;justify-content:center">2</div> <span data-i18n="live.legend.packetInTransit">Paquete en tránsito</span></div>
-      <div class="legend-item legend-toggle active" data-layer="trail" onclick="toggleLiveLayer('trail')" role="button" tabindex="0">
+      <div class="legend-item legend-toggle active" data-layer="trail" data-on-click='[["toggleLiveLayer",["trail"]]]' role="button" tabindex="0">
         <svg class="legend-line" width="24" height="10" viewBox="0 0 24 10"><line x1="0" y1="5" x2="24" y2="5" stroke="#38bdf8" stroke-width="2.5"/></svg>
         <span data-i18n="live.legend.packetTrail">Ruta trazada del paquete</span>
       </div>
-      <div class="legend-item legend-toggle active" data-layer="siblings" onclick="toggleLiveLayer('siblings')" role="button" tabindex="0">
+      <div class="legend-item legend-toggle active" data-layer="siblings" data-on-click='[["toggleLiveLayer",["siblings"]]]' role="button" tabindex="0">
         <svg class="legend-line" width="24" height="10" viewBox="0 0 24 10"><line x1="0" y1="5" x2="24" y2="5" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="3 4"/></svg>
         <span data-i18n="live.legend.sameHop">Mismo salto oído por varios gateways</span>
       </div>
@@ -213,25 +213,25 @@
       </div>
       <div class="timeline-axis" id="timeline-axis"></div>
       <div class="timeline-controls">
-        <button class="tl-btn tl-play-btn" id="timeline-play-btn" onclick="toggleReplay()" data-i18n-title="live.timeline.playPause" title="Reproducir/pausar">▶</button>
+        <button class="tl-btn tl-play-btn" id="timeline-play-btn" data-on-click='[["toggleReplay",[]]]' data-i18n-title="live.timeline.playPause" title="Reproducir/pausar">▶</button>
 
         <div class="tl-group" id="timeline-speed-group">
-          <button class="tl-chip" data-speed="0.25" onclick="setReplaySpeed(0.25)">0.25x</button>
-          <button class="tl-chip" data-speed="0.5" onclick="setReplaySpeed(0.5)">0.5x</button>
-          <button class="tl-chip active" data-speed="1" onclick="setReplaySpeed(1)">1x</button>
-          <button class="tl-chip" data-speed="3" onclick="setReplaySpeed(3)">3x</button>
-          <button class="tl-chip" data-speed="5" onclick="setReplaySpeed(5)">5x</button>
+          <button class="tl-chip" data-speed="0.25" data-on-click='[["setReplaySpeed",[0.25]]]'>0.25x</button>
+          <button class="tl-chip" data-speed="0.5" data-on-click='[["setReplaySpeed",[0.5]]]'>0.5x</button>
+          <button class="tl-chip active" data-speed="1" data-on-click='[["setReplaySpeed",[1]]]'>1x</button>
+          <button class="tl-chip" data-speed="3" data-on-click='[["setReplaySpeed",[3]]]'>3x</button>
+          <button class="tl-chip" data-speed="5" data-on-click='[["setReplaySpeed",[5]]]'>5x</button>
         </div>
 
         <div class="tl-group" id="timeline-range-group">
-          <button class="tl-chip active" data-range="3600" onclick="setTimelineRange(3600)" data-i18n="live.timeline.range1h">1h</button>
-          <button class="tl-chip" data-range="43200" onclick="setTimelineRange(43200)" data-i18n="live.timeline.range12h">12h</button>
-          <button class="tl-chip" data-range="604800" onclick="setTimelineRange(604800)" data-i18n="live.timeline.range7d">7d</button>
+          <button class="tl-chip active" data-range="3600" data-on-click='[["setTimelineRange",[3600]]]' data-i18n="live.timeline.range1h">1h</button>
+          <button class="tl-chip" data-range="43200" data-on-click='[["setTimelineRange",[43200]]]' data-i18n="live.timeline.range12h">12h</button>
+          <button class="tl-chip" data-range="604800" data-on-click='[["setTimelineRange",[604800]]]' data-i18n="live.timeline.range7d">7d</button>
         </div>
 
         <span class="timeline-cursor-label" id="timeline-cursor-label"></span>
 
-        <button class="tl-btn tl-live-btn active" id="timeline-live-btn" onclick="goLive()" data-i18n-title="live.timeline.backToLive" title="Volver a en directo">
+        <button class="tl-btn tl-live-btn active" id="timeline-live-btn" data-on-click='[["goLive",[]]]' data-i18n-title="live.timeline.backToLive" title="Volver a en directo">
           <span class="live-dot"></span> <span data-i18n="live.timeline.live">En directo</span>
         </button>
       </div>
@@ -242,8 +242,8 @@
     <div class="live-log-header">
       <span data-i18n="live.sessionPackets">Paquetes de la sesión</span>
       <div class="llh-actions">
-        <button onclick="exportSessionJSON()" data-i18n-title="live.exportJson" title="Exportar como JSON">JSON</button>
-        <button onclick="exportSessionCSV()" data-i18n-title="live.exportCsv" title="Exportar como CSV">CSV</button>
+        <button data-on-click='[["exportSessionJSON",[]]]' data-i18n-title="live.exportJson" title="Exportar como JSON">JSON</button>
+        <button data-on-click='[["exportSessionCSV",[]]]' data-i18n-title="live.exportCsv" title="Exportar como CSV">CSV</button>
       </div>
     </div>
     <div class="live-log-top" id="live-log-top"></div>
@@ -254,13 +254,13 @@
 </div>
 
 <!-- Modal: desglose de paquete -->
-<div class="malconfig-modal" id="packet-detail-modal" onclick="if(event.target===this) closePacketDetail()">
+<div class="malconfig-modal" id="packet-detail-modal" data-on-click='[["closePacketDetail",[]]]' data-backdrop>
   <div class="malconfig-inner pkt-detail-inner">
     <div class="malconfig-header">
       <div class="malconfig-title" data-i18n="live.packetDetail.title">Desglose del paquete</div>
       <div class="malconfig-header-right">
-        <button class="malconfig-close" onclick="copyCurrentLink()" data-i18n-title="live.packetDetail.copyLink" title="Copiar enlace a este paquete">🔗</button>
-        <button class="malconfig-close" onclick="closePacketDetail()" data-i18n-aria-label="common.close" aria-label="Cerrar">✕</button>
+        <button class="malconfig-close" data-on-click='[["copyCurrentLink",[]]]' data-i18n-title="live.packetDetail.copyLink" title="Copiar enlace a este paquete">🔗</button>
+        <button class="malconfig-close" data-on-click='[["closePacketDetail",[]]]' data-i18n-aria-label="common.close" aria-label="Cerrar">✕</button>
       </div>
     </div>
     <div class="malconfig-content pkt-detail-layout">
@@ -271,7 +271,7 @@
 </div>
 
 <!-- Modal: rutas más frecuentes -->
-<div class="malconfig-modal" id="route-patterns-modal" onclick="if(event.target===this) closeRoutePatterns()">
+<div class="malconfig-modal" id="route-patterns-modal" data-on-click='[["closeRoutePatterns",[]]]' data-backdrop>
   <div class="malconfig-inner">
     <div class="malconfig-header">
       <div class="malconfig-title">
@@ -279,15 +279,15 @@
         <span class="malconfig-subtitle" data-i18n="live.routePatterns.subtitle">solo saltos confirmados (traceroute o relay_node)</span>
       </div>
       <div class="malconfig-header-right">
-        <button class="malconfig-close" onclick="closeRoutePatterns()" data-i18n-aria-label="common.close" aria-label="Cerrar">✕</button>
+        <button class="malconfig-close" data-on-click='[["closeRoutePatterns",[]]]' data-i18n-aria-label="common.close" aria-label="Cerrar">✕</button>
       </div>
     </div>
     <div class="malconfig-tabs">
       <div class="tl-group" id="route-patterns-range-group">
-        <button class="tl-chip" data-range="3600" onclick="setRoutePatternsWindow(3600)" data-i18n="live.timeline.range1h">1h</button>
-        <button class="tl-chip active" data-range="21600" onclick="setRoutePatternsWindow(21600)" data-i18n="live.routePatterns.range6h">6h</button>
-        <button class="tl-chip" data-range="86400" onclick="setRoutePatternsWindow(86400)" data-i18n="live.routePatterns.range24h">24h</button>
-        <button class="tl-chip" data-range="604800" onclick="setRoutePatternsWindow(604800)" data-i18n="live.timeline.range7d">7d</button>
+        <button class="tl-chip" data-range="3600" data-on-click='[["setRoutePatternsWindow",[3600]]]' data-i18n="live.timeline.range1h">1h</button>
+        <button class="tl-chip active" data-range="21600" data-on-click='[["setRoutePatternsWindow",[21600]]]' data-i18n="live.routePatterns.range6h">6h</button>
+        <button class="tl-chip" data-range="86400" data-on-click='[["setRoutePatternsWindow",[86400]]]' data-i18n="live.routePatterns.range24h">24h</button>
+        <button class="tl-chip" data-range="604800" data-on-click='[["setRoutePatternsWindow",[604800]]]' data-i18n="live.timeline.range7d">7d</button>
       </div>
     </div>
     <div class="malconfig-content" id="route-patterns-content">
@@ -297,22 +297,22 @@
 </div>
 
 <!-- Modal: comparar dos gateways -->
-<div class="malconfig-modal" id="gateway-compare-modal" onclick="if(event.target===this) closeGatewayCompare()">
+<div class="malconfig-modal" id="gateway-compare-modal" data-on-click='[["closeGatewayCompare",[]]]' data-backdrop>
   <div class="malconfig-inner">
     <div class="malconfig-header">
       <div class="malconfig-title" data-i18n="live.gatewayCompare.title">Comparar gateways</div>
       <div class="malconfig-header-right">
-        <button class="malconfig-close" onclick="closeGatewayCompare()" data-i18n-aria-label="common.close" aria-label="Cerrar">✕</button>
+        <button class="malconfig-close" data-on-click='[["closeGatewayCompare",[]]]' data-i18n-aria-label="common.close" aria-label="Cerrar">✕</button>
       </div>
     </div>
     <div class="malconfig-tabs gwc-pickers">
-      <select class="malconfig-filter-select" id="gw-compare-a" onchange="runGatewayCompare()"><option value="">—</option></select>
+      <select class="malconfig-filter-select" id="gw-compare-a" data-on-change='[["runGatewayCompare",[]]]'><option value="">—</option></select>
       <span class="gwc-vs" data-i18n="live.gatewayCompare.vs">vs</span>
-      <select class="malconfig-filter-select" id="gw-compare-b" onchange="runGatewayCompare()"><option value="">—</option></select>
+      <select class="malconfig-filter-select" id="gw-compare-b" data-on-change='[["runGatewayCompare",[]]]'><option value="">—</option></select>
       <div class="tl-group" id="gw-compare-range-group">
-        <button class="tl-chip" data-range="3600" onclick="setGatewayCompareWindow(3600)" data-i18n="live.timeline.range1h">1h</button>
-        <button class="tl-chip active" data-range="21600" onclick="setGatewayCompareWindow(21600)" data-i18n="live.routePatterns.range6h">6h</button>
-        <button class="tl-chip" data-range="86400" onclick="setGatewayCompareWindow(86400)" data-i18n="live.routePatterns.range24h">24h</button>
+        <button class="tl-chip" data-range="3600" data-on-click='[["setGatewayCompareWindow",[3600]]]' data-i18n="live.timeline.range1h">1h</button>
+        <button class="tl-chip active" data-range="21600" data-on-click='[["setGatewayCompareWindow",[21600]]]' data-i18n="live.routePatterns.range6h">6h</button>
+        <button class="tl-chip" data-range="86400" data-on-click='[["setGatewayCompareWindow",[86400]]]' data-i18n="live.routePatterns.range24h">24h</button>
       </div>
     </div>
     <div class="malconfig-content" id="gw-compare-content">
@@ -322,12 +322,12 @@
 </div>
 
 <!-- Modal: cómo funciona el directo -->
-<div class="malconfig-modal" id="live-info-modal" onclick="if(event.target===this) closeLiveInfo()">
+<div class="malconfig-modal" id="live-info-modal" data-on-click='[["closeLiveInfo",[]]]' data-backdrop>
   <div class="malconfig-inner live-info-inner">
     <div class="malconfig-header">
       <div class="malconfig-title" data-i18n="live.info.title">Cómo funciona el visualizador de la actividad en directo</div>
       <div class="malconfig-header-right">
-        <button class="malconfig-close" onclick="closeLiveInfo()" data-i18n-aria-label="common.close" aria-label="Cerrar">✕</button>
+        <button class="malconfig-close" data-on-click='[["closeLiveInfo",[]]]' data-i18n-aria-label="common.close" aria-label="Cerrar">✕</button>
       </div>
     </div>
     <div class="malconfig-content live-info-content">
@@ -390,11 +390,17 @@
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
-<script src="js/i18n/es.js?v=1.5.1"></script>
-<script src="js/i18n/gl.js?v=1.5.1"></script>
-<script src="js/i18n/en.js?v=1.5.1"></script>
-<script src="js/i18n.js?v=1.5.1"></script>
-<script src="js/state.js?v=1.5.1"></script>
-<script src="js/live.js?v=1.5.1"></script>
+<script src="js/i18n/es.js?v=1.5.2"></script>
+<script src="js/i18n/gl.js?v=1.5.2"></script>
+<script src="js/i18n/en.js?v=1.5.2"></script>
+<script src="js/i18n.js?v=1.5.2"></script>
+<script src="js/state.js?v=1.5.2"></script>
+<script src="js/live-core.js?v=1.5.2"></script>
+<script src="js/live-events.js?v=1.5.2"></script>
+<script src="js/live-sidebar.js?v=1.5.2"></script>
+<script src="js/live-analysis.js?v=1.5.2"></script>
+<script src="js/live-focus.js?v=1.5.2"></script>
+<script src="js/live-timeline.js?v=1.5.2"></script>
+<script src="js/live-boot.js?v=1.5.2"></script>
 </body>
 </html>

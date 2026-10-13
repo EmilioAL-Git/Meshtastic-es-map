@@ -79,3 +79,9 @@ function closeSearch() {
   searchIndex = -1;
   setMapControlsVisible(true);
 }
+
+// onblur del buscador: espera a que el mousedown sobre un resultado se procese
+// antes de volver a mostrar los controles del mapa.
+function delayedShowMapControls() {
+  setTimeout(() => setMapControlsVisible(true), 200);
+}

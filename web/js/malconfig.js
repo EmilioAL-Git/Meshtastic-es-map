@@ -127,7 +127,7 @@ function _svgLineChart(history) {
     return `<g style="cursor:pointer"
         data-date="${d.date}" data-wi="${d.with_issues}" data-ta="${d.total_analyzed || 0}"
         data-cr="${sev.critical || 0}" data-hi="${sev.high || 0}" data-me="${sev.medium || 0}"
-        onmouseenter="_showChartTip(event,this)" onmouseleave="_hideChartTip()">
+        data-on-mouseenter='[["_showChartTip",["$event","$el"]]]' data-on-mouseleave='[["_hideChartTip",[]]]'>
       <circle cx="${cx}" cy="${cy}" r="10" fill="transparent"/>
       <circle cx="${cx}" cy="${cy}" r="${last ? 5 : 3.5}" fill="#f97316" stroke="#0f172a" stroke-width="1.5" style="pointer-events:none"/>
     </g>`;
@@ -534,19 +534,19 @@ function renderMalConfigModal(preserveFilters) {
   }));
   const issueKeys = Object.entries(issueCounts).sort(([,a],[,b]) => b - a).map(([k]) => k);
 
-  const channelHtml = `<select class="malconfig-filter-select" onchange="switchChannelFilter(this.value)">
+  const channelHtml = `<select class="malconfig-filter-select" data-on-change='[["switchChannelFilter",["$value"]]]'>
     ${channels.map(ch => `<option value="${escHtml(ch)}" ${ch === _malChannelFilter ? 'selected' : ''}>${escHtml(ch === 'Todos' ? t('malconfig.presetAll') : t('malconfig.presetPrefix', { ch }))}</option>`).join('')}
   </select>`;
 
   const ccaaHtml = ccaas.length
-    ? `<select class="malconfig-filter-select" onchange="switchCCAAFilter(this.value)">
+    ? `<select class="malconfig-filter-select" data-on-change='[["switchCCAAFilter",["$value"]]]'>
         <option value="" ${_malCCAAFilter === '' ? 'selected' : ''}>${escHtml(t('malconfig.ccaaAll'))}</option>
         ${ccaas.map(c => `<option value="${escHtml(c)}" ${c === _malCCAAFilter ? 'selected' : ''}>${escHtml(c)}</option>`).join('')}
        </select>`
     : '';
 
   const issueHtml = issueKeys.length
-    ? `<select class="malconfig-filter-select" onchange="switchIssueFilter(this.value)">
+    ? `<select class="malconfig-filter-select" data-on-change='[["switchIssueFilter",["$value"]]]'>
         <option value="" ${_malIssueFilter === '' ? 'selected' : ''}>${escHtml(t('malconfig.issueAll'))}</option>
         ${issueKeys.map(k => `<option value="${k}" ${k === _malIssueFilter ? 'selected' : ''}>${escHtml(issueShortLabel(k))} (${issueCounts[k]})</option>`).join('')}
        </select>`
@@ -608,7 +608,7 @@ function renderMalConfigTable(nodes) {
                 ? `<span class="mob-chip mob-pending">${escHtml(t('malconfig.mobPending'))}</span>`
                 : `<span class="mob-chip ${mob.is_fixed ? 'mob-fixed' : 'mob-mobile'}">${escHtml(mob.is_fixed ? t('malconfig.mobFixed') : t('malconfig.mobMobile'))}</span>`)
             : '';
-          return `<tr class="mc-row" onclick="openNodeReport(${n.node_id})">
+          return `<tr class="mc-row" data-action="open-report" data-node-id="${escHtml(n.node_id)}">
             <td class="mc-rank">${i + 1}</td>
             <td class="mc-name">
               <div class="mc-longname">${escHtml(n.long_name || n.short_name || hex)} ${mobChip}</div>
@@ -617,7 +617,7 @@ function renderMalConfigTable(nodes) {
             <td><span class="mc-preset">${escHtml(n.channel)}</span></td>
             <td class="mc-num">${n.sent.toLocaleString(getLocale())}</td>
             <td class="mc-issues">${renderIssueChips(issues)}</td>
-            <td class="mc-action"><button class="mc-link" onclick="event.stopPropagation(); openNodeReport(${n.node_id})">${escHtml(t('malconfig.viewLink'))}</button></td>
+            <td class="mc-action"><button class="mc-link" data-action="open-report" data-node-id="${escHtml(n.node_id)}">${escHtml(t('malconfig.viewLink'))}</button></td>
           </tr>`;
         }).join('')}
       </tbody>

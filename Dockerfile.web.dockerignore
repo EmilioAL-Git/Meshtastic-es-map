@@ -1,0 +1,15 @@
+.git
+.github
+.claude
+.env
+data
+tests
+*.png
+*.gif
+**/__pycache__
+**/*.pyc
+**/*.db
+**/*.db-shm
+**/*.db-wal
+CLAUDE.md
+RELEASE_NOTES_DRAFT.md

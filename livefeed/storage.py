@@ -85,6 +85,7 @@ def _migrate_composite_key(conn: sqlite3.Connection) -> None:
 def init_db(path: str) -> sqlite3.Connection:
     conn = sqlite3.connect(path, check_same_thread=False)
     conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
     _migrate_composite_key(conn)
     conn.execute(_PACKETS_SCHEMA.replace("CREATE TABLE", "CREATE TABLE IF NOT EXISTS"))
     for col_def in _ADDED_COLUMNS:
@@ -98,7 +99,9 @@ def init_db(path: str) -> sqlite3.Connection:
     return conn
 
 
-def record_event(conn: sqlite3.Connection, event: dict) -> None:
+def record_event(conn: sqlite3.Connection, event: dict, commit: bool = True) -> None:
+    """commit=False permite agrupar varias escrituras en una transacción
+    (el llamador hace conn.commit() periódicamente)."""
     now = time.time()
     if event["type"] == "packet_new":
         conn.execute(
@@ -135,7 +138,8 @@ def record_event(conn: sqlite3.Connection, event: dict) -> None:
         )
     else:
         return
-    conn.commit()
+    if commit:
+        conn.commit()
 
 
 def get_packet(conn: sqlite3.Connection, packet_id: int, from_id: str | None = None) -> dict | None:

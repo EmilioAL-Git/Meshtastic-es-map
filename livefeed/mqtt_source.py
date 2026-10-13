@@ -187,6 +187,7 @@ class MqttSource:
         import paho.mqtt.client as mqtt
 
         self._queue = queue
+        self._dropped = 0
         self._loop = loop
         self._topics = topics
 
@@ -236,4 +237,15 @@ class MqttSource:
             return
         if event is None:
             return
-        asyncio.run_coroutine_threadsafe(self._queue.put(event), self._loop)
+        self._loop.call_soon_threadsafe(self._enqueue, event)
+
+    def _enqueue(self, event: dict) -> None:
+        """Corre en el event loop. Cola acotada: si el consumidor no da
+        abasto (SQLite lento, picos de tráfico) se descarta el evento en vez
+        de acumular memoria sin límite."""
+        try:
+            self._queue.put_nowait(event)
+        except asyncio.QueueFull:
+            self._dropped += 1
+            if self._dropped == 1 or self._dropped % 1000 == 0:
+                log.warning("Cola de eventos llena: %d eventos descartados", self._dropped)

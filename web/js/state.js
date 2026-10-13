@@ -194,3 +194,61 @@ function row(k, v) {
     <td style="color:#e2e8f0;text-align:right">${escHtml(String(v))}</td>
   </tr>`;
 }
+
+// ─── Acciones delegadas ───────────────────────────────────────────────────────
+// Los elementos generados dinámicamente con datos (ids de nodo/paquete) usan
+// data-action + data-* en vez de onclick="fn('${valor}')": interpolar un
+// valor dentro de un handler inline permite romper el literal JS (escHtml no
+// basta, el navegador decodifica &#39; antes de ejecutar el handler).
+document.addEventListener('click', (e) => {
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const { action, key, idx, nodeId } = el.dataset;
+  if (action === 'open-packet' && typeof openPacketDetail === 'function') {
+    e.stopPropagation();
+    openPacketDetail(key);
+  } else if (action === 'toggle-route-pattern' && typeof toggleRoutePatternDetail === 'function') {
+    toggleRoutePatternDetail(Number(idx));
+  } else if (action === 'open-report' && typeof openNodeReport === 'function') {
+    e.stopPropagation();
+    openNodeReport(nodeId);
+  }
+});
+
+// ─── Manejadores declarativos (CSP sin 'unsafe-inline' en scripts) ────────────
+// El HTML no lleva onclick="..." (la CSP los bloquea): cada elemento declara
+//   data-on-<evento>='[["nombreFuncion",[arg1,arg2]], ...]'
+// y estos listeners delegados llaman a window[nombreFuncion](...args). Tokens
+// especiales en args: "$event" (el Event), "$el" (el elemento que declara el
+// handler), "$value" (su .value). Marcadores opcionales en el elemento:
+//   data-stop      → e.stopPropagation() antes de ejecutar
+//   data-backdrop  → solo actúa si el click cae en el propio elemento (fondo
+//                    de un modal), no en sus hijos
+(function () {
+  function resolve(arg, e, el) {
+    if (arg === '$event') return e;
+    if (arg === '$el') return el;
+    if (arg === '$value') return el.value;
+    return arg;
+  }
+  function run(e, evt, bubbles) {
+    const attr = 'data-on-' + evt;
+    const t = e.target;
+    if (!t || !t.closest) return;
+    const el = bubbles ? t.closest('[' + attr + ']') : (t.hasAttribute(attr) ? t : null);
+    if (!el) return;
+    if (el.hasAttribute('data-backdrop') && t !== el) return;
+    if (el.hasAttribute('data-stop')) e.stopPropagation();
+    let calls;
+    try { calls = JSON.parse(el.getAttribute(attr)); } catch { return; }
+    for (const [fn, args] of calls) {
+      if (typeof window[fn] === 'function') window[fn](...args.map(a => resolve(a, e, el)));
+    }
+  }
+  // click/input/change/keydown burbujean; focus/blur/mouseenter/mouseleave no,
+  // así que se escuchan en fase de captura sobre document.
+  ['click', 'input', 'change', 'keydown'].forEach(evt =>
+    document.addEventListener(evt, e => run(e, evt, true)));
+  ['focus', 'blur', 'mouseenter', 'mouseleave'].forEach(evt =>
+    document.addEventListener(evt, e => run(e, evt, false), true));
+})();

@@ -32,6 +32,14 @@ services:
       - JSON_OUT=/data/json
       - CCAA_CACHE_PATH=/data/ccaa-cache.json
       - TOPNODOS_DB_PATH=/data/topnodos.db
+    healthcheck:
+      # top-nodos.json se reescribe cada TOP_NODOS_INTERVAL min (15 por
+      # defecto): si lleva >2h sin tocarse, el daemon está colgado.
+      test: ["CMD", "python", "-c", "import os,sys,time; sys.exit(int(time.time()-os.path.getmtime('/data/json/top-nodos.json') > 7200))"]
+      interval: 5m
+      timeout: 10s
+      retries: 3
+      start_period: 30m
 
   livefeed:
     build:
@@ -44,6 +52,12 @@ services:
     environment:
       - LIVE_WS_PORT=8765
       - LIVEFEED_DB_PATH=/data/livefeed.db
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8765), 3).close()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
 
   web:
     image: nginx:alpine

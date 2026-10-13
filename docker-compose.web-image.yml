@@ -1,0 +1,13 @@
+# Override opcional: sirve el frontend desde una imagen construida (con web/
+# y nginx-docker.conf dentro) en vez de montar ./web desde el host. Así el
+# despliegue es reproducible y no depende de qué haya en el directorio.
+services:
+  web:
+    image: meshtastic-es-map-web
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    # !override: sin él compose fusiona las listas y mantendría el bind mount de ./web
+    # (requiere Docker Compose >= 2.24)
+    volumes: !override
+      - json-data:/data/json:ro

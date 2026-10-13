@@ -1,0 +1,8 @@
+# Solo errores reales (sintaxis, nombres sin definir, imports/variables sin
+# usar...). Sin reglas de estilo: el código actual no las sigue y el objetivo
+# es cazar bugs, no reformatear.
+extend-exclude = ["livefeed/proto"]
+line-length = 120
+
+[lint]
+select = ["E9", "F"]

@@ -6,6 +6,7 @@ su propio job de CI, separado del de collector (que sigue siendo stdlib-only).
 
 Uso: python3 -m unittest discover -s tests -p "test_livefeed.py" -v
 """
+import asyncio
 import json
 import sys
 import unittest
@@ -20,6 +21,8 @@ from meshtastic import mesh_pb2, mqtt_pb2, portnums_pb2  # noqa: E402
 
 import correlator  # noqa: E402
 import mqtt_source  # noqa: E402
+import storage  # noqa: E402
+import ws_server  # noqa: E402
 
 
 def encrypt_with_default_key(packet_id: int, from_id: int, plaintext: bytes) -> bytes:
@@ -349,6 +352,49 @@ class CorrelatorTests(unittest.TestCase):
             gateway_id="!33333333", hop_limit=0, route=["!aaaaaaaa", "!bbbbbbbb", "!eeeeeeee"],
         ))
         self.assertEqual(out3[-1]["route"], ["!aaaaaaaa", "!bbbbbbbb", "!eeeeeeee"])
+
+class WsRangeLimitTests(unittest.TestCase):
+    def test_range_is_clamped_to_max(self):
+        since, until, bucket = ws_server._parse_range_params(
+            {"since": ["0"], "until": ["1000000000"]}, default_bucket=60
+        )
+        self.assertEqual(until - since, ws_server.MAX_RANGE_S)
+
+    def test_bucket_is_raised_to_cap_bucket_count(self):
+        since, until, bucket = ws_server._parse_range_params(
+            {"since": ["0"], "until": [str(ws_server.MAX_RANGE_S)], "bucket": ["1"]}, default_bucket=60
+        )
+        self.assertLessEqual((until - since) / bucket, ws_server.MAX_BUCKETS)
+
+    def test_non_finite_is_rejected(self):
+        with self.assertRaises(ValueError):
+            ws_server._parse_range_params({"since": ["inf"]}, default_bucket=60)
+        with self.assertRaises(ValueError):
+            ws_server._parse_range_params({"until": ["nan"]}, default_bucket=60)
+
+
+class StorageBatchTests(unittest.TestCase):
+    def test_record_event_without_commit_is_visible_after_commit(self):
+        conn = storage.init_db(":memory:")
+        event = {
+            "type": "packet_new", "packet_id": 1, "from": "!aaaaaaaa", "to": "!ffffffff",
+            "hop_start": 3, "channel": 0, "portnum": "TEXT_MESSAGE_APP",
+            "path_confidence": "gateway_heuristic",
+        }
+        storage.record_event(conn, event, commit=False)
+        conn.commit()
+        self.assertEqual(storage.get_packet(conn, 1, "!aaaaaaaa")["portnum"], "TEXT_MESSAGE_APP")
+
+
+class MqttQueueBackpressureTests(unittest.IsolatedAsyncioTestCase):
+    async def test_full_queue_drops_instead_of_growing(self):
+        queue = asyncio.Queue(maxsize=2)
+        src = mqtt_source.MqttSource.__new__(mqtt_source.MqttSource)
+        src._queue, src._dropped = queue, 0
+        for i in range(5):
+            src._enqueue({"i": i})
+        self.assertEqual(queue.qsize(), 2)
+        self.assertEqual(src._dropped, 3)
 
 
 if __name__ == "__main__":

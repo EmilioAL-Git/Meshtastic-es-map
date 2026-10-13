@@ -9,16 +9,11 @@
 <link rel="stylesheet" href="vendor/leaflet/leaflet.css?v=1.9.4"/>
 <script src="vendor/leaflet/leaflet.js?v=1.9.4"></script>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="stylesheet" href="style.css?v=1.5.1"/>
+<link rel="stylesheet" href="style.css?v=1.5.2"/>
 </head>
 
 <body>
-<script>
-  if (new URLSearchParams(location.search).has('embed') || window.self !== window.top) {
-    document.body.classList.add('embed-mode');
-  }
-  try { if (localStorage.getItem('mesh_cookie_ok') === '1') document.body.dataset.cookieOk = '1'; } catch {}
-</script>
+<script src="js/embed.js?v=1.5.2"></script>
 
 <!-- Loading -->
 <div id="loading">
@@ -60,12 +55,12 @@
     </div>
     <div class="sep"></div>
     <span class="last-update" id="last-update">—</span>
-    <button class="noopt-btn" onclick="openMalConfigModal()" data-i18n-title="header.notOptimizedTitle" title="Ver nodos no optimizados">
+    <button class="noopt-btn" data-on-click='[["openMalConfigModal",[]]]' data-i18n-title="header.notOptimizedTitle" title="Ver nodos no optimizados">
       <svg width="13" height="12" viewBox="0 0 22 20" aria-hidden="true"><polygon points="11,1 21,19 1,19" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linejoin="round" opacity=".9"/><text x="11" y="15.5" text-anchor="middle" font-size="9" font-weight="bold" font-family="monospace" fill="#1e293b">!</text></svg>
       <span class="noopt-label" id="noopt-label" data-i18n="header.notOptimized">No optimizados</span>
     </button>
     <div class="fav-list-wrap" id="fav-list-wrap">
-      <button class="noopt-btn" id="fav-list-btn" onclick="toggleFavoritesList()" data-i18n-title="favorites.viewList" title="Ver mis nodos favoritos">
+      <button class="noopt-btn" id="fav-list-btn" data-on-click='[["toggleFavoritesList",[]]]' data-i18n-title="favorites.viewList" title="Ver mis nodos favoritos">
         <span>★</span>
         <span class="noopt-label" data-i18n="favorites.onlyFavoritesShort">Favoritos</span>
         <span class="fav-list-count" id="fav-list-count"></span>
@@ -81,7 +76,7 @@
         <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" stroke-width="1.5"/>
         <line x1="10" y1="10" x2="14" y2="14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
       </svg>
-      <input type="text" id="search-input" class="search-input" placeholder="Buscar nodo…" data-i18n-placeholder="header.searchPlaceholder" autocomplete="off" oninput="onSearchInput()" onfocus="onSearchInput()" onkeydown="onSearchKey(event)" onblur="setTimeout(()=>setMapControlsVisible(true),200)">
+      <input type="text" id="search-input" class="search-input" placeholder="Buscar nodo…" data-i18n-placeholder="header.searchPlaceholder" autocomplete="off" data-on-input='[["onSearchInput",[]]]' data-on-focus='[["onSearchInput",[]]]' data-on-keydown='[["onSearchKey",["$event"]]]' data-on-blur='[["delayedShowMapControls",[]]]'>
       <div class="search-dropdown" id="search-dropdown"></div>
     </div>
 
@@ -93,7 +88,7 @@
     </div>
 
     <div class="settings-switch" id="settings-switch">
-      <button class="settings-btn" id="settings-btn" type="button" onclick="toggleSettingsPanel()" data-i18n-title="settings.title" title="Ajustes del mapa" aria-haspopup="true" aria-expanded="false">
+      <button class="settings-btn" id="settings-btn" type="button" data-on-click='[["toggleSettingsPanel",[]]]' data-i18n-title="settings.title" title="Ajustes del mapa" aria-haspopup="true" aria-expanded="false">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z"/><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0"/></svg>
       </button>
 
@@ -103,56 +98,56 @@
         <div class="settings-row">
           <span class="settings-label" data-i18n="settings.theme">Tema</span>
           <div class="settings-seg">
-            <button class="fchip" data-theme="light" onclick="setTheme('light')" data-i18n="settings.themeLight">Claro</button>
-            <button class="fchip" data-theme="dark" onclick="setTheme('dark')" data-i18n="settings.themeDark">Oscuro</button>
+            <button class="fchip" data-theme="light" data-on-click='[["setTheme",["light"]]]' data-i18n="settings.themeLight">Claro</button>
+            <button class="fchip" data-theme="dark" data-on-click='[["setTheme",["dark"]]]' data-i18n="settings.themeDark">Oscuro</button>
           </div>
         </div>
 
         <div class="settings-row">
           <span class="settings-label" data-i18n="settings.markerSize">Tamaño de marcadores</span>
           <div class="settings-seg">
-            <button class="fchip" data-marker-size="small" onclick="setMarkerSize('small')" data-i18n="settings.markerSizeSmall">S</button>
-            <button class="fchip" data-marker-size="normal" onclick="setMarkerSize('normal')" data-i18n="settings.markerSizeNormal">M</button>
-            <button class="fchip" data-marker-size="large" onclick="setMarkerSize('large')" data-i18n="settings.markerSizeLarge">L</button>
+            <button class="fchip" data-marker-size="small" data-on-click='[["setMarkerSize",["small"]]]' data-i18n="settings.markerSizeSmall">S</button>
+            <button class="fchip" data-marker-size="normal" data-on-click='[["setMarkerSize",["normal"]]]' data-i18n="settings.markerSizeNormal">M</button>
+            <button class="fchip" data-marker-size="large" data-on-click='[["setMarkerSize",["large"]]]' data-i18n="settings.markerSizeLarge">L</button>
           </div>
         </div>
 
-        <button class="settings-toggle-row" data-setting-toggle="autoLocate" onclick="toggleMapSetting('autoLocate')">
+        <button class="settings-toggle-row" data-setting-toggle="autoLocate" data-on-click='[["toggleMapSetting",["autoLocate"]]]'>
           <span class="settings-label-info">
             <span data-i18n="settings.autoLocate">Auto-centrar en mi ubicación</span>
-            <span class="settings-info-icon" tabindex="0" role="button" data-i18n-aria-label="settings.autoLocateInfo" aria-label="Info" onclick="event.stopPropagation(); toggleSettingInfo(event, 'settings.autoLocateInfo')">ⓘ</span>
+            <span class="settings-info-icon" tabindex="0" role="button" data-i18n-aria-label="settings.autoLocateInfo" aria-label="Info" data-on-click='[["toggleSettingInfo",["$event","settings.autoLocateInfo"]]]' data-stop>ⓘ</span>
           </span>
           <span class="settings-switch-track"></span>
         </button>
 
-        <button class="settings-toggle-row" data-setting-toggle="flyToNode" onclick="toggleMapSetting('flyToNode')">
+        <button class="settings-toggle-row" data-setting-toggle="flyToNode" data-on-click='[["toggleMapSetting",["flyToNode"]]]'>
           <span class="settings-label-info">
             <span data-i18n="settings.flyToNode">Volar al nodo al seleccionarlo</span>
-            <span class="settings-info-icon" tabindex="0" role="button" data-i18n-aria-label="settings.flyToNodeInfo" aria-label="Info" onclick="event.stopPropagation(); toggleSettingInfo(event, 'settings.flyToNodeInfo')">ⓘ</span>
+            <span class="settings-info-icon" tabindex="0" role="button" data-i18n-aria-label="settings.flyToNodeInfo" aria-label="Info" data-on-click='[["toggleSettingInfo",["$event","settings.flyToNodeInfo"]]]' data-stop>ⓘ</span>
           </span>
           <span class="settings-switch-track"></span>
         </button>
 
-        <button class="settings-toggle-row" data-setting-toggle="showPrecisionCircle" onclick="toggleMapSetting('showPrecisionCircle')">
+        <button class="settings-toggle-row" data-setting-toggle="showPrecisionCircle" data-on-click='[["toggleMapSetting",["showPrecisionCircle"]]]'>
           <span class="settings-label-info">
             <span data-i18n="settings.showPrecisionCircle">Círculo de precisión</span>
-            <span class="settings-info-icon" tabindex="0" role="button" data-i18n-aria-label="settings.showPrecisionCircleInfo" aria-label="Info" onclick="event.stopPropagation(); toggleSettingInfo(event, 'settings.showPrecisionCircleInfo')">ⓘ</span>
+            <span class="settings-info-icon" tabindex="0" role="button" data-i18n-aria-label="settings.showPrecisionCircleInfo" aria-label="Info" data-on-click='[["toggleSettingInfo",["$event","settings.showPrecisionCircleInfo"]]]' data-stop>ⓘ</span>
           </span>
           <span class="settings-switch-track"></span>
         </button>
 
-        <button class="settings-toggle-row" data-setting-toggle="showMalIcons" onclick="toggleMapSetting('showMalIcons')">
+        <button class="settings-toggle-row" data-setting-toggle="showMalIcons" data-on-click='[["toggleMapSetting",["showMalIcons"]]]'>
           <span class="settings-label-info">
             <span data-i18n="settings.showMalIcons">Iconos de no optimizados</span>
-            <span class="settings-info-icon" tabindex="0" role="button" data-i18n-aria-label="settings.showMalIconsInfo" aria-label="Info" onclick="event.stopPropagation(); toggleSettingInfo(event, 'settings.showMalIconsInfo')">ⓘ</span>
+            <span class="settings-info-icon" tabindex="0" role="button" data-i18n-aria-label="settings.showMalIconsInfo" aria-label="Info" data-on-click='[["toggleSettingInfo",["$event","settings.showMalIconsInfo"]]]' data-stop>ⓘ</span>
           </span>
           <span class="settings-switch-track"></span>
         </button>
 
-        <button class="settings-toggle-row" data-setting-toggle="hideOutsideSpain" onclick="toggleMapSetting('hideOutsideSpain')">
+        <button class="settings-toggle-row" data-setting-toggle="hideOutsideSpain" data-on-click='[["toggleMapSetting",["hideOutsideSpain"]]]'>
           <span class="settings-label-info">
             <span data-i18n="settings.hideOutsideSpain">Ocultar nodos fuera de España</span>
-            <span class="settings-info-icon" tabindex="0" role="button" data-i18n-aria-label="settings.hideOutsideSpainInfo" aria-label="Info" onclick="event.stopPropagation(); toggleSettingInfo(event, 'settings.hideOutsideSpainInfo')">ⓘ</span>
+            <span class="settings-info-icon" tabindex="0" role="button" data-i18n-aria-label="settings.hideOutsideSpainInfo" aria-label="Info" data-on-click='[["toggleSettingInfo",["$event","settings.hideOutsideSpainInfo"]]]' data-stop>ⓘ</span>
           </span>
           <span class="settings-switch-track"></span>
         </button>
@@ -173,7 +168,7 @@
 <div class="main">
   <div id="map">
     <!-- Botón filtros (móvil) — dentro del mapa para posicionarse bajo el header -->
-    <button class="filter-toggle-btn" id="filter-toggle-btn" onclick="toggleFilterPanel()" data-i18n-title="filters.toggleTitle" title="Filtros">
+    <button class="filter-toggle-btn" id="filter-toggle-btn" data-on-click='[["toggleFilterPanel",[]]]' data-i18n-title="filters.toggleTitle" title="Filtros">
       <svg viewBox="0 0 16 16" fill="none">
         <line x1="2" y1="4" x2="14" y2="4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         <line x1="4" y1="8" x2="12" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -185,29 +180,29 @@
 
 <!-- Filtros -->
 <div class="filter-panel" id="filter-panel">
-  <button class="fchip active" data-cat="gateway" onclick="toggleFilter('gateway')">
+  <button class="fchip active" data-cat="gateway" data-on-click='[["toggleFilter",["gateway"]]]'>
     <span class="fchip-dot" style="background:#fbbf24;box-shadow:0 0 5px #fbbf24"></span><span data-i18n="filters.gateway">Gateway</span>
   </button>
-  <button class="fchip active" data-cat="router" onclick="toggleFilter('router')">
+  <button class="fchip active" data-cat="router" data-on-click='[["toggleFilter",["router"]]]'>
     <span class="fchip-dot" style="background:#fb923c;box-shadow:0 0 5px #fb923c"></span><span data-i18n="filters.router">Router</span>
   </button>
-  <button class="fchip active" data-cat="recent" onclick="toggleFilter('recent')">
+  <button class="fchip active" data-cat="recent" data-on-click='[["toggleFilter",["recent"]]]'>
     <span class="fchip-dot" style="background:#5eead4;box-shadow:0 0 5px #5eead4"></span><span data-i18n="filters.recent">Activo &lt;1h</span>
   </button>
-  <button class="fchip active" data-cat="active" onclick="toggleFilter('active')">
+  <button class="fchip active" data-cat="active" data-on-click='[["toggleFilter",["active"]]]'>
     <span class="fchip-dot" style="background:#7dd3fc"></span><span data-i18n="filters.active">Activo &lt;24h</span>
   </button>
-  <button class="fchip active" data-cat="old" onclick="toggleFilter('old')">
+  <button class="fchip active" data-cat="old" data-on-click='[["toggleFilter",["old"]]]'>
     <span class="fchip-dot" style="background:#64748b"></span><span data-i18n="filters.old">Sin actividad</span>
   </button>
   <hr class="filter-sep">
-  <button class="fchip active" data-edge="neighbor" onclick="toggleEdgeFilter('neighbor')">
+  <button class="fchip active" data-edge="neighbor" data-on-click='[["toggleEdgeFilter",["neighbor"]]]'>
     <svg class="fchip-line" width="18" height="8" viewBox="0 0 18 8" aria-hidden="true">
       <line x1="0" y1="4" x2="18" y2="4" stroke="#1d4ed8" stroke-width="2"/>
     </svg>
     <span data-i18n="filters.neighbor">Vecino directo</span>
   </button>
-  <button class="fchip" data-edge="traceroute" onclick="toggleEdgeFilter('traceroute')">
+  <button class="fchip" data-edge="traceroute" data-on-click='[["toggleEdgeFilter",["traceroute"]]]'>
     <svg class="fchip-line" width="18" height="8" viewBox="0 0 18 8" aria-hidden="true">
       <line x1="0" y1="4" x2="18" y2="4" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="5 4"/>
     </svg>
@@ -220,8 +215,8 @@
   <div class="detail-header">
     <div class="node-dot dot-recent" id="detail-dot"></div>
     <div class="detail-title" id="detail-title">—</div>
-    <button class="detail-fav-btn" id="detail-fav-btn" onclick="toggleFavoriteFromDetail()" data-i18n-title="favorites.toggle" title="Marcar como favorito">☆</button>
-    <button class="detail-close" onclick="closeDetail()">✕</button>
+    <button class="detail-fav-btn" id="detail-fav-btn" data-on-click='[["toggleFavoriteFromDetail",[]]]' data-i18n-title="favorites.toggle" title="Marcar como favorito">☆</button>
+    <button class="detail-close" data-on-click='[["closeDetail",[]]]'>✕</button>
   </div>
   <div class="detail-body" id="detail-body"></div>
 </div>
@@ -239,13 +234,13 @@
     <span data-i18n="legend.notOptimized">No optimizado</span>
   </div>
   <hr class="legend-sep">
-  <div class="legend-item legend-edge active" data-edge="neighbor" onclick="toggleEdgeFilter('neighbor')" role="button" tabindex="0">
+  <div class="legend-item legend-edge active" data-edge="neighbor" data-on-click='[["toggleEdgeFilter",["neighbor"]]]' role="button" tabindex="0">
     <svg class="legend-line" width="24" height="10" viewBox="0 0 24 10">
       <line x1="0" y1="5" x2="24" y2="5" stroke="#1d4ed8" stroke-width="2"/>
     </svg>
     <span data-i18n="legend.neighbor">Vecino directo</span>
   </div>
-  <div class="legend-item legend-edge" data-edge="traceroute" onclick="toggleEdgeFilter('traceroute')" role="button" tabindex="0">
+  <div class="legend-item legend-edge" data-edge="traceroute" data-on-click='[["toggleEdgeFilter",["traceroute"]]]' role="button" tabindex="0">
     <svg class="legend-line" width="24" height="10" viewBox="0 0 24 10">
       <line x1="0" y1="5" x2="24" y2="5" stroke="#dc2626" stroke-width="1.5" stroke-dasharray="6 5"/>
     </svg>
@@ -255,7 +250,7 @@
 
 <!-- Banner novedades -->
 <div class="hint-bubble hidden" id="hint-novedades">
-  <button class="hint-bubble-close" onclick="dismissEdgeHint()" data-i18n-aria-label="hint.close" aria-label="Cerrar">✕</button>
+  <button class="hint-bubble-close" data-on-click='[["dismissEdgeHint",[]]]' data-i18n-aria-label="hint.close" aria-label="Cerrar">✕</button>
   <span data-i18n-html="hint.novedades"><strong>Nuevo</strong> — pestaña <strong>En directo</strong>: sigue los paquetes de la red en tiempo real.</span>
 </div>
 
@@ -264,11 +259,11 @@
   <div class="malconfig-inner nr-inner">
     <div class="malconfig-header">
       <div class="malconfig-title">
-        <button id="node-report-back" class="nr-back" onclick="closeNodeReport(); openMalConfigModal(true);" style="display:none" data-i18n="report.back">← Listado</button>
+        <button id="node-report-back" class="nr-back" data-on-click='[["closeNodeReport",[]],["openMalConfigModal",[true]]]' style="display:none" data-i18n="report.back">← Listado</button>
         <svg width="16" height="15" viewBox="0 0 22 20" aria-hidden="true"><polygon points="11,1 21,19 1,19" fill="#f97316" stroke="#ef4444" stroke-width="1.5" stroke-linejoin="round"/><text x="11" y="15.5" text-anchor="middle" font-size="9" font-weight="bold" font-family="monospace" fill="#1e293b">!</text></svg>
         <span data-i18n="report.title">Diagnóstico del nodo</span>
       </div>
-      <button class="malconfig-close" onclick="closeNodeReport()" data-i18n-aria-label="common.close" aria-label="Cerrar">✕</button>
+      <button class="malconfig-close" data-on-click='[["closeNodeReport",[]]]' data-i18n-aria-label="common.close" aria-label="Cerrar">✕</button>
     </div>
     <div class="malconfig-content" id="node-report-body"></div>
   </div>
@@ -284,12 +279,12 @@
       </div>
       <div class="malconfig-header-right">
         <span class="malconfig-updated" id="malconfig-updated"></span>
-        <button class="malconfig-close" onclick="closeMalConfigModal()" data-i18n-aria-label="common.close" aria-label="Cerrar">✕</button>
+        <button class="malconfig-close" data-on-click='[["closeMalConfigModal",[]]]' data-i18n-aria-label="common.close" aria-label="Cerrar">✕</button>
       </div>
     </div>
     <div class="malconfig-nav" id="malconfig-nav">
-      <button class="mc-tab active" data-tab="list" onclick="switchMalTab('list')" data-i18n="malconfig.tabList">Listado</button>
-      <button class="mc-tab" data-tab="stats" onclick="switchMalTab('stats')" data-i18n="malconfig.tabStats">Estadísticas</button>
+      <button class="mc-tab active" data-tab="list" data-on-click='[["switchMalTab",["list"]]]' data-i18n="malconfig.tabList">Listado</button>
+      <button class="mc-tab" data-tab="stats" data-on-click='[["switchMalTab",["stats"]]]' data-i18n="malconfig.tabStats">Estadísticas</button>
     </div>
     <div class="malconfig-tabs" id="malconfig-tabs"></div>
     <div class="malconfig-content" id="malconfig-content"></div>
@@ -309,7 +304,7 @@
     </svg>
     <span data-i18n-html="cookie.text">Esta web usa <strong>almacenamiento local</strong> para guardar tus preferencias. No se usan cookies de terceros ni datos de seguimiento.</span>
   </div>
-  <button class="cookie-btn" onclick="acceptCookies()" data-i18n="cookie.accept">Entendido</button>
+  <button class="cookie-btn" data-on-click='[["acceptCookies",[]]]' data-i18n="cookie.accept">Entendido</button>
 </div>
 
 <!-- Footer -->
@@ -322,21 +317,21 @@
       <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8a8 8 0 005.47 7.59c.4.07.55-.17.55-.38v-1.34c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.88-1.17-.88-1.17-.72-.5.05-.48.05-.48.8.06 1.22.82 1.22.82.71 1.22 1.87.87 2.32.66.07-.52.28-.87.5-1.07-1.77-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.66 7.66 0 018 3.8c.68 0 1.36.09 2 .26 1.52-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.19c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
       <span data-i18n="footer.github">GitHub</span>
     </a>
-    <span class="footer-version">v1.5.1</span>
+    <span class="footer-version">v1.5.2</span>
   </div>
 </footer>
 
-<script src="js/i18n/es.js?v=1.5.1"></script>
-<script src="js/i18n/gl.js?v=1.5.1"></script>
-<script src="js/i18n/en.js?v=1.5.1"></script>
-<script src="js/i18n.js?v=1.5.1"></script>
-<script src="js/state.js?v=1.5.1"></script>
-<script src="js/map.js?v=1.5.1"></script>
-<script src="js/filters.js?v=1.5.1"></script>
-<script src="js/search.js?v=1.5.1"></script>
-<script src="js/ui.js?v=1.5.1"></script>
-<script src="js/malconfig.js?v=1.5.1"></script>
-<script src="js/settings.js?v=1.5.1"></script>
-<script src="js/app.js?v=1.5.1"></script>
+<script src="js/i18n/es.js?v=1.5.2"></script>
+<script src="js/i18n/gl.js?v=1.5.2"></script>
+<script src="js/i18n/en.js?v=1.5.2"></script>
+<script src="js/i18n.js?v=1.5.2"></script>
+<script src="js/state.js?v=1.5.2"></script>
+<script src="js/map.js?v=1.5.2"></script>
+<script src="js/filters.js?v=1.5.2"></script>
+<script src="js/search.js?v=1.5.2"></script>
+<script src="js/ui.js?v=1.5.2"></script>
+<script src="js/malconfig.js?v=1.5.2"></script>
+<script src="js/settings.js?v=1.5.2"></script>
+<script src="js/app.js?v=1.5.2"></script>
 </body>
 </html>

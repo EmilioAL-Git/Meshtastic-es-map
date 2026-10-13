@@ -283,4 +283,4 @@ el texto completo.
 
 ---
 
-Diseñado por Emilio Alfaro para la web meshtastic.es
+Diseñado por y para la comunidad meshtastic.es

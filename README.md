@@ -135,6 +135,8 @@ cp .env.example .env
 # Editar .env si es necesario (puertos, rutas)
 ```
 
+> **Recomendado:** define `CARTO_API_KEY` en `.env`. Es gratuita y sin cuenta ([carto.com/basemaps/apikey](https://carto.com/basemaps/apikey/)); sin ella, el mapa base se ve con un watermark «API KEY REQUIRED» por todo el mapa.
+
 ### 2. Levantar
 
 ```bash

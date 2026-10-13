@@ -170,26 +170,6 @@ function acceptCookies() {
   document.getElementById('cookie-banner').classList.add('hidden');
 }
 
-// ─── Configuración de marca/sitio (config.json) ───────────────────────────────
-// Cada campo es opcional: si el collector no lo emite, se mantiene el valor por
-// defecto del HTML/i18n. Los textos vienen de variables de entorno del operador.
-function applySiteConfig(cfg) {
-  if (cfg.site_title) document.title = cfg.site_title;
-
-  const brand = document.getElementById('brand-title');
-  if (brand && (cfg.brand_primary != null || cfg.brand_secondary != null)) {
-    const primary   = cfg.brand_primary   != null ? cfg.brand_primary   : 'MESHTASTIC ESPAÑA';
-    const secondary = cfg.brand_secondary != null ? cfg.brand_secondary : 'Mapa de nodos';
-    brand.innerHTML = escHtml(primary) + ' <em>/ ' + escHtml(secondary) + '</em>';
-  }
-
-  const link = document.getElementById('footer-source-link');
-  if (link) {
-    if (cfg.source_url)  link.href        = cfg.source_url;
-    if (cfg.source_name) link.textContent = cfg.source_name;
-  }
-}
-
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 fetch(API_BASE + '/data/config.json')
   .then(r => r.ok ? r.json() : {})
@@ -201,9 +181,8 @@ fetch(API_BASE + '/data/config.json')
     if (cfg.map_zoom       != null) MAP_ZOOM       = cfg.map_zoom;
     if (cfg.mal_config_url != null) MAL_CONFIG_URL = cfg.mal_config_url;
     if (cfg.carto_api_key  != null) CARTO_API_KEY  = cfg.carto_api_key;
-    // Idioma por defecto y marca del sitio (antes de renderizar contenido)
+    // Idioma por defecto del sitio (antes de renderizar contenido)
     applyDefaultLang(cfg.default_lang);
-    applySiteConfig(cfg);
     initMap();
     syncFilterChips();
     syncEdgeFilterChips();

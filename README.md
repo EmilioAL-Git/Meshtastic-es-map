@@ -230,11 +230,6 @@ El mapa queda disponible en `http://localhost:8095`.
 | `MAP_LNG` | `-3.7` | Longitud inicial (si `MAP_AUTO_FIT=false`) |
 | `MAP_ZOOM` | `8` | Zoom inicial (si `MAP_AUTO_FIT=false`) |
 | `DEFAULT_LANG` | *(sin definir)* | Idioma por defecto de la web: `es`, `gl` o `en` (si el visitante no eligió otro) |
-| `SITE_TITLE` | *(sin definir)* | Título del documento (pestaña del navegador) |
-| `BRAND_PRIMARY` | *(sin definir)* | Cabecera, parte principal (ej. `MESHTASTIC ESPAÑA`) |
-| `BRAND_SECONDARY` | *(sin definir)* | Cabecera, subtítulo en cursiva tras la barra (ej. `Mapa de nodos`) |
-| `SOURCE_URL` | *(sin definir)* | Pie «Datos extraídos de:» — URL del enlace |
-| `SOURCE_NAME` | *(sin definir)* | Pie «Datos extraídos de:» — texto visible del enlace |
 | `TOP_NODOS_INTERVAL` | `15` | Minutos entre análisis de nodos no optimizados (`update-top.py`) |
 | `MAL_CONFIG_URL` | `/data/top-nodos.json` | URL del JSON de nodos no optimizados (interno, servido por el mismo nginx) |
 | `MQTT_BROKER_HOST` | *(vacío)* | Broker MQTT del feed en directo. Vacío = feed sin datos |
@@ -248,8 +243,6 @@ El mapa queda disponible en `http://localhost:8095`.
 | `LIVEFEED_DB_PATH` | `/data/livefeed.db` | SQLite del feed en directo (histórico y enlaces compartibles) |
 | `LIVEFEED_RETENTION_DAYS` | `7` | Días que se conservan los paquetes del feed |
 | `CARTO_API_KEY` | *(sin definir)* | Key gratuita de [carto.com/basemaps/apikey](https://carto.com/basemaps/apikey/) para las teselas del mapa base. **Recomendada**: sin ella, CARTO sirve los tiles con un watermark «API KEY REQUIRED» superpuesto |
-
-> Las variables de personalización (`DEFAULT_LANG`, `SITE_TITLE`, `BRAND_*`, `SOURCE_*`, `CARTO_API_KEY`) son opcionales: si no se definen, la web mantiene sus valores por defecto y la traducción activa (salvo `CARTO_API_KEY`, cuya ausencia degrada el mapa base con el watermark de CARTO).
 
 ---
 

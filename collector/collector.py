@@ -37,14 +37,7 @@ MAP_LNG         = float(os.environ.get("MAP_LNG", -3.7))
 MAP_ZOOM        = int(os.environ.get("MAP_ZOOM", 8))
 MAL_CONFIG_URL  = os.environ.get("MAL_CONFIG_URL", "/data/top-nodos.json")
 
-# Configuración opcional de la web (solo se exporta si la variable está definida;
-# si no, la web usa sus valores por defecto / traducción)
-DEFAULT_LANG    = os.environ.get("DEFAULT_LANG")      # idioma por defecto: es | gl
-SITE_TITLE      = os.environ.get("SITE_TITLE")        # <title> del documento
-BRAND_PRIMARY   = os.environ.get("BRAND_PRIMARY")     # cabecera, parte principal (ej. MESHTASTIC ESPAÑA)
-BRAND_SECONDARY = os.environ.get("BRAND_SECONDARY")   # cabecera, subtítulo en <em> (ej. Mapa de nodos)
-SOURCE_URL      = os.environ.get("SOURCE_URL")        # pie: URL del enlace "Datos extraídos de:"
-SOURCE_NAME     = os.environ.get("SOURCE_NAME")       # pie: texto visible del enlace
+DEFAULT_LANG    = os.environ.get("DEFAULT_LANG")      # idioma por defecto: es | gl | en
 CARTO_API_KEY   = os.environ.get("CARTO_API_KEY")     # key gratuita de carto.com/basemaps/apikey; sin ella los tiles llevan watermark "API KEY REQUIRED"
 
 REQUEST_TIMEOUT = 20       # segundos
@@ -728,15 +721,10 @@ def export_json(conn: sqlite3.Connection, out_dir: Path):
         "map_zoom":       MAP_ZOOM,
         "mal_config_url": MAL_CONFIG_URL,
     }
-    # Campos opcionales de personalización de la web
+    # Campos opcionales (solo se exportan si la variable está definida)
     for key, val in (
-        ("default_lang",    DEFAULT_LANG),
-        ("site_title",      SITE_TITLE),
-        ("brand_primary",   BRAND_PRIMARY),
-        ("brand_secondary", BRAND_SECONDARY),
-        ("source_url",      SOURCE_URL),
-        ("source_name",     SOURCE_NAME),
-        ("carto_api_key",   CARTO_API_KEY),
+        ("default_lang",  DEFAULT_LANG),
+        ("carto_api_key", CARTO_API_KEY),
     ):
         if val:
             config[key] = val

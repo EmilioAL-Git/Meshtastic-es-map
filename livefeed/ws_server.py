@@ -25,6 +25,8 @@ import asyncio
 import http
 import json
 import logging
+import math
+import time
 from typing import Callable
 from urllib.parse import parse_qs, urlsplit
 
@@ -33,6 +35,12 @@ import websockets
 log = logging.getLogger("livefeed.ws_server")
 
 JSON_HEADERS = [("Content-Type", "application/json")]
+
+# Límites defensivos: el feed es público y sin autenticación.
+MAX_CLIENTS = 500          # conexiones WS simultáneas
+SEND_TIMEOUT_S = 5.0       # un cliente que tarda más en aceptar un mensaje se desconecta
+MAX_RANGE_S = 7 * 86400    # rango máximo de /timeline y /activity
+MAX_BUCKETS = 5000         # buckets máximos devueltos por /activity
 
 
 class WsBroadcaster:
@@ -48,6 +56,9 @@ class WsBroadcaster:
         self._timeline_fn = timeline_fn
 
     async def handler(self, websocket):
+        if len(self._clients) >= MAX_CLIENTS:
+            await websocket.close(code=1013, reason="demasiados clientes")
+            return
         self._clients.add(websocket)
         log.info("Cliente conectado (%d activos)", len(self._clients))
         try:
@@ -60,13 +71,18 @@ class WsBroadcaster:
         if not self._clients:
             return
         message = json.dumps(event)
+        clients = list(self._clients)
+        # Timeout por cliente: sin él, un cliente lento frena el broadcast
+        # (y con él todo el pipeline) para todos los demás.
         results = await asyncio.gather(
-            *(client.send(message) for client in list(self._clients)),
+            *(asyncio.wait_for(client.send(message), SEND_TIMEOUT_S) for client in clients),
             return_exceptions=True,
         )
-        for client, result in zip(list(self._clients), results):
-            if isinstance(result, Exception):
+        for client, result in zip(clients, results):
+            if isinstance(result, BaseException):
                 self._clients.discard(client)
+                if isinstance(result, asyncio.TimeoutError):
+                    asyncio.ensure_future(client.close(code=1008, reason="cliente lento"))
 
     async def process_request(self, path: str, request_headers):
         """Intercepta peticiones HTTP normales (no upgrade a WebSocket).
@@ -122,12 +138,13 @@ class WsBroadcaster:
         return (http.HTTPStatus.OK, JSON_HEADERS, json.dumps({"packets": packets}).encode())
 
     async def serve(self, host: str, port: int):
-        return await websockets.serve(self.handler, host, port, process_request=self.process_request)
+        # max_size bajo: el servidor no espera mensajes entrantes del cliente.
+        return await websockets.serve(
+            self.handler, host, port, process_request=self.process_request, max_size=1024,
+        )
 
 
 def _parse_range_params(params: dict, *, default_bucket: int) -> tuple[float, float, int]:
-    import time
-
     now = time.time()
     try:
         since = float(params.get("since", [now - 3600])[0])
@@ -137,6 +154,12 @@ def _parse_range_params(params: dict, *, default_bucket: int) -> tuple[float, fl
         raise ValueError('{"error":"parametros invalidos"}')
     if bucket < 1:
         bucket = default_bucket
+    if not (math.isfinite(since) and math.isfinite(until)):
+        raise ValueError('{"error":"parametros invalidos"}')
     if until < since:
         since, until = until, since
+    if until - since > MAX_RANGE_S:
+        since = until - MAX_RANGE_S
+    # Evita cientos de miles de buckets (p. ej. bucket=1 sobre 7 días).
+    bucket = max(bucket, int((until - since) / MAX_BUCKETS) + 1)
     return since, until, bucket

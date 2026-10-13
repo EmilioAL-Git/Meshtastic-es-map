@@ -110,6 +110,35 @@ CREATE INDEX IF NOT EXISTS idx_edges_to         ON edges(to_node);
 """
 
 
+# Migraciones numeradas; el nº aplicado se guarda en PRAGMA user_version.
+# Para añadir una: nuevo elemento al final (versión = posición + 1). Las BD
+# anteriores a este sistema (user_version = 0) ya tienen las columnas de la
+# migración 1, por eso "duplicate column name" se tolera.
+MIGRATIONS = [
+    [
+        "ALTER TABLE nodes ADD COLUMN channel TEXT",
+        "ALTER TABLE snapshots ADD COLUMN active_nodes INTEGER",
+        "ALTER TABLE nodes ADD COLUMN precision_bits INTEGER",
+        "ALTER TABLE nodes ADD COLUMN location_source TEXT",
+    ],
+]
+
+
+def apply_migrations(conn: sqlite3.Connection) -> None:
+    current = conn.execute("PRAGMA user_version").fetchone()[0]
+    for version, statements in enumerate(MIGRATIONS, start=1):
+        if version <= current:
+            continue
+        for stmt in statements:
+            try:
+                conn.execute(stmt)
+            except sqlite3.OperationalError as e:
+                if "duplicate column name" not in str(e):
+                    raise
+        conn.execute(f"PRAGMA user_version = {version}")
+        conn.commit()
+
+
 def get_db(db_path: Path) -> sqlite3.Connection:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(db_path))
@@ -117,17 +146,7 @@ def get_db(db_path: Path) -> sqlite3.Connection:
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA synchronous=NORMAL")
     conn.executescript(SCHEMA)
-    # Migraciones para columnas añadidas después de la creación inicial
-    for migration in [
-        "ALTER TABLE nodes ADD COLUMN channel TEXT",
-        "ALTER TABLE snapshots ADD COLUMN active_nodes INTEGER",
-        "ALTER TABLE nodes ADD COLUMN precision_bits INTEGER",
-        "ALTER TABLE nodes ADD COLUMN location_source TEXT",
-    ]:
-        try:
-            conn.execute(migration)
-        except sqlite3.OperationalError:
-            pass  # La columna ya existe
+    apply_migrations(conn)
     conn.commit()
     return conn
 
@@ -173,7 +192,15 @@ def fetch_json(url: str, retries: int = 3, backoff: float = 5.0) -> dict | list 
                 return json.loads(raw)
         except urllib.error.HTTPError as e:
             log.warning(f"HTTP {e.code} al pedir {url} (intento {attempt}/{retries})")
-            if e.code < 500:
+            if e.code == 429 or e.code == 503:
+                # Respeta Retry-After (segundos) si el servidor lo envía
+                try:
+                    wait = min(float(e.headers.get("Retry-After", "")), 120.0)
+                except (TypeError, ValueError):
+                    wait = 0.0
+                if attempt < retries and wait > 0:
+                    time.sleep(wait)
+            elif e.code < 500:
                 break  # errores 4xx no se reintentan
         except urllib.error.URLError as e:
             log.warning(f"Error de red al pedir {url} (intento {attempt}/{retries}): {e.reason}")

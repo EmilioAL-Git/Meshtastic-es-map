@@ -183,7 +183,10 @@ def load_ccaa_cache():
     try:
         with open(CCAA_CACHE_PATH) as f:
             return json.load(f)
-    except Exception:
+    except FileNotFoundError:
+        return {}
+    except Exception as e:
+        print(f"  [warn] ccaa-cache.json ilegible ({e}), se regenera")
         return {}
 
 def nominatim_ccaa(lat, lon):
@@ -236,7 +239,8 @@ def fetch_hop_start(packet_id):
         # Fallback (firmware antiguo sin hop_start): max(hop_limit) = valor original
         hop_limits = [e["hop_limit"] for e in seen if e.get("hop_limit") is not None]
         return max(hop_limits) if hop_limits else None
-    except Exception:
+    except Exception as e:
+        print(f"  [warn] hop_start de paquete {packet_id}: {e}")
         return None
 
 # ── BD cíclica local de paquetes ──────────────────────────────────────────────
@@ -395,7 +399,7 @@ def analyze_node(node_id):
         mean = sum(intervals) / len(intervals)
         try:
             cv = statistics.stdev(intervals) / mean if mean > 0 else 1.0
-        except Exception:
+        except statistics.StatisticsError:
             cv = 1.0
         uniform    = cv < 0.2
         short_cycle = (short_cycle_min is not None
@@ -724,8 +728,6 @@ def main():
             if result:
                 node.update(result)
                 node["issues"] = detect_issues(node)
-                tel    = result.get("telemetry_detail", {})
-                tr     = result.get("traceroute_detail")
                 mob    = result.get("mobility")
                 issues = node["issues"]
                 print(f"  {name}")
@@ -806,7 +808,10 @@ def main():
     try:
         with open(OUT) as f:
             prev_history = json.load(f).get("history", [])
-    except Exception:
+    except FileNotFoundError:
+        prev_history = []
+    except Exception as e:
+        print(f"  [warn] historial previo ilegible ({e}), se reinicia")
         prev_history = []
 
     prev_history = [h for h in prev_history if h.get("date") != today]
@@ -821,8 +826,11 @@ def main():
 
     result_data = {"updated": int(time.time()), "nodes": all_nodes, "history": history}
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
-    with open(OUT, "w") as f:
+    # Escritura atómica: nginx nunca sirve un JSON a medias.
+    tmp_out = OUT + ".tmp"
+    with open(tmp_out, "w") as f:
         json.dump(result_data, f)
+    os.replace(tmp_out, OUT)
     print(f"\nGuardado: {len(all_nodes)} nodos en {OUT} ({len(history)} días de historial)")
 
 

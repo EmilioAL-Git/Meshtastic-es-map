@@ -247,5 +247,22 @@ class ExportJsonTests(unittest.TestCase):
         self.assertEqual(edges[0]["to_node"], "!dddddddd")
 
 
+class MigrationTests(unittest.TestCase):
+    def test_fresh_db_gets_latest_user_version(self):
+        with tempfile.TemporaryDirectory() as d:
+            conn = collector.get_db(Path(d) / "t.db")
+            self.assertEqual(conn.execute("PRAGMA user_version").fetchone()[0], len(collector.MIGRATIONS))
+            conn.close()
+
+    def test_reopening_is_idempotent(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "t.db"
+            collector.get_db(p).close()
+            conn = collector.get_db(p)  # no debe fallar al reabrir
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(nodes)")]
+            self.assertIn("location_source", cols)
+            conn.close()
+
+
 if __name__ == "__main__":
     unittest.main()

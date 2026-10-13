@@ -38,6 +38,8 @@ LIVEFEED_DB_PATH = os.environ.get("LIVEFEED_DB_PATH", "/data/livefeed.db")
 LIVEFEED_RETENTION_DAYS = float(os.environ.get("LIVEFEED_RETENTION_DAYS", 7))
 EXPIRE_CHECK_INTERVAL_S = 5
 PURGE_INTERVAL_S = 3600  # cada hora
+QUEUE_MAXSIZE = 10000
+COMMIT_INTERVAL_S = 1.0  # las escrituras a SQLite se agrupan en transacciones
 
 logging.basicConfig(
     level=logging.INFO,
@@ -51,8 +53,16 @@ async def consume_queue(queue: asyncio.Queue, correlator: Correlator, broadcaste
     while True:
         event = await queue.get()
         for ws_event in correlator.ingest(event):
+            # Primero SQLite (sin commit, es barato) y luego el broadcast:
+            # commit_loop cierra la transacción cada COMMIT_INTERVAL_S.
+            storage.record_event(db_conn, ws_event, commit=False)
             await broadcaster.broadcast(ws_event)
-            storage.record_event(db_conn, ws_event)
+
+
+async def commit_loop(db_conn):
+    while True:
+        await asyncio.sleep(COMMIT_INTERVAL_S)
+        db_conn.commit()
 
 
 async def expire_loop(correlator: Correlator, broadcaster: WsBroadcaster):
@@ -72,7 +82,7 @@ async def purge_loop(db_conn):
 
 async def main():
     loop = asyncio.get_running_loop()
-    queue: asyncio.Queue = asyncio.Queue()
+    queue: asyncio.Queue = asyncio.Queue(maxsize=QUEUE_MAXSIZE)
     correlator = Correlator(window_s=LIVE_CORRELATION_WINDOW_S)
     db_conn = storage.init_db(LIVEFEED_DB_PATH)
     broadcaster = WsBroadcaster(
@@ -113,9 +123,11 @@ async def main():
             consume_queue(queue, correlator, broadcaster, db_conn),
             expire_loop(correlator, broadcaster),
             purge_loop(db_conn),
+            commit_loop(db_conn),
         )
     finally:
         source.stop()
+        db_conn.commit()
 
 
 if __name__ == "__main__":
